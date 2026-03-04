@@ -209,7 +209,7 @@ export async function createMoment(input: CreateMomentInput): Promise<Moment | n
   return data as Moment
 }
 
-export async function getMemberMoments(limit = 50, offset = 0, sinceDate?: Date): Promise<Moment[]> {
+export async function getMemberMoments(limit = 50, offset = 0, sinceDate?: Date, untilDate?: Date): Promise<Moment[]> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
@@ -221,6 +221,9 @@ export async function getMemberMoments(limit = 50, offset = 0, sinceDate?: Date)
 
   if (sinceDate) {
     query = query.gte('created_at', sinceDate.toISOString())
+  }
+  if (untilDate) {
+    query = query.lt('created_at', untilDate.toISOString())
   }
 
   const { data, error } = await query.range(offset, offset + limit - 1)

@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, Alert } from 'react-native'
+import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
@@ -8,11 +8,22 @@ export default function Settings() {
   const insets = useSafeAreaInsets()
   const { user, member, signOut } = useAuth()
 
+  const doSignOut = async () => {
+    await signOut()
+    router.replace('/(auth)/welcome')
+  }
+
   const handleSignOut = () => {
-    Alert.alert('Sign out', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => signOut() },
-    ])
+    if (Platform.OS === 'web') {
+      if (window.confirm('Sign out — are you sure?')) {
+        doSignOut()
+      }
+    } else {
+      Alert.alert('Sign out', 'Are you sure?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Sign out', style: 'destructive', onPress: doSignOut },
+      ])
+    }
   }
 
   const displayName = member?.first_name
