@@ -504,7 +504,7 @@ export default function Home() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <BloomLogo size={36} />
           <TouchableOpacity
             onPress={() => router.push('/(main)/settings')}
@@ -516,7 +516,7 @@ export default function Home() {
 
         {/* Greeting */}
         <View style={{ marginBottom: 16 }}>
-          <Text style={{ fontSize: 34, fontWeight: '700', color: '#000', letterSpacing: -0.5 }}>
+          <Text style={{ fontSize: 28, fontWeight: '700', color: '#000', letterSpacing: -0.5 }}>
             {getGreetingText()},{'\n'}
             <Text style={{ color: '#999' }}>{firstName}.</Text>
           </Text>
