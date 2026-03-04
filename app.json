@@ -1,30 +1,43 @@
 {
   "expo": {
-    "name": "bloomsline_mobile",
-    "slug": "bloomsline_mobile",
-    "version": "1.0.0",
+    "name": "Bloomsline",
+    "slug": "bloomsline-mobile",
+    "version": "2.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "bloomsline",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bloomsline.app"
     },
     "android": {
+      "package": "com.bloomsline.app",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      },
-      "predictiveBackGestureEnabled": false
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/icon.png"
+      }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Bloomsline to access your photos to capture moments.",
+          "cameraPermission": "Allow Bloomsline to use your camera to capture moments."
+        }
+      ]
+    ]
   }
 }
