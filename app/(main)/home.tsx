@@ -499,12 +499,12 @@ export default function Home() {
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 120, paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 120, paddingHorizontal: 24 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
           <BloomLogo size={36} />
           <TouchableOpacity
             onPress={() => router.push('/(main)/settings')}
@@ -515,7 +515,7 @@ export default function Home() {
         </View>
 
         {/* Greeting */}
-        <View style={{ marginBottom: 20 }}>
+        <View style={{ marginBottom: 16 }}>
           <Text style={{ fontSize: 34, fontWeight: '700', color: '#000', letterSpacing: -0.5 }}>
             {getGreetingText()},{'\n'}
             <Text style={{ color: '#999' }}>{firstName}.</Text>
