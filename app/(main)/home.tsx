@@ -570,12 +570,12 @@ export default function Home() {
           <TouchableOpacity
             onPress={() => router.push('/(main)/evolution')}
             style={{
-              backgroundColor: '#000',
+              backgroundColor: '#4A9A86',
               borderRadius: 20,
               padding: 24,
             }}
           >
-            <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 1, color: '#666', textTransform: 'uppercase', marginBottom: 8 }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 1, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', marginBottom: 8 }}>
               My Evolution
             </Text>
             <Text style={{ fontSize: 20, fontWeight: '600', color: '#fff' }}>
