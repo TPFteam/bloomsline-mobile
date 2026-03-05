@@ -584,6 +584,34 @@ export default function Home() {
           </TouchableOpacity>
 
           <TouchableOpacity
+            onPress={() => router.push('/(main)/bloom')}
+            style={{
+              backgroundColor: '#f8f8f8',
+              borderRadius: 20,
+              padding: 24,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 16,
+            }}
+          >
+            <View style={{
+              width: 44, height: 44, borderRadius: 22,
+              backgroundColor: '#4A9A8614',
+              justifyContent: 'center', alignItems: 'center',
+            }}>
+              <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: '#4A9A86' }} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 1, color: '#bbb', textTransform: 'uppercase', marginBottom: 4 }}>
+                Talk to Bloom
+              </Text>
+              <Text style={{ fontSize: 17, fontWeight: '600', color: '#000' }}>
+                Your AI companion →
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             onPress={() => router.push('/(main)/practitioner')}
             style={{
               backgroundColor: '#f8f8f8',
