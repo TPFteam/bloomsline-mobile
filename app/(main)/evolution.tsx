@@ -444,20 +444,20 @@ export default function Evolution() {
         )}
 
         {/* Stats row */}
-        <View style={{ flexDirection: 'row', gap: 12, marginBottom: 28 }}>
-          <View style={{ flex: 1, backgroundColor: '#fafafa', borderRadius: 20, padding: 20 }}>
-            <Text style={{ fontSize: 32, fontWeight: '700', color: '#000' }}>{moments.length}</Text>
-            <Text style={{ fontSize: 12, color: '#bbb', marginTop: 2 }}>moments</Text>
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 28 }}>
+          <View style={{ flex: 1, backgroundColor: '#fafafa', borderRadius: 16, padding: 16 }}>
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#000' }}>{moments.length}</Text>
+            <Text style={{ fontSize: 11, color: '#bbb', marginTop: 2 }}>moments</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: '#fafafa', borderRadius: 20, padding: 20 }}>
-            <Text style={{ fontSize: 32, fontWeight: '700', color: '#000' }}>{activeDays}</Text>
-            <Text style={{ fontSize: 12, color: '#bbb', marginTop: 2 }}>active days</Text>
+          <View style={{ flex: 1, backgroundColor: '#fafafa', borderRadius: 16, padding: 16 }}>
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#000' }}>{activeDays}</Text>
+            <Text style={{ fontSize: 11, color: '#bbb', marginTop: 2 }}>active days</Text>
           </View>
-          <View style={{ flex: 1, backgroundColor: '#fafafa', borderRadius: 20, padding: 20 }}>
-            <Text style={{ fontSize: 32, fontWeight: '700', color: '#000' }}>
+          <View style={{ flex: 1, backgroundColor: '#fafafa', borderRadius: 16, padding: 16 }}>
+            <Text style={{ fontSize: 24, fontWeight: '700', color: '#000' }}>
               {Math.round((activeDays / days) * 100)}%
             </Text>
-            <Text style={{ fontSize: 12, color: '#bbb', marginTop: 2 }}>consistency</Text>
+            <Text style={{ fontSize: 11, color: '#bbb', marginTop: 2 }}>consistency</Text>
           </View>
         </View>
 
