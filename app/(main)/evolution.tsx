@@ -405,8 +405,12 @@ export default function Evolution() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <TouchableOpacity onPress={() => router.back()} style={{ marginBottom: 24 }}>
-          <Text style={{ fontSize: 17, color: '#000' }}>← Back</Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}
+        >
+          <Text style={{ fontSize: 18, color: '#000', marginTop: -1 }}>‹</Text>
         </TouchableOpacity>
 
         {/* Bloom Score */}
