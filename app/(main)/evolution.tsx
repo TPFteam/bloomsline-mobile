@@ -392,10 +392,10 @@ export default function Evolution() {
   )
 
   // Score label
-  const scoreLabel = bloomScore >= 80 ? 'Flourishing' :
-    bloomScore >= 60 ? 'Steadily Blooming' :
-    bloomScore >= 40 ? 'Taking Root' :
-    bloomScore >= 20 ? 'Planting Seeds' : 'Getting Started'
+  const scoreLabel = bloomScore >= 80 ? 'Amazing week' :
+    bloomScore >= 60 ? 'Going strong' :
+    bloomScore >= 40 ? 'Building up' :
+    bloomScore >= 20 ? 'Keep going' : 'Just starting'
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
