@@ -4,8 +4,8 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
-import { useBloomChat, BloomMessage } from '@/lib/hooks/useBloomChat'
-import { Camera, Video, Mic, PenLine, Send, ArrowUp } from 'lucide-react-native'
+import { useBloomChat } from '@/lib/hooks/useBloomChat'
+import { Camera, Video, Mic, PenLine, ArrowUp } from 'lucide-react-native'
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from 'react-native-svg'
 
 const { width } = Dimensions.get('window')
@@ -430,46 +430,41 @@ function MomentDetail({ moment, onClose }: { moment: Moment; onClose: () => void
   )
 }
 
-// ─── Bloom Chat Panel ───────────────────────────────
+// ─── Bloom Inline Chat ──────────────────────────────
 
 const BLOOM_SUGGESTIONS = [
   'How am I feeling today',
   'Help me reflect',
   'I need encouragement',
-  'What have you noticed about me',
 ]
 
-function BloomChatPanel({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+function BloomInlineChat({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets()
-  const slideAnim = useRef(new Animated.Value(0)).current
   const chatScrollRef = useRef<ScrollView>(null)
   const [chatInput, setChatInput] = useState('')
-  const { member } = useAuth()
+  const fadeAnim = useRef(new Animated.Value(0)).current
 
   const {
     messages,
     isLoading,
     sendUserMessage,
-    error,
     suggestions,
   } = useBloomChat({ locale: 'en', entryPoint: 'general' })
 
   const displaySuggestions = suggestions.length > 0 ? suggestions : BLOOM_SUGGESTIONS
+  const hasMessages = messages.length > 1
 
   useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: visible ? 1 : 0,
-      friction: 12,
-      tension: 65,
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 200,
       useNativeDriver: true,
     }).start()
-  }, [visible])
+  }, [])
 
   useEffect(() => {
-    if (visible) {
-      setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100)
-    }
-  }, [messages, isLoading, visible])
+    setTimeout(() => chatScrollRef.current?.scrollToEnd({ animated: true }), 100)
+  }, [messages, isLoading])
 
   const handleSend = async () => {
     if (!chatInput.trim() || isLoading) return
@@ -483,176 +478,142 @@ function BloomChatPanel({ visible, onClose }: { visible: boolean; onClose: () =>
     await sendUserMessage(s)
   }
 
-  const panelHeight = Dimensions.get('window').height * 0.6
-  const translateY = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [panelHeight + 50, 0],
-  })
-  const backdropOpacity = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  })
-
-  if (!visible) return null
-
   return (
-    <>
-      {/* Backdrop */}
-      <Animated.View
-        style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.3)',
-          opacity: backdropOpacity,
-        }}
+    <Animated.View
+      style={{
+        position: 'absolute', left: 0, right: 0, bottom: 0,
+        opacity: fadeAnim,
+      }}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <Pressable style={{ flex: 1 }} onPress={onClose} />
-      </Animated.View>
-
-      {/* Panel */}
-      <Animated.View
-        style={{
-          position: 'absolute', left: 0, right: 0, bottom: 0,
-          height: panelHeight,
-          backgroundColor: '#fff',
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.08,
-          shadowRadius: 16,
-          elevation: 16,
-          transform: [{ translateY }],
-        }}
-      >
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Dimensions.get('window').height - panelHeight}
-        >
-          {/* Header */}
+        {/* Messages — only visible after first user message */}
+        {hasMessages && (
           <View style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-            paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12,
-            borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.04)',
+            maxHeight: Dimensions.get('window').height * 0.45,
+            backgroundColor: '#fff',
           }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#4A9A86' }} />
-              <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>Bloom</Text>
-            </View>
-            <TouchableOpacity
-              onPress={onClose}
-              activeOpacity={0.7}
-              style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}
+            {/* Top spacer */}
+            <View style={{ height: 8 }} />
+            <ScrollView
+              ref={chatScrollRef}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 8 }}
             >
-              <Text style={{ fontSize: 14, color: '#999' }}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Messages */}
-          <ScrollView
-            ref={chatScrollRef}
-            style={{ flex: 1 }}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 16 }}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {messages.map(msg => {
-              const isUser = msg.role === 'user'
-              if (isUser) {
-                return (
-                  <View key={msg.id} style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 10 }}>
-                    <View style={{
-                      maxWidth: '78%',
-                      paddingHorizontal: 14, paddingVertical: 9,
-                      borderRadius: 18, borderBottomRightRadius: 4,
-                      backgroundColor: '#4A9A86',
-                    }}>
-                      <Text style={{ fontSize: 14, lineHeight: 20, color: '#fff' }}>{msg.content}</Text>
+              {messages.map(msg => {
+                if (msg.role === 'user') {
+                  return (
+                    <View key={msg.id} style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 }}>
+                      <View style={{
+                        maxWidth: '75%',
+                        paddingHorizontal: 14, paddingVertical: 8,
+                        borderRadius: 18, borderBottomRightRadius: 4,
+                        backgroundColor: '#4A9A86',
+                      }}>
+                        <Text style={{ fontSize: 14, lineHeight: 20, color: '#fff' }}>{msg.content}</Text>
+                      </View>
                     </View>
+                  )
+                }
+                return (
+                  <View key={msg.id} style={{ marginBottom: 10, maxWidth: '85%' }}>
+                    <Text style={{ fontSize: 14, lineHeight: 21, color: '#374151' }}>{msg.content}</Text>
                   </View>
                 )
-              }
-              return (
-                <View key={msg.id} style={{ marginBottom: 12, maxWidth: '85%' }}>
-                  <Text style={{ fontSize: 14, lineHeight: 22, color: '#1f2937' }}>{msg.content}</Text>
+              })}
+              {isLoading && (
+                <View style={{ flexDirection: 'row', gap: 4, paddingVertical: 6 }}>
+                  {[0, 1, 2].map(i => (
+                    <View key={i} style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: '#4A9A86', opacity: 0.4 }} />
+                  ))}
                 </View>
-              )
-            })}
-            {isLoading && (
-              <View style={{ flexDirection: 'row', gap: 5, paddingVertical: 8 }}>
-                {[0, 1, 2].map(i => (
-                  <View key={i} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#4A9A86', opacity: 0.4 }} />
-                ))}
-              </View>
-            )}
-            {error && (
-              <Text style={{ fontSize: 12, color: '#f87171', textAlign: 'center', paddingVertical: 4 }}>{error}</Text>
-            )}
-          </ScrollView>
-
-          {/* Suggestions */}
-          {!isLoading && messages.length > 1 && (
-            <View style={{ paddingHorizontal: 16, paddingBottom: 6 }}>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, paddingRight: 8 }}>
-                {displaySuggestions.map(s => (
-                  <TouchableOpacity
-                    key={s}
-                    onPress={() => handleSuggestion(s)}
-                    activeOpacity={0.7}
-                    style={{
-                      paddingHorizontal: 12, paddingVertical: 6,
-                      borderRadius: 16, backgroundColor: '#f5f5f5',
-                      borderWidth: 1, borderColor: '#eee',
-                    }}
-                  >
-                    <Text style={{ fontSize: 12, color: '#666' }}>{s}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-          )}
-
-          {/* Input bar */}
-          <View style={{
-            paddingHorizontal: 16, paddingTop: 8,
-            paddingBottom: Platform.OS === 'ios' ? insets.bottom + 4 : 12,
-            borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.04)',
-          }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <TextInput
-                value={chatInput}
-                onChangeText={setChatInput}
-                placeholder="Talk to Bloom..."
-                placeholderTextColor="#bbb"
-                editable={!isLoading}
-                onSubmitEditing={handleSend}
-                returnKeyType="send"
-                style={{
-                  flex: 1,
-                  paddingHorizontal: 16, paddingVertical: 10,
-                  borderRadius: 22, fontSize: 14,
-                  backgroundColor: '#f5f5f5',
-                  color: '#000',
-                }}
-              />
-              <TouchableOpacity
-                onPress={handleSend}
-                disabled={!chatInput.trim() || isLoading}
-                activeOpacity={0.7}
-                style={{
-                  width: 38, height: 38, borderRadius: 19,
-                  backgroundColor: '#4A9A86',
-                  justifyContent: 'center', alignItems: 'center',
-                  opacity: (!chatInput.trim() || isLoading) ? 0.3 : 1,
-                }}
-              >
-                <ArrowUp size={18} color="#fff" strokeWidth={2.5} />
-              </TouchableOpacity>
-            </View>
+              )}
+            </ScrollView>
           </View>
-        </KeyboardAvoidingView>
-      </Animated.View>
-    </>
+        )}
+
+        {/* Suggestions — show before first user message */}
+        {!hasMessages && !isLoading && (
+          <View style={{ paddingHorizontal: 20, paddingBottom: 10 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {displaySuggestions.map(s => (
+                <TouchableOpacity
+                  key={s}
+                  onPress={() => handleSuggestion(s)}
+                  activeOpacity={0.7}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 8,
+                    borderRadius: 18, backgroundColor: '#f5f5f5',
+                  }}
+                >
+                  <Text style={{ fontSize: 13, color: '#666' }}>{s}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Input bar */}
+        <View style={{
+          paddingHorizontal: 16, paddingTop: 6,
+          paddingBottom: Platform.OS === 'ios' ? insets.bottom + 6 : 14,
+          backgroundColor: '#fff',
+        }}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center',
+            backgroundColor: '#f3f4f6',
+            borderRadius: 26,
+            paddingLeft: 6, paddingRight: 4,
+            paddingVertical: 4,
+          }}>
+            {/* Close */}
+            <TouchableOpacity
+              onPress={onClose}
+              activeOpacity={0.6}
+              style={{
+                width: 32, height: 32, borderRadius: 16,
+                justifyContent: 'center', alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 16, color: '#999' }}>✕</Text>
+            </TouchableOpacity>
+
+            <TextInput
+              value={chatInput}
+              onChangeText={setChatInput}
+              placeholder="Talk to Bloom..."
+              placeholderTextColor="#aaa"
+              editable={!isLoading}
+              onSubmitEditing={handleSend}
+              returnKeyType="send"
+              autoFocus
+              style={{
+                flex: 1,
+                paddingHorizontal: 10, paddingVertical: 8,
+                fontSize: 15,
+                color: '#000',
+              }}
+            />
+
+            {/* Send */}
+            <TouchableOpacity
+              onPress={handleSend}
+              disabled={!chatInput.trim() || isLoading}
+              activeOpacity={0.7}
+              style={{
+                width: 34, height: 34, borderRadius: 17,
+                backgroundColor: (!chatInput.trim() || isLoading) ? '#ddd' : '#4A9A86',
+                justifyContent: 'center', alignItems: 'center',
+              }}
+            >
+              <ArrowUp size={16} color="#fff" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    </Animated.View>
   )
 }
 
@@ -903,70 +864,66 @@ export default function Home() {
         </Pressable>
       )}
 
-      {/* FAB Row — Bloom + Capture */}
-      <View style={{
-        position: 'absolute', bottom: insets.bottom + 24, left: 0, right: 0,
-        flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 16,
-      }}>
-        {/* Bloom button */}
-        <TouchableOpacity
-          onPress={() => setBloomOpen(true)}
-          activeOpacity={0.85}
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            backgroundColor: '#4A9A86',
-            justifyContent: 'center',
-            alignItems: 'center',
-            shadowColor: '#4A9A86',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.25,
-            shadowRadius: 10,
-            elevation: 6,
-          }}
-        >
-          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: '#fff' }} />
-        </TouchableOpacity>
+      {/* Bottom area — either FAB or Bloom chat */}
+      {bloomOpen ? (
+        <BloomInlineChat onClose={() => setBloomOpen(false)} />
+      ) : (
+        <>
+          {/* FAB — Capture */}
+          <View style={{ position: 'absolute', bottom: insets.bottom + 24, left: 0, right: 0, alignItems: 'center' }}>
+            <TouchableOpacity
+              onPress={toggleCapture}
+              activeOpacity={0.85}
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: '#000',
+                justifyContent: 'center',
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.2,
+                shadowRadius: 12,
+                elevation: 8,
+              }}
+            >
+              <Animated.Text
+                style={{
+                  color: '#fff',
+                  fontSize: 28,
+                  fontWeight: '300',
+                  transform: [{
+                    rotate: fabRotateAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '45deg'],
+                    }),
+                  }],
+                }}
+              >
+                +
+              </Animated.Text>
+            </TouchableOpacity>
+          </View>
 
-        {/* Capture button */}
-        <TouchableOpacity
-          onPress={toggleCapture}
-          activeOpacity={0.85}
-          style={{
-            width: 64,
-            height: 64,
-            borderRadius: 32,
-            backgroundColor: '#000',
-            justifyContent: 'center',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.2,
-            shadowRadius: 12,
-            elevation: 8,
-          }}
-        >
-          <Animated.Text
+          {/* Bloom trigger — subtle text above FAB */}
+          <TouchableOpacity
+            onPress={() => setBloomOpen(true)}
+            activeOpacity={0.6}
             style={{
-              color: '#fff',
-              fontSize: 28,
-              fontWeight: '300',
-              transform: [{
-                rotate: fabRotateAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: ['0deg', '45deg'],
-                }),
-              }],
+              position: 'absolute',
+              bottom: insets.bottom + 96,
+              left: 0, right: 0,
+              alignItems: 'center',
             }}
           >
-            +
-          </Animated.Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Bloom Chat Panel */}
-      <BloomChatPanel visible={bloomOpen} onClose={() => setBloomOpen(false)} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4A9A86' }} />
+              <Text style={{ fontSize: 13, color: '#bbb', fontWeight: '500' }}>Talk to Bloom</Text>
+            </View>
+          </TouchableOpacity>
+        </>
+      )}
     </View>
   )
 }
