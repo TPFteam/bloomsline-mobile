@@ -994,7 +994,7 @@ export default function Evolution() {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
-    await fetchData()
+    await Promise.all([fetchData(), new Promise(r => setTimeout(r, 800))])
     setRefreshing(false)
   }, [fetchData])
 
@@ -1077,7 +1077,7 @@ export default function Evolution() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 40, paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4A9A86" colors={['#4A9A86']} />}
       >
         {/* Header */}
         <TouchableOpacity

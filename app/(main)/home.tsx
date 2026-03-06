@@ -758,7 +758,7 @@ export default function Home() {
 
   const onRefresh = async () => {
     setRefreshing(true)
-    await fetchMoments()
+    await Promise.all([fetchMoments(), new Promise(r => setTimeout(r, 800))])
     setRefreshing(false)
   }
 
@@ -771,7 +771,7 @@ export default function Home() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 120, paddingHorizontal: 24 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4A9A86" colors={['#4A9A86']} />}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
