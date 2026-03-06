@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, Dimensions, Image, Pressable, Animated, RefreshControl } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, Dimensions, Image, Pressable, Animated } from 'react-native'
+import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getMemberMoments, Moment, MomentType } from '@/lib/services/moments'
@@ -974,7 +975,6 @@ export default function Evolution() {
   const [filterMood, setFilterMood] = useState<string | null>(null)
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null)
   const [viewMode, setViewMode] = useState<'river' | 'grid'>('river')
-  const [refreshing, setRefreshing] = useState(false)
 
   const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
 
@@ -993,9 +993,7 @@ export default function Evolution() {
   }, [fetchData])
 
   const onRefresh = useCallback(async () => {
-    setRefreshing(true)
-    await Promise.all([fetchData(), new Promise(r => setTimeout(r, 800))])
-    setRefreshing(false)
+    await fetchData()
   }, [fetchData])
 
   // Range-filtered moments for analytics
@@ -1073,11 +1071,11 @@ export default function Evolution() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <ScrollView
+      <PullToRefreshScrollView
+        onRefresh={onRefresh}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 40, paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4A9A86" colors={['#4A9A86']} />}
       >
         {/* Header */}
         <TouchableOpacity
@@ -1180,7 +1178,7 @@ export default function Evolution() {
             onMomentPress={setViewingMoment}
           />
         )}
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       {/* Moment detail sheet */}
       {viewingMoment && (

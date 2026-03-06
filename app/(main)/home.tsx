@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, Dimensions, RefreshControl, Animated, Pressable, Image, TextInput, KeyboardAvoidingView, Platform } from 'react-native'
-import { useRouter } from 'expo-router'
+import { View, Text, TouchableOpacity, ScrollView, Dimensions, Animated, Pressable, Image, TextInput, KeyboardAvoidingView, Platform } from 'react-native'
+import { PullToRefreshScrollView } from '@/components/PullToRefresh'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
@@ -697,7 +698,6 @@ export default function Home() {
   const { user, member } = useAuth()
   const [moments, setMoments] = useState<Moment[]>([])
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date>(getToday)
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null)
   const [captureOpen, setCaptureOpen] = useState(false)
@@ -752,15 +752,15 @@ export default function Home() {
     setLoading(false)
   }, [selectedDate])
 
-  useEffect(() => {
-    fetchMoments()
-  }, [fetchMoments])
+  useFocusEffect(
+    useCallback(() => {
+      fetchMoments()
+    }, [fetchMoments])
+  )
 
-  const onRefresh = async () => {
-    setRefreshing(true)
-    await Promise.all([fetchMoments(), new Promise(r => setTimeout(r, 800))])
-    setRefreshing(false)
-  }
+  const onRefresh = useCallback(async () => {
+    await fetchMoments()
+  }, [fetchMoments])
 
   const todayMomentCount = moments.length
 
@@ -768,10 +768,10 @@ export default function Home() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      <ScrollView
+      <PullToRefreshScrollView
+        onRefresh={onRefresh}
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 120, paddingHorizontal: 24 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4A9A86" colors={['#4A9A86']} />}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -870,7 +870,7 @@ export default function Home() {
             </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       {/* Moment detail sheet */}
       {viewingMoment && (
