@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, Dimensions, Image, Pressable, Animated } from 'react-native'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, Dimensions, Image, Pressable, Animated, RefreshControl } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getMemberMoments, Moment, MomentType } from '@/lib/services/moments'
@@ -974,18 +974,29 @@ export default function Evolution() {
   const [filterMood, setFilterMood] = useState<string | null>(null)
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null)
   const [viewMode, setViewMode] = useState<'river' | 'grid'>('river')
+  const [refreshing, setRefreshing] = useState(false)
 
   const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
 
+  const fetchData = useCallback(async () => {
+    const data = await getMemberMoments(500, 0)
+    setAllMoments(data)
+  }, [])
+
   useEffect(() => {
-    const fetchData = async () => {
+    const initialFetch = async () => {
       setLoading(true)
-      const data = await getMemberMoments(500, 0)
-      setAllMoments(data)
+      await fetchData()
       setLoading(false)
     }
-    fetchData()
-  }, [])
+    initialFetch()
+  }, [fetchData])
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await fetchData()
+    setRefreshing(false)
+  }, [fetchData])
 
   // Range-filtered moments for analytics
   const rangeSince = useMemo(() => {
@@ -1066,10 +1077,11 @@ export default function Evolution() {
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 40, paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000" />}
       >
         {/* Header */}
         <TouchableOpacity
-          onPress={() => router.back()}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(main)/home')}
           activeOpacity={0.7}
           style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center', marginBottom: 20 }}
         >
