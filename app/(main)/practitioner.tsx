@@ -12,8 +12,10 @@ import {
   Alert,
   Platform,
   Share,
+  useWindowDimensions,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import RenderHtml from 'react-native-render-html'
 import { useFocusEffect, useRouter } from 'expo-router'
 import * as Clipboard from 'expo-clipboard'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
@@ -33,6 +35,7 @@ import {
   invitePractitioner,
   openResourceForFill,
   saveDraft,
+  saveTableEntry,
   submitResource,
   markResourceComplete,
   PractitionerProfile,
@@ -72,6 +75,7 @@ function getFormatLabel(format: string): string {
 
 export default function PractitionerScreen() {
   const insets = useSafeAreaInsets()
+  const { width: screenWidth } = useWindowDimensions()
   const router = useRouter()
   const { member } = useAuth()
 
@@ -104,6 +108,7 @@ export default function PractitionerScreen() {
   const [draftResponseId, setDraftResponseId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [tableReviewReady, setTableReviewReady] = useState(false)
 
   // Quick access
   const [quickModal, setQuickModal] = useState<'practitioners' | 'assessments' | null>(null)
@@ -118,7 +123,7 @@ export default function PractitionerScreen() {
     try {
       const [practData, sessionsData, resourcesData] = await Promise.all([
         practitionerId ? fetchPractitioner(practitionerId) : Promise.resolve(null),
-        fetchSessions(member.id),
+        fetchSessions(member.id, member.user_id),
         practitionerId ? fetchResources(member.id) : Promise.resolve([]),
       ])
       setPractitioner(practData)
@@ -186,7 +191,7 @@ export default function PractitionerScreen() {
   }
 
   function closeFill() {
-    setFillResource(null); setActiveResourceItem(null); setResponses({}); setDraftResponseId(null); fetchData()
+    setFillResource(null); setActiveResourceItem(null); setResponses({}); setDraftResponseId(null); setTableReviewReady(false); fetchData()
   }
 
   function handleCloseFill() {
@@ -203,19 +208,52 @@ export default function PractitionerScreen() {
     setSaving(true); await saveDraft(draftResponseId, responses); setSaving(false)
   }
 
+  function showAlert(title: string, message: string) {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n${message}`)
+    } else {
+      Alert.alert(title, message)
+    }
+  }
+
   async function handleSubmit() {
-    if (!draftResponseId || !activeResourceItem) return
+    if (!activeResourceItem) return
     setSubmitting(true)
-    const ok = await submitResource(draftResponseId, activeResourceItem.id, responses)
-    if (ok) { closeFill(); Alert.alert('Submitted', 'Your response has been submitted.') }
-    setSubmitting(false)
+    try {
+      if (activeResourceItem.type === 'assignment' && draftResponseId) {
+        const ok = await submitResource(draftResponseId, activeResourceItem.id, responses)
+        if (!ok) { setSubmitting(false); showAlert('Error', 'Failed to submit.'); return }
+      } else {
+        await markResourceComplete(activeResourceItem, draftResponseId, responses)
+      }
+      setSubmitting(false)
+      closeFill()
+      showAlert('Submitted', 'Your response has been submitted.')
+    } catch (e: any) {
+      setSubmitting(false)
+      showAlert('Error', `Something went wrong: ${e?.message || 'Unknown error'}`)
+    }
+  }
+
+  async function handleSaveTable() {
+    if (!draftResponseId) return
+    setSaving(true)
+    try {
+      await saveTableEntry(draftResponseId, responses)
+      setSaving(false)
+      closeFill()
+      showAlert('Saved', 'Your entry has been saved.')
+    } catch (e: any) {
+      setSaving(false)
+      showAlert('Error', `Failed to save: ${e?.message || 'Unknown error'}`)
+    }
   }
 
   async function handleMarkComplete() {
     if (!activeResourceItem) return
     setSubmitting(true)
     await markResourceComplete(activeResourceItem, draftResponseId, responses)
-    closeFill(); Alert.alert('Done', 'Resource marked as complete.')
+    closeFill(); showAlert('Done', 'Resource marked as complete.')
     setSubmitting(false)
   }
 
@@ -651,12 +689,13 @@ export default function PractitionerScreen() {
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }} onPress={() => setViewingResource(null)}>
           <Pressable style={{
             backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
-            padding: 28, paddingBottom: insets.bottom + 28, maxHeight: '80%',
+            paddingTop: 28, paddingBottom: insets.bottom + 28, maxHeight: '85%',
           }} onPress={() => {}}>
             {viewingResource && (
               <>
                 <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.disabled, alignSelf: 'center', marginBottom: 20 }} />
 
+                <ScrollView style={{ paddingHorizontal: 28 }} showsVerticalScrollIndicator={false}>
                 <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3, marginBottom: 8 }}>
                   {viewingResource.title}
                 </Text>
@@ -678,14 +717,31 @@ export default function PractitionerScreen() {
                 </View>
 
                 {viewingResource.description && (
-                  <Text style={{ fontSize: 15, color: '#8A8A8A', lineHeight: 22, marginBottom: 16 }}>
-                    {viewingResource.description}
-                  </Text>
+                  <View style={{ marginBottom: 16 }}>
+                    <RenderHtml
+                      contentWidth={screenWidth - 64}
+                      source={{ html: viewingResource.description }}
+                      baseStyle={{ fontSize: 15, color: '#8A8A8A', lineHeight: 22 }}
+                      tagsStyles={{
+                        p: { marginTop: 0, marginBottom: 8 },
+                        div: { marginBottom: 4 },
+                        br: { height: 4 },
+                        table: { borderWidth: 1, borderColor: '#E5E5E5', borderRadius: 8, marginVertical: 8 },
+                        th: { backgroundColor: '#F5F5F5', padding: 8, fontWeight: '600', color: '#333' },
+                        td: { padding: 8, borderTopWidth: 1, borderColor: '#E5E5E5' },
+                      }}
+                    />
+                  </View>
                 )}
 
                 {viewingResource.instructions && (
                   <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 16, marginBottom: 16 }}>
-                    <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 20 }}>{viewingResource.instructions}</Text>
+                    <RenderHtml
+                      contentWidth={screenWidth - 96}
+                      source={{ html: viewingResource.instructions }}
+                      baseStyle={{ fontSize: 14, color: colors.primary, lineHeight: 20 }}
+                      tagsStyles={{ p: { marginTop: 0, marginBottom: 6 }, div: { marginBottom: 2 } }}
+                    />
                   </View>
                 )}
 
@@ -695,19 +751,22 @@ export default function PractitionerScreen() {
                   </Text>
                 )}
 
-                {viewingResource.status !== 'completed' && (
-                  <TouchableOpacity
-                    onPress={() => handleOpenResource(viewingResource)}
-                    activeOpacity={0.8}
-                    style={{
-                      backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 16, alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ fontSize: 17, fontWeight: '600', color: '#fff' }}>
-                      {viewingResource.status === 'in_progress' ? 'Continue' : 'Start'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
+                </ScrollView>
+
+                <TouchableOpacity
+                  onPress={() => handleOpenResource(viewingResource)}
+                  activeOpacity={0.8}
+                  style={{
+                    backgroundColor: viewingResource.status === 'completed' ? colors.surface1 : colors.primary,
+                    borderRadius: 28, paddingVertical: 16, alignItems: 'center',
+                    marginHorizontal: 28, marginTop: 16,
+                  }}
+                >
+                  <Text style={{ fontSize: 17, fontWeight: '600', color: viewingResource.status === 'completed' ? colors.primary : '#fff' }}>
+                    {viewingResource.status === 'completed' ? 'View Again'
+                      : viewingResource.status === 'in_progress' ? 'Continue' : 'Start'}
+                  </Text>
+                </TouchableOpacity>
               </>
             )}
           </Pressable>
@@ -753,7 +812,7 @@ export default function PractitionerScreen() {
                     : Array.isArray(fillResource.content?.blocks) ? fillResource.content.blocks : []
                   return blocks.map((block: any, i: number) => (
                     <View key={block.id || i} style={{ marginBottom: 24 }}>
-                      {renderBlock(block, responses[block.id], (v) => setResponses(prev => ({ ...prev, [block.id]: v })))}
+                      {renderBlock(block, responses[block.id], (v) => setResponses(prev => ({ ...prev, [block.id]: v })), (inReview) => setTableReviewReady(inReview), activeResourceItem?.status === 'completed')}
                     </View>
                   ))
                 })()}
@@ -766,7 +825,22 @@ export default function PractitionerScreen() {
                 paddingHorizontal: 24, paddingVertical: 16, paddingBottom: insets.bottom + 16,
                 flexDirection: 'row', gap: 10,
               }}>
-                {activeResourceItem?.type === 'assignment' && ['worksheet', 'exercise', 'table', 'assessment'].includes(activeResourceItem.resourceType || '') ? (
+                {activeResourceItem?.status === 'completed' ? (
+                  <View style={{ flex: 1, backgroundColor: colors.surface1, borderRadius: 28, paddingVertical: 16, alignItems: 'center' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.bloom }}>Completed ✓</Text>
+                  </View>
+                ) : activeResourceItem?.resourceType === 'table' ? (
+                  tableReviewReady && draftResponseId ? (
+                    <TouchableOpacity
+                      onPress={handleSaveTable} disabled={saving}
+                      style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 16, alignItems: 'center' }}
+                    >
+                      {saving ? <ActivityIndicator size="small" color="#fff" /> : (
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Save Entry</Text>
+                      )}
+                    </TouchableOpacity>
+                  ) : null
+                ) : ['worksheet', 'exercise', 'assessment'].includes(activeResourceItem?.resourceType || '') ? (
                   <>
                     {draftResponseId && (
                       <TouchableOpacity
@@ -777,7 +851,7 @@ export default function PractitionerScreen() {
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
-                      onPress={handleSubmit} disabled={submitting}
+                      onPress={draftResponseId ? handleSubmit : handleMarkComplete} disabled={submitting}
                       style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 16, alignItems: 'center' }}
                     >
                       {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
@@ -792,7 +866,9 @@ export default function PractitionerScreen() {
                   >
                     {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
                       <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>
-                        {activeResourceItem?.type === 'shared' ? 'Mark as Read' : 'Mark Complete'}
+                        {activeResourceItem?.type === 'shared' ? 'Mark as Read'
+                          : ['table', 'worksheet', 'exercise', 'assessment'].includes(activeResourceItem?.resourceType || '') ? 'Submit'
+                          : 'Mark Complete'}
                       </Text>
                     )}
                   </TouchableOpacity>

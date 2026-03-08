@@ -145,7 +145,7 @@ export default function BookingScreen() {
     const clientTz = Intl.DateTimeFormat().resolvedOptions().timeZone
     const result = await createBooking({
       practitioner_id: practitionerId,
-      session_type: selectedService.name,
+      session_type: selectedService.id,
       start_time: selectedSlot.slot_start,
       end_time: selectedSlot.slot_end,
       timezone: clientTz,

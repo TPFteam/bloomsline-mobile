@@ -100,12 +100,13 @@ export async function fetchPractitioner(practitionerId: string): Promise<Practit
   }
 }
 
-export async function fetchSessions(memberId: string): Promise<{
+export async function fetchSessions(memberId: string, userId?: string): Promise<{
   upcoming: UpcomingSession[]
   past: UpcomingSession[]
 }> {
   const now = new Date().toISOString()
 
+  // Fetch from sessions table (practitioner-created sessions)
   const [upcomingRes, pastRes] = await Promise.all([
     supabase
       .from('sessions')
@@ -124,7 +125,64 @@ export async function fetchSessions(memberId: string): Promise<{
       .limit(20),
   ])
 
-  const allSessions = [...(upcomingRes.data || []), ...(pastRes.data || [])]
+  // Also fetch from bookings table (member-booked appointments)
+  const bookingQueries = userId ? await Promise.all([
+    supabase
+      .from('bookings')
+      .select('id, start_time, end_time, session_type, status, notes, practitioner_id, client_name')
+      .eq('member_id', userId)
+      .in('status', ['confirmed', 'pending'])
+      .gte('start_time', now)
+      .order('start_time', { ascending: true })
+      .limit(10),
+    supabase
+      .from('bookings')
+      .select('id, start_time, end_time, session_type, status, notes, practitioner_id, client_name')
+      .eq('member_id', userId)
+      .in('status', ['completed', 'cancelled', 'no_show'])
+      .order('start_time', { ascending: false })
+      .limit(20),
+  ]) : [{ data: null }, { data: null }]
+
+  // Map bookings to the same UpcomingSession shape
+  const mapBooking = (b: any): any => {
+    const start = new Date(b.start_time)
+    const end = new Date(b.end_time)
+    const durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000)
+    return {
+      id: b.id,
+      scheduled_at: b.start_time,
+      duration_minutes: durationMinutes,
+      session_type: b.session_type,
+      session_format: 'telehealth',
+      status: b.status === 'confirmed' ? 'scheduled' : b.status,
+      member_confirmed: b.status === 'confirmed',
+      reschedule_requested: false,
+      reschedule_status: null,
+      practitioner_proposed_date: null,
+      notes: b.notes,
+      practitioner_id: b.practitioner_id,
+      _source: 'booking',
+    }
+  }
+
+  const upcomingBookings = (bookingQueries[0]?.data || []).map(mapBooking)
+  const pastBookings = (bookingQueries[1]?.data || []).map(mapBooking)
+
+  // Deduplicate: when a booking is confirmed, a session is also created.
+  // Skip bookings that already have a matching session (same practitioner + time).
+  const sessionTimes = new Set(
+    [...(upcomingRes.data || []), ...(pastRes.data || [])].map(
+      (s: any) => `${s.practitioner_id}_${s.scheduled_at}`
+    )
+  )
+  const dedupBookings = (bookings: any[]) =>
+    bookings.filter((b) => !sessionTimes.has(`${b.practitioner_id}_${b.scheduled_at}`))
+
+  const allUpcoming = [...(upcomingRes.data || []), ...dedupBookings(upcomingBookings)]
+  const allPast = [...(pastRes.data || []), ...dedupBookings(pastBookings)]
+
+  const allSessions = [...allUpcoming, ...allPast]
   let practitionerMap: Record<string, any> = {}
 
   if (allSessions.length > 0) {
@@ -148,9 +206,13 @@ export async function fetchSessions(memberId: string): Promise<{
     practitioner: practitionerMap[session.practitioner_id] || null,
   })
 
+  // Sort upcoming by date ascending
+  allUpcoming.sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+  allPast.sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime())
+
   return {
-    upcoming: (upcomingRes.data || []).map(mapSession),
-    past: (pastRes.data || []).map(mapSession),
+    upcoming: allUpcoming.map(mapSession),
+    past: allPast.map(mapSession),
   }
 }
 
@@ -164,7 +226,7 @@ export async function fetchResources(memberId: string): Promise<ResourceItem[]> 
         .order('due_date', { ascending: true, nullsFirst: false }),
       supabase
         .from('member_shared_resources')
-        .select('id, viewed_at, message, resource:resources(id, title, description, type)')
+        .select('id, viewed_at, completed_at, message, resource:resources(id, title, description, type)')
         .eq('member_id', memberId)
         .order('shared_at', { ascending: false }),
     ])
@@ -206,7 +268,7 @@ export async function fetchResources(memberId: string): Promise<ResourceItem[]> 
           type: 'shared',
           title: extractLocalized(resource.title) || 'Untitled',
           description: extractLocalized(resource.description) || null,
-          status: s.viewed_at ? 'in_progress' : 'pending',
+          status: (s as any).completed_at ? 'completed' : s.viewed_at ? 'in_progress' : 'pending',
           dueDate: null,
           instructions: (s as any).message || null,
           resourceType: resource.type || null,
@@ -340,6 +402,60 @@ export async function openResourceForFill(
       .from('member_shared_resources')
       .update({ viewed_at: new Date().toISOString() })
       .eq('id', item.id)
+
+    // For interactive shared resources (table, worksheet, etc.), create a response record
+    const interactiveTypes = ['table', 'worksheet', 'exercise', 'assessment']
+    if (interactiveTypes.includes(item.resourceType || '')) {
+      const { data: existing } = await supabase
+        .from('resource_responses')
+        .select('*')
+        .eq('resource_id', item.resourceId)
+        .eq('member_id', memberId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (existing) {
+        responseId = existing.id
+        responses = existing.responses || {}
+      } else {
+        const { data: newResp, error: insertErr } = await supabase
+          .from('resource_responses')
+          .insert({
+            resource_id: item.resourceId,
+            member_id: memberId,
+            practitioner_id: practitionerId,
+            shared_resource_id: item.id,
+            responses: {},
+            status: 'draft',
+            started_at: new Date().toISOString(),
+          })
+          .select()
+          .single()
+
+        if (insertErr) {
+          console.error('Failed to create response for shared resource:', insertErr)
+          // Retry without shared_resource_id in case column doesn't exist
+          const { data: retry, error: retryErr } = await supabase
+            .from('resource_responses')
+            .insert({
+              resource_id: item.resourceId,
+              member_id: memberId,
+              practitioner_id: practitionerId,
+              responses: {},
+              status: 'draft',
+              started_at: new Date().toISOString(),
+            })
+            .select()
+            .single()
+
+          if (retry) responseId = retry.id
+          else console.error('Retry also failed:', retryErr)
+        } else if (newResp) {
+          responseId = newResp.id
+        }
+      }
+    }
   }
 
   return { resource, responseId, responses }
@@ -355,6 +471,21 @@ export async function saveDraft(
     .eq('id', responseId)
     .eq('status', 'draft')
   return !error
+}
+
+export async function saveTableEntry(
+  responseId: string,
+  responses: Record<string, unknown>,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('resource_responses')
+    .update({ responses, status: 'draft', updated_at: new Date().toISOString() })
+    .eq('id', responseId)
+  if (error) {
+    console.error('saveTableEntry error:', error)
+    throw error
+  }
+  return true
 }
 
 export async function submitResource(
@@ -383,11 +514,19 @@ export async function markResourceComplete(
 ): Promise<boolean> {
   const now = new Date().toISOString()
   if (item.type === 'shared') {
-    const { error } = await supabase
+    await supabase
       .from('member_shared_resources')
-      .update({ viewed_at: now })
+      .update({ viewed_at: now, completed_at: now })
       .eq('id', item.id)
-    return !error
+
+    // Save responses if there's a response record (interactive shared resources)
+    if (responseId && Object.keys(responses).length > 0) {
+      await supabase
+        .from('resource_responses')
+        .update({ responses, status: 'submitted', submitted_at: now, updated_at: now })
+        .eq('id', responseId)
+    }
+    return true
   } else {
     await supabase
       .from('resource_assignments')

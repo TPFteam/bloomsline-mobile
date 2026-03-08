@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity } from 'react-native'
 import { colors } from '@/lib/theme'
 
@@ -14,50 +15,436 @@ const SELECTED_BORDER = colors.primary
 const MUTED = '#8A8A8A'
 const PLACEHOLDER = '#CCCCCC'
 
+function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onReviewStateChange }: {
+  block: any; content: string; blockValue: unknown; onBlockChange: (v: unknown) => void; onReviewStateChange?: (inReview: boolean) => void
+}) {
+  const columns: any[] = Array.isArray(block.columns) ? block.columns : []
+  const instr = block.instructions || null
+  // Decide row count once on mount (stable during editing)
+  const [rowCount] = useState(() => {
+    const raw: any[] = Array.isArray(blockValue) && (blockValue as any[]).length > 0 ? (blockValue as any[]) : []
+    const isComplete = (r: any) => columns.every((c: any) => (r[c.id] || '').trim().length > 0)
+    const needsNew = raw.length === 0 || isComplete(raw[raw.length - 1])
+    return needsNew ? raw.length + 1 : raw.length
+  })
+
+  // Live rows from blockValue, padded to rowCount
+  const rawRows: any[] = Array.isArray(blockValue) && (blockValue as any[]).length > 0 ? (blockValue as any[]) : []
+  const rows: any[] = []
+  for (let i = 0; i < rowCount; i++) {
+    rows.push(rawRows[i] || {})
+  }
+
+  // The editable entry is always the last one
+  const editableIdx = rowCount - 1
+
+  const [currentEntry, setCurrentEntry] = useState(editableIdx)
+  const [currentCol, setCurrentCol] = useState(0)
+  const [expandedView, setExpandedView] = useState(false)
+  const [returnToCol, setReturnToCol] = useState<number | null>(null)
+  const [showReview, setShowReview] = useState(false)
+
+  useEffect(() => {
+    onReviewStateChange?.(showReview)
+  }, [showReview])
+
+  if (columns.length === 0) return <Text style={{ color: MUTED }}>No columns defined</Text>
+
+  const safeEntry = Math.min(currentEntry, rows.length - 1)
+  const safeCol = Math.min(currentCol, columns.length - 1)
+  const row = rows[safeEntry] || {}
+  const col = columns[safeCol]
+  const updateCell = (ri: number, colId: string, text: string) => {
+    const nr = [...rows]
+    nr[ri] = { ...nr[ri], [colId]: text }
+    onBlockChange(nr)
+  }
+
+  const filledCount = columns.filter((c: any) => (row[c.id] || '').trim()).length
+
+  // Expanded / Form view
+  if (expandedView) {
+    return (
+      <View>
+        {content ? <Text style={LABEL}>{content}</Text> : null}
+        {instr && (
+          <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 12 }}>
+            <Text style={{ fontSize: 13, color: colors.primary }}>{instr}</Text>
+          </View>
+        )}
+
+        {/* Toggle */}
+        <View style={{ flexDirection: 'row', backgroundColor: colors.surface2, borderRadius: 10, padding: 2, alignSelf: 'flex-end', marginBottom: 12 }}>
+          <TouchableOpacity onPress={() => setExpandedView(false)} style={{
+            paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+          }}>
+            <Text style={{ fontSize: 12, fontWeight: '500', color: MUTED }}>Guided</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setExpandedView(true)} style={{
+            paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
+            backgroundColor: '#fff',
+          }}>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>Form</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ gap: 16 }}>
+          {rows.map((r: any, ri: number) => (
+            <View key={ri} style={{ backgroundColor: '#fff', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#EBEBEB' }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }}>Entry {ri + 1}</Text>
+                {rows.length > 1 && (
+                  <TouchableOpacity onPress={() => {
+                    onBlockChange(rows.filter((_: any, i: number) => i !== ri))
+                    if (safeEntry >= rows.length - 1) setCurrentEntry(Math.max(0, rows.length - 2))
+                  }}>
+                    <Text style={{ fontSize: 16, color: MUTED }}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              {columns.map((c: any) => (
+                <View key={c.id} style={{ marginBottom: 10 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 4 }}>{c.header}</Text>
+                  {c.description && <Text style={{ fontSize: 11, color: MUTED, marginBottom: 4, fontStyle: 'italic' }}>{c.description}</Text>}
+                  <TextInput
+                    value={r[c.id] || ''}
+                    onChangeText={(t) => updateCell(ri, c.id, t)}
+                    placeholder="Type here..."
+                    placeholderTextColor={PLACEHOLDER}
+                    multiline
+                    style={{
+                      backgroundColor: INPUT_BG, borderRadius: 12, padding: 12, fontSize: 14,
+                      color: colors.primary, minHeight: 60, textAlignVertical: 'top',
+                    }}
+                  />
+                </View>
+              ))}
+            </View>
+          ))}
+        </View>
+        <TouchableOpacity onPress={() => onBlockChange([...rows, {}])} style={{
+          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, marginTop: 8,
+        }}>
+          <Text style={{ fontSize: 20, fontWeight: '300', color: colors.primary }}>+</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Add Entry</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
+  // Review / Preview view
+  if (showReview) {
+    return (
+      <View>
+        {content ? <Text style={LABEL}>{content}</Text> : null}
+
+        {/* Review header */}
+        <View style={{
+          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
+        }}>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary }}>Review Answers</Text>
+          <TouchableOpacity onPress={() => setShowReview(false)} style={{
+            paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.surface2,
+          }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: MUTED }}>← Edit</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Current entry only */}
+        <View style={{
+          backgroundColor: '#fff', borderRadius: 18, padding: 16,
+          borderWidth: 1, borderColor: '#EBEBEB',
+        }}>
+          {columns.map((c: any, ci: number) => {
+            const val = (rows[editableIdx]?.[c.id] || '').trim()
+            return (
+              <TouchableOpacity
+                key={c.id}
+                onPress={() => { setShowReview(false); setCurrentCol(ci) }}
+                activeOpacity={0.7}
+                style={{
+                  paddingVertical: 10,
+                  borderBottomWidth: ci < columns.length - 1 ? 1 : 0,
+                  borderBottomColor: '#F0F0F0',
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: MUTED, marginBottom: 4 }}>
+                  {c.header}
+                </Text>
+                {val ? (
+                  <Text style={{ fontSize: 15, color: colors.primary, lineHeight: 21 }}>{val}</Text>
+                ) : (
+                  <Text style={{ fontSize: 14, color: '#CCC', fontStyle: 'italic' }}>Not answered — tap to add</Text>
+                )}
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        <Text style={{ fontSize: 12, color: MUTED, textAlign: 'center', marginTop: 12 }}>
+          Tap any answer to edit it
+        </Text>
+      </View>
+    )
+  }
+
+  // Guided stepper view
+  return (
+    <View>
+      {content ? <Text style={LABEL}>{content}</Text> : null}
+      {instr && (
+        <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 12 }}>
+          <Text style={{ fontSize: 13, color: colors.primary }}>{instr}</Text>
+        </View>
+      )}
+
+      {/* Entry selector */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        {rows.map((_: any, i: number) => {
+          const isSaved = i < rows.length - 1
+          return (
+            <TouchableOpacity
+              key={i}
+              onPress={() => { setCurrentEntry(i); setCurrentCol(0); setShowReview(false) }}
+              style={{
+                paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+                backgroundColor: i === safeEntry ? colors.primary : isSaved ? colors.primary + '20' : colors.surface2,
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: i === safeEntry ? '#fff' : isSaved ? colors.primary : MUTED }}>
+                {i + 1}
+              </Text>
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+
+      {/* Read-only view for previous entries, editable stepper for last entry */}
+      {safeEntry < rows.length - 1 ? (
+        <View style={{
+          backgroundColor: '#fff', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#EBEBEB',
+        }}>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: 12 }}>
+            Entry {safeEntry + 1}
+          </Text>
+          {columns.map((c: any, ci: number) => {
+            const val = (rows[safeEntry]?.[c.id] || '').trim()
+            return (
+              <View key={c.id} style={{
+                paddingVertical: 8,
+                borderBottomWidth: ci < columns.length - 1 ? 1 : 0, borderBottomColor: '#F0F0F0',
+              }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: MUTED, marginBottom: 2 }}>
+                  {c.header}
+                </Text>
+                <Text style={{ fontSize: 15, color: val ? colors.primary : '#CCC', lineHeight: 21 }}>
+                  {val || '—'}
+                </Text>
+              </View>
+            )
+          })}
+        </View>
+      ) : (
+      <>
+
+      {/* Progress dots */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: 16 }}>
+        {columns.map((_: any, i: number) => {
+          const isFilled = (row[columns[i].id] || '').trim().length > 0
+          return (
+            <TouchableOpacity key={i} onPress={() => { setCurrentCol(i); setReturnToCol(null) }}>
+              <View style={{
+                width: i === safeCol ? 20 : 8, height: 8, borderRadius: 4,
+                backgroundColor: i === safeCol ? colors.primary : isFilled ? colors.primary + '40' : '#E0E0E0',
+              }} />
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+
+      {/* Progress text */}
+      <Text style={{ fontSize: 12, color: MUTED, textAlign: 'center', marginBottom: 12 }}>
+        {filledCount}/{columns.length} completed
+      </Text>
+
+      {/* Previous answers in current entry — compact summary */}
+      {safeCol > 0 && columns.slice(0, safeCol).some((c: any) => (row[c.id] || '').trim()) && (
+        <View style={{
+          backgroundColor: colors.surface2, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
+          marginBottom: 12,
+        }}>
+          {columns.slice(0, safeCol).map((prevCol: any, i: number) => {
+            const val = (row[prevCol.id] || '').trim()
+            if (!val) return null
+            return (
+              <TouchableOpacity key={prevCol.id} onPress={() => { setReturnToCol(safeCol); setCurrentCol(i) }} style={{
+                flexDirection: 'row', paddingVertical: 5,
+                borderBottomWidth: i < safeCol - 1 ? 1 : 0, borderBottomColor: '#E8E8E8',
+              }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: MUTED, width: '35%' }} numberOfLines={1}>
+                  {prevCol.header}
+                </Text>
+                <Text style={{ fontSize: 12, color: colors.primary, flex: 1 }} numberOfLines={1}>
+                  {val}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      )}
+
+      {/* Current column card */}
+      <View style={{
+        backgroundColor: '#fff', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#EBEBEB',
+        minHeight: 200,
+      }}>
+        {/* Column header */}
+        <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: 4 }}>
+          {col.header}
+        </Text>
+        {col.description && (
+          <Text style={{ fontSize: 13, color: MUTED, marginBottom: 16, lineHeight: 18 }}>
+            {col.description}
+          </Text>
+        )}
+
+        {/* Input */}
+        <TextInput
+          value={row[col.id] || ''}
+          onChangeText={(t) => updateCell(safeEntry, col.id, t)}
+          placeholder="Type here..."
+          placeholderTextColor={PLACEHOLDER}
+          multiline
+          style={{
+            backgroundColor: INPUT_BG, borderRadius: 14, padding: 14, fontSize: 15,
+            color: colors.primary, minHeight: 100, textAlignVertical: 'top', flex: 1,
+          }}
+        />
+      </View>
+
+      {/* Navigation */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+        {returnToCol !== null ? (
+          <TouchableOpacity
+            onPress={() => { setCurrentCol(returnToCol); setReturnToCol(null) }}
+            style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24, backgroundColor: colors.primary + '10' }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>← Back to current</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => setCurrentCol(Math.max(0, safeCol - 1))}
+            disabled={safeCol === 0}
+            style={{
+              paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
+              backgroundColor: safeCol === 0 ? colors.surface2 : colors.primary + '10',
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: safeCol === 0 ? '#CCC' : colors.primary }}>← Back</Text>
+          </TouchableOpacity>
+        )}
+
+        {returnToCol !== null ? (
+          <TouchableOpacity
+            onPress={() => { setCurrentCol(returnToCol); setReturnToCol(null) }}
+            style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24, backgroundColor: colors.primary }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Done editing →</Text>
+          </TouchableOpacity>
+        ) : safeCol < columns.length - 1 ? (
+          <TouchableOpacity
+            onPress={() => setCurrentCol(safeCol + 1)}
+            style={{
+              paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
+              backgroundColor: colors.primary,
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Next →</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => setShowReview(true)}
+            style={{
+              paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
+              backgroundColor: colors.primary,
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Continue →</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      </>
+      )}
+    </View>
+  )
+}
+
 export function renderBlock(
   block: any,
   blockValue: unknown,
   onBlockChange: (v: unknown) => void,
+  onReviewStateChange?: (inReview: boolean) => void,
+  readOnly?: boolean,
 ) {
   const content = typeof block.content === 'string' ? block.content : extractLocalized(block.content)
   const isRequired = !!block.required
   const Star = isRequired ? <Text style={{ color: colors.error }}> *</Text> : null
+  const onChange = readOnly ? () => {} : onBlockChange
 
   switch (block.type) {
     case 'heading':
-      return <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>{content}</Text>
+      return (
+        <View style={{ paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: colors.bloom + '30', marginBottom: 4 }}>
+          <Text style={{ fontSize: 22, fontWeight: '800', color: colors.primary, letterSpacing: -0.5, lineHeight: 28 }}>{content}</Text>
+        </View>
+      )
 
     case 'paragraph':
-      return <Text style={{ fontSize: 15, color: MUTED, lineHeight: 22 }}>{content}</Text>
+      return <Text style={{ fontSize: 16, color: '#4A4A4A', lineHeight: 25 }}>{content}</Text>
 
     case 'quote':
       return (
-        <View style={{ borderLeftWidth: 3, borderLeftColor: colors.bloom, paddingLeft: 16, paddingVertical: 8, backgroundColor: colors.surface2, borderTopRightRadius: 16, borderBottomRightRadius: 16 }}>
-          <Text style={{ fontSize: 15, color: MUTED, fontStyle: 'italic' }}>{content}</Text>
+        <View style={{
+          paddingHorizontal: 16, paddingVertical: 14,
+          backgroundColor: '#F5F5F5', borderRadius: 14,
+        }}>
+          <Text style={{ fontSize: 16, color: '#3A3A3A', fontStyle: 'italic', lineHeight: 24 }}>{content}</Text>
         </View>
       )
 
     case 'tip':
       return (
-        <View style={{ padding: 16, backgroundColor: colors.surface2, borderRadius: 16 }}>
-          <Text style={{ fontSize: 15, color: colors.primary }}>
-            <Text style={{ fontWeight: '600' }}>{'💡 '}</Text>{content}
+        <View style={{
+          padding: 16, backgroundColor: '#FFF8E1', borderRadius: 16,
+          borderWidth: 1, borderColor: '#FFE082',
+        }}>
+          <Text style={{ fontSize: 15, color: '#5D4037', lineHeight: 22 }}>
+            <Text style={{ fontWeight: '700', fontSize: 16 }}>{'💡 '}</Text>{content}
           </Text>
         </View>
       )
 
     case 'divider':
-      return <View style={{ height: 1, backgroundColor: '#EBEBEB', marginVertical: 4 }} />
+      return <View style={{ height: 1, backgroundColor: '#E0E0E0', marginVertical: 8 }} />
 
     case 'key_points': {
       const points: string[] = Array.isArray(block.points) ? block.points : []
       return (
-        <View>
-          {content ? <Text style={{ fontWeight: '600', color: colors.primary, marginBottom: 8, fontSize: 15 }}>{content}</Text> : null}
+        <View style={{ backgroundColor: '#F5FAF8', borderRadius: 16, padding: 16 }}>
+          {content ? (
+            <Text style={{ fontWeight: '700', color: colors.primary, marginBottom: 12, fontSize: 16 }}>{content}</Text>
+          ) : null}
           {points.map((pt, i) => (
-            <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 6 }}>
-              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary, marginTop: 7 }} />
-              <Text style={{ flex: 1, fontSize: 15, color: colors.primary }}>{typeof pt === 'string' ? pt : ''}</Text>
+            <View key={i} style={{
+              flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: i < points.length - 1 ? 10 : 0,
+            }}>
+              <View style={{
+                width: 22, height: 22, borderRadius: 11, backgroundColor: colors.bloom + '15',
+                alignItems: 'center', justifyContent: 'center', marginTop: 1,
+              }}>
+                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.bloom }} />
+              </View>
+              <Text style={{ flex: 1, fontSize: 15, color: '#3A3A3A', lineHeight: 22 }}>{typeof pt === 'string' ? pt : ''}</Text>
             </View>
           ))}
         </View>
@@ -67,16 +454,18 @@ export function renderBlock(
     case 'callout': {
       const ct = block.calloutType || 'info'
       const cs: Record<string, { bg: string; border: string }> = {
-        info: { bg: colors.surface2, border: colors.primary },
-        warning: { bg: colors.surface2, border: '#F59E0B' },
-        success: { bg: colors.surface2, border: colors.bloom },
-        tip: { bg: colors.surface2, border: colors.bloom },
-        example: { bg: colors.surface2, border: colors.primary },
+        info: { bg: '#F0F4F8', border: '#94A3B8' },
+        warning: { bg: '#FFFBEB', border: '#D97706' },
+        success: { bg: '#F0FAF6', border: colors.bloom },
+        tip: { bg: '#F0FAF6', border: colors.bloom },
+        example: { bg: '#F5F5F5', border: '#9CA3AF' },
       }
       const s = cs[ct] || cs.info
       return (
-        <View style={{ padding: 16, backgroundColor: s.bg, borderRadius: 16, borderLeftWidth: 3, borderLeftColor: s.border }}>
-          <Text style={{ fontSize: 15, color: colors.primary, lineHeight: 22 }}>{content}</Text>
+        <View style={{
+          padding: 16, backgroundColor: s.bg, borderRadius: 14,
+        }}>
+          <Text style={{ fontSize: 15, color: '#2D2D2D', lineHeight: 23 }}>{content}</Text>
         </View>
       )
     }
@@ -85,17 +474,23 @@ export function renderBlock(
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
-          <TextInput
-            value={(blockValue as string) || ''}
-            onChangeText={(t) => onBlockChange(t)}
-            placeholder="Share your thoughts..."
-            placeholderTextColor={PLACEHOLDER}
-            multiline
-            style={{
-              backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, fontSize: 15,
-              color: colors.primary, minHeight: 120, textAlignVertical: 'top',
-            }}
-          />
+          {readOnly ? (
+            <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 60 }}>
+              <Text style={{ fontSize: 15, color: colors.primary, lineHeight: 22 }}>{(blockValue as string) || '—'}</Text>
+            </View>
+          ) : (
+            <TextInput
+              value={(blockValue as string) || ''}
+              editable={!readOnly} onChangeText={(t) => onChange(t)}
+              placeholder="Share your thoughts..."
+              placeholderTextColor={PLACEHOLDER}
+              multiline
+              style={{
+                backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, fontSize: 15,
+                color: colors.primary, minHeight: 120, textAlignVertical: 'top',
+              }}
+            />
+          )}
         </View>
       )
 
@@ -109,11 +504,12 @@ export function renderBlock(
               const label = typeof opt === 'string' ? opt : opt.label
               const sel = blockValue === i
               return (
-                <TouchableOpacity key={i} onPress={() => onBlockChange(i)} activeOpacity={0.7} style={{
+                <TouchableOpacity key={i} onPress={() => onChange(i)} activeOpacity={readOnly ? 1 : 0.7} style={{
                   flexDirection: 'row', alignItems: 'center', gap: 12,
                   padding: 14, borderRadius: 16,
                   backgroundColor: sel ? SELECTED_BG : colors.surface2,
                   borderWidth: 2, borderColor: sel ? SELECTED_BORDER : 'transparent',
+                  opacity: readOnly && !sel ? 0.5 : 1,
                 }}>
                   <View style={{
                     width: 20, height: 20, borderRadius: 10, borderWidth: 2,
@@ -142,7 +538,7 @@ export function renderBlock(
             {(['yes', 'no'] as const).map((val) => {
               const sel = blockValue === val
               return (
-                <TouchableOpacity key={val} onPress={() => onBlockChange(val)} activeOpacity={0.7} style={{
+                <TouchableOpacity key={val} onPress={() => onChange(val)} activeOpacity={readOnly ? 1 : 0.7} style={{
                   flex: 1, alignItems: 'center', justifyContent: 'center',
                   padding: 16, borderRadius: 16,
                   backgroundColor: sel ? SELECTED_BG : colors.surface2,
@@ -169,7 +565,7 @@ export function renderBlock(
               const txt = typeof item === 'string' ? item : item.text
               const on = checked.includes(i)
               return (
-                <TouchableOpacity key={i} onPress={() => onBlockChange(on ? checked.filter((x) => x !== i) : [...checked, i])} activeOpacity={0.7} style={{
+                <TouchableOpacity key={i} onPress={() => onChange(on ? checked.filter((x) => x !== i) : [...checked, i])} activeOpacity={readOnly ? 1 : 0.7} style={{
                   flexDirection: 'row', alignItems: 'center', gap: 12,
                   padding: 14, borderRadius: 16,
                   backgroundColor: on ? SELECTED_BG : colors.surface2,
@@ -203,7 +599,7 @@ export function renderBlock(
             {nums.map((n) => {
               const sel = blockValue === n
               return (
-                <TouchableOpacity key={n} onPress={() => onBlockChange(n)} style={{
+                <TouchableOpacity key={n} onPress={() => onChange(n)} style={{
                   width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
                   backgroundColor: sel ? colors.primary : colors.surface2,
                 }}>
@@ -242,7 +638,7 @@ export function renderBlock(
               {moods.map((m) => {
                 const sel = blockValue === m.value
                 return (
-                  <TouchableOpacity key={m.value} onPress={() => onBlockChange(m.value)} style={{
+                  <TouchableOpacity key={m.value} onPress={() => onChange(m.value)} style={{
                     alignItems: 'center', padding: 10, borderRadius: 16,
                     backgroundColor: sel ? SELECTED_BG : colors.surface2,
                     borderWidth: 2, borderColor: sel ? SELECTED_BORDER : 'transparent',
@@ -263,7 +659,7 @@ export function renderBlock(
             <Text style={LABEL}>{content}{Star}</Text>
             <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
               {Array.from({ length: scale }, (_, i) => i + 1).map((n) => (
-                <TouchableOpacity key={n} onPress={() => onBlockChange(n)}>
+                <TouchableOpacity key={n} onPress={() => onChange(n)}>
                   <Text style={{ fontSize: 32, color: blockValue !== undefined && n <= (blockValue as number) ? '#000' : '#D4D4D4' }}>★</Text>
                 </TouchableOpacity>
               ))}
@@ -280,7 +676,7 @@ export function renderBlock(
             {nums.map((n) => {
               const sel = blockValue === n
               return (
-                <TouchableOpacity key={n} onPress={() => onBlockChange(n)} style={{
+                <TouchableOpacity key={n} onPress={() => onChange(n)} style={{
                   width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
                   backgroundColor: sel ? colors.primary : colors.surface2,
                 }}>
@@ -315,7 +711,7 @@ export function renderBlock(
               const val = m.value ?? i + 1
               const sel = blockValue === val
               return (
-                <TouchableOpacity key={i} onPress={() => onBlockChange(val)} style={{
+                <TouchableOpacity key={i} onPress={() => onChange(val)} style={{
                   alignItems: 'center', padding: 10, borderRadius: 16,
                   backgroundColor: sel ? SELECTED_BG : colors.surface2,
                   borderWidth: 2, borderColor: sel ? SELECTED_BORDER : 'transparent',
@@ -348,7 +744,7 @@ export function renderBlock(
               {nums.map((n) => {
                 const sel = blockValue === n
                 return (
-                  <TouchableOpacity key={n} onPress={() => onBlockChange(n)} style={{
+                  <TouchableOpacity key={n} onPress={() => onChange(n)} style={{
                     minWidth: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8,
                     backgroundColor: sel ? colors.primary : colors.surface2,
                   }}>
@@ -366,7 +762,7 @@ export function renderBlock(
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <TextInput
               value={blockValue !== undefined ? String(blockValue) : ''}
-              onChangeText={(t) => { const n = Number(t); if (!isNaN(n)) onBlockChange(n) }}
+              editable={!readOnly} onChangeText={(t) => { const n = Number(t); if (!isNaN(n)) onChange(n) }}
               keyboardType="numeric"
               placeholder={`${sMin} – ${sMax}`}
               placeholderTextColor={PLACEHOLDER}
@@ -388,7 +784,7 @@ export function renderBlock(
           <Text style={LABEL}>{content}{Star}</Text>
           <TextInput
             value={blockValue !== undefined && blockValue !== null ? String(blockValue) : ''}
-            onChangeText={(t) => { if (t === '') onBlockChange(undefined); else { const n = Number(t); if (!isNaN(n)) onBlockChange(n) } }}
+            editable={!readOnly} onChangeText={(t) => { if (t === '') onChange(undefined); else { const n = Number(t); if (!isNaN(n)) onChange(n) } }}
             keyboardType="numeric"
             placeholder="Enter a number..."
             placeholderTextColor={PLACEHOLDER}
@@ -402,7 +798,7 @@ export function renderBlock(
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
           <TextInput
-            value={(blockValue as string) || ''} onChangeText={(t) => onBlockChange(t)}
+            value={(blockValue as string) || ''} editable={!readOnly} onChangeText={(t) => onChange(t)}
             placeholder="YYYY-MM-DD" placeholderTextColor={PLACEHOLDER}
             style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 15, color: colors.primary }}
           />
@@ -414,7 +810,7 @@ export function renderBlock(
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
           <TextInput
-            value={(blockValue as string) || ''} onChangeText={(t) => onBlockChange(t)}
+            value={(blockValue as string) || ''} editable={!readOnly} onChangeText={(t) => onChange(t)}
             placeholder="HH:MM" placeholderTextColor={PLACEHOLDER}
             style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 15, color: colors.primary }}
           />
@@ -434,19 +830,19 @@ export function renderBlock(
                 </View>
                 <TextInput
                   value={item}
-                  onChangeText={(t) => { const a = [...listItems]; a[i] = t; onBlockChange(a) }}
+                  editable={!readOnly} onChangeText={(t) => { const a = [...listItems]; a[i] = t; onChange(a) }}
                   placeholder={`Item ${i + 1}...`}
                   placeholderTextColor={PLACEHOLDER}
                   style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 14, padding: 12, fontSize: 15, color: colors.primary }}
                 />
                 {listItems.length > 1 && (
-                  <TouchableOpacity onPress={() => onBlockChange(listItems.filter((_: any, idx: number) => idx !== i))} style={{ padding: 6 }}>
+                  <TouchableOpacity onPress={() => !readOnly && onChange(listItems.filter((_: any, idx: number) => idx !== i))} style={{ padding: 6 }}>
                     <Text style={{ fontSize: 16, color: MUTED }}>✕</Text>
                   </TouchableOpacity>
                 )}
               </View>
             ))}
-            <TouchableOpacity onPress={() => onBlockChange([...listItems, ''])} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 }}>
+            <TouchableOpacity onPress={() => !readOnly && onChange([...listItems, ''])} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 }}>
               <Text style={{ fontSize: 20, fontWeight: '300', color: colors.primary }}>+</Text>
               <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Add item</Text>
             </TouchableOpacity>
@@ -470,7 +866,7 @@ export function renderBlock(
               {Array.from({ length: scaleMax }, (_, i) => i + 1).map((n) => {
                 const sel = cur === n
                 return (
-                  <TouchableOpacity key={n} onPress={() => onBlockChange({ ...ratings, '0': n })} style={{
+                  <TouchableOpacity key={n} onPress={() => onChange({ ...ratings, '0': n })} activeOpacity={readOnly ? 1 : 0.7} style={{
                     width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center',
                     backgroundColor: sel ? colors.primary : colors.surface2,
                   }}>
@@ -499,7 +895,7 @@ export function renderBlock(
                   {Array.from({ length: scaleMax }, (_, i) => i + 1).map((n) => {
                     const sel = ratings[idx.toString()] === n
                     return (
-                      <TouchableOpacity key={n} onPress={() => onBlockChange({ ...ratings, [idx.toString()]: n })} style={{
+                      <TouchableOpacity key={n} onPress={() => onChange({ ...ratings, [idx.toString()]: n })} activeOpacity={readOnly ? 1 : 0.7} style={{
                         width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
                         backgroundColor: sel ? colors.primary : colors.surface2,
                       }}>
@@ -521,56 +917,14 @@ export function renderBlock(
     }
 
     case 'table_exercise': {
-      const columns: any[] = Array.isArray(block.columns) ? block.columns : []
-      const instr = block.instructions || null
-      const rows: any[] = Array.isArray(blockValue) && (blockValue as any[]).length > 0 ? (blockValue as any[]) : [{}]
-      if (columns.length === 0) return <Text style={{ color: MUTED }}>No columns defined</Text>
       return (
-        <View>
-          {content ? <Text style={LABEL}>{content}</Text> : null}
-          {instr && (
-            <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 12 }}>
-              <Text style={{ fontSize: 13, color: colors.primary }}>{instr}</Text>
-            </View>
-          )}
-          <View style={{ gap: 16 }}>
-            {rows.map((row: any, ri: number) => (
-              <View key={ri} style={{ backgroundColor: '#fff', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#EBEBEB' }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }}>Entry {ri + 1}</Text>
-                  {rows.length > 1 && (
-                    <TouchableOpacity onPress={() => onBlockChange(rows.filter((_: any, i: number) => i !== ri))}>
-                      <Text style={{ fontSize: 16, color: MUTED }}>✕</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                {columns.map((col: any) => (
-                  <View key={col.id} style={{ marginBottom: 10 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 4 }}>{col.header}</Text>
-                    {col.description && <Text style={{ fontSize: 11, color: MUTED, marginBottom: 4, fontStyle: 'italic' }}>{col.description}</Text>}
-                    <TextInput
-                      value={row[col.id] || ''}
-                      onChangeText={(t) => { const nr = [...rows]; nr[ri] = { ...nr[ri], [col.id]: t }; onBlockChange(nr) }}
-                      placeholder="Type here..."
-                      placeholderTextColor={PLACEHOLDER}
-                      multiline
-                      style={{
-                        backgroundColor: INPUT_BG, borderRadius: 12, padding: 12, fontSize: 14,
-                        color: colors.primary, minHeight: 60, textAlignVertical: 'top',
-                      }}
-                    />
-                  </View>
-                ))}
-              </View>
-            ))}
-          </View>
-          <TouchableOpacity onPress={() => onBlockChange([...rows, {}])} style={{
-            flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, marginTop: 8,
-          }}>
-            <Text style={{ fontSize: 20, fontWeight: '300', color: colors.primary }}>+</Text>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Add Entry</Text>
-          </TouchableOpacity>
-        </View>
+        <TableExerciseRenderer
+          block={block}
+          content={content}
+          blockValue={blockValue}
+          onBlockChange={onBlockChange}
+          onReviewStateChange={onReviewStateChange}
+        />
       )
     }
 

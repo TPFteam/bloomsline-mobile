@@ -1,5 +1,7 @@
 import { supabase } from '../supabase'
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
+
 // ─── Types ──────────────────────────────────────────
 
 export interface SessionType {
@@ -277,39 +279,62 @@ export async function createBooking(input: {
   notes?: string
   member_id?: string
 }): Promise<{ success: boolean; requiresApproval?: boolean; error?: string }> {
-  // Check if practitioner requires approval
-  const { data: settings } = await supabase
-    .from('booking_settings')
-    .select('require_approval')
-    .eq('user_id', input.practitioner_id)
-    .maybeSingle()
+  const { data: { session } } = await supabase.auth.getSession()
 
-  const status = settings?.require_approval !== false ? 'pending' : 'confirmed'
-
-  const { error } = await supabase
-    .from('bookings')
-    .insert({
-      practitioner_id: input.practitioner_id,
-      member_id: input.member_id || null,
-      session_type: input.session_type,
-      start_time: input.start_time,
-      end_time: input.end_time,
-      timezone: input.timezone,
-      client_name: input.client_name,
-      client_email: input.client_email,
-      client_phone: input.client_phone || null,
-      notes: input.notes || null,
-      status,
+  // Use the care app API so notifications, emails, and calendar sync all fire
+  try {
+    const res = await fetch(`${API_URL}/api/bookings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      body: JSON.stringify(input),
     })
 
-  if (error) {
-    console.error('Booking insert error:', error)
-    return { success: false, error: error.message }
-  }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      return { success: false, error: err.error || 'Failed to create booking' }
+    }
 
-  return {
-    success: true,
-    requiresApproval: status === 'pending',
+    const data = await res.json()
+    return {
+      success: true,
+      requiresApproval: data.booking?.status === 'pending',
+    }
+  } catch (fetchError) {
+    // Fallback: insert directly if API is unreachable (no emails/notifications)
+    console.warn('Booking API unreachable, inserting directly:', fetchError)
+
+    const { data: settings } = await supabase
+      .from('booking_settings')
+      .select('require_approval')
+      .eq('user_id', input.practitioner_id)
+      .maybeSingle()
+
+    const status = settings?.require_approval !== false ? 'pending' : 'confirmed'
+
+    const { error } = await supabase
+      .from('bookings')
+      .insert({
+        practitioner_id: input.practitioner_id,
+        member_id: input.member_id || null,
+        session_type: input.session_type,
+        start_time: input.start_time,
+        end_time: input.end_time,
+        timezone: input.timezone,
+        client_name: input.client_name,
+        client_email: input.client_email,
+        client_phone: input.client_phone || null,
+        notes: input.notes || null,
+        status,
+      })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, requiresApproval: status === 'pending' }
   }
 }
 
