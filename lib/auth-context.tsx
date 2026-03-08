@@ -51,19 +51,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchMember(session.user.id, session.access_token)
-      } else {
-        setLoading(false)
-      }
-    })
+    // Use onAuthStateChange as the single source of truth.
+    // It fires INITIAL_SESSION first (which handles token refresh),
+    // then subsequent events. This avoids the race condition where
+    // getSession() returns null before auto-refresh completes.
+    let initialReceived = false
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!initialReceived && (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        initialReceived = true
+      }
+
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
@@ -71,11 +69,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setMember(null)
         setupCalledRef.current = null
-        setLoading(false)
+        // Only stop loading after we've received the initial session event
+        if (initialReceived || event === 'INITIAL_SESSION' || event === 'SIGNED_OUT') {
+          setLoading(false)
+        }
       }
     })
 
-    return () => subscription.unsubscribe()
+    // Safety timeout — if no auth event fires within 5s, stop loading
+    const timeout = setTimeout(() => {
+      if (!initialReceived) {
+        initialReceived = true
+        setLoading(false)
+      }
+    }, 5000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   // Track whether we've already called setup-member for this session

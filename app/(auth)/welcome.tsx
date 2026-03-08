@@ -1,63 +1,137 @@
-import { View, Text, TouchableOpacity, Dimensions } from 'react-native'
+import { useEffect, useRef } from 'react'
+import { View, Text, TouchableOpacity, Animated } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-
-const { width } = Dimensions.get('window')
+import { colors } from '@/lib/theme'
 
 export default function Welcome() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const fadeIn = useRef(new Animated.Value(0)).current
+  const slideUp = useRef(new Animated.Value(30)).current
+  const logoScale = useRef(new Animated.Value(0.8)).current
+  const glowPulse = useRef(new Animated.Value(0.3)).current
+
+  useEffect(() => {
+    // Entrance animation
+    Animated.parallel([
+      Animated.timing(fadeIn, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.spring(slideUp, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 50, useNativeDriver: true }),
+    ]).start()
+
+    // Ambient glow pulse
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowPulse, { toValue: 0.6, duration: 2500, useNativeDriver: true }),
+        Animated.timing(glowPulse, { toValue: 0.3, duration: 2500, useNativeDriver: true }),
+      ])
+    ).start()
+  }, [])
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top, paddingBottom: insets.bottom }}>
-      {/* Top section */}
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 32 }}>
-        {/* Bloom logo — 4 dots in cross pattern */}
-        <View style={{ marginBottom: 48 }}>
+    <View style={{ flex: 1, backgroundColor: '#FAFAF8', paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      {/* Main content */}
+      <Animated.View style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 40,
+        opacity: fadeIn,
+        transform: [{ translateY: slideUp }],
+      }}>
+        {/* Logo with ambient glow */}
+        <Animated.View style={{
+          marginBottom: 56,
+          transform: [{ scale: logoScale }],
+        }}>
+          {/* Glow ring */}
+          <Animated.View style={{
+            position: 'absolute',
+            top: -20,
+            left: -20,
+            width: 88,
+            height: 88,
+            borderRadius: 44,
+            backgroundColor: colors.bloom,
+            opacity: glowPulse,
+          }} />
+          {/* 4-petal cross logo in teal */}
           <View style={{ width: 48, height: 48, position: 'relative' }}>
-            <View style={{ position: 'absolute', top: 0, left: 16, width: 14, height: 14, borderRadius: 7, backgroundColor: '#000' }} />
-            <View style={{ position: 'absolute', top: 17, left: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: '#000' }} />
-            <View style={{ position: 'absolute', top: 17, left: 34, width: 14, height: 14, borderRadius: 7, backgroundColor: '#000' }} />
-            <View style={{ position: 'absolute', top: 34, left: 16, width: 14, height: 14, borderRadius: 7, backgroundColor: '#000' }} />
+            <View style={{ position: 'absolute', top: 0, left: 16, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.bloom }} />
+            <View style={{ position: 'absolute', top: 17, left: 0, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.bloom }} />
+            <View style={{ position: 'absolute', top: 17, left: 34, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.bloom }} />
+            <View style={{ position: 'absolute', top: 34, left: 16, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.bloom }} />
           </View>
-        </View>
+        </Animated.View>
 
-        <Text style={{ fontSize: 32, fontWeight: '700', color: '#000', textAlign: 'center', letterSpacing: -0.5 }}>
+        {/* Headline */}
+        <Text style={{
+          fontSize: 34,
+          fontWeight: '700',
+          color: colors.primary,
+          textAlign: 'center',
+          letterSpacing: -0.8,
+          lineHeight: 42,
+        }}>
           Your emotional{'\n'}journey starts here.
         </Text>
-        <Text style={{ fontSize: 17, color: '#999', textAlign: 'center', marginTop: 16, lineHeight: 24 }}>
+
+        {/* Subtitle */}
+        <Text style={{
+          fontSize: 17,
+          color: '#8A8A8A',
+          textAlign: 'center',
+          marginTop: 20,
+          lineHeight: 26,
+          letterSpacing: 0.2,
+        }}>
           Capture moments. See patterns.{'\n'}Watch yourself evolve.
         </Text>
-      </View>
+      </Animated.View>
 
-      {/* Bottom section */}
-      <View style={{ paddingHorizontal: 24, gap: 12, paddingBottom: 16 }}>
+      {/* Bottom CTAs */}
+      <Animated.View style={{
+        paddingHorizontal: 24,
+        gap: 12,
+        paddingBottom: 16,
+        opacity: fadeIn,
+      }}>
+        {/* Primary: Get started */}
         <TouchableOpacity
           onPress={() => router.push('/(auth)/sign-up')}
+          activeOpacity={0.85}
           style={{
-            backgroundColor: '#000',
-            height: 56,
-            borderRadius: 28,
+            backgroundColor: colors.primary,
+            height: 58,
+            borderRadius: 29,
             justifyContent: 'center',
             alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.12,
+            shadowRadius: 16,
+            elevation: 8,
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Get started</Text>
+          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>Get started</Text>
         </TouchableOpacity>
 
+        {/* Secondary: Sign in */}
         <TouchableOpacity
           onPress={() => router.push('/(auth)/sign-in')}
+          activeOpacity={0.7}
           style={{
-            backgroundColor: '#f5f5f5',
-            height: 56,
-            borderRadius: 28,
+            backgroundColor: '#EFEFED',
+            height: 58,
+            borderRadius: 29,
             justifyContent: 'center',
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: '#000', fontSize: 17, fontWeight: '600' }}>I already have an account</Text>
+          <Text style={{ color: '#666', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>I already have an account</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </View>
   )
 }

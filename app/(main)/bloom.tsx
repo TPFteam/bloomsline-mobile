@@ -4,7 +4,8 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useBloomChat, BloomMessage } from '@/lib/hooks/useBloomChat'
 import { useAuth } from '@/lib/auth-context'
-import { Send } from 'lucide-react-native'
+import { ArrowUp } from 'lucide-react-native'
+import { colors } from '@/lib/theme'
 
 const TAGLINES = [
   'Listening to you',
@@ -16,10 +17,10 @@ const TAGLINES = [
 ]
 
 const STARTERS = [
-  { icon: '🌿', label: 'Something on my mind' },
-  { icon: '📈', label: 'How my week is going' },
-  { icon: '🌊', label: "I'm feeling heavy" },
-  { icon: '✨', label: 'Just want to talk' },
+  { icon: '🌿', label: 'Something on my mind', subtitle: 'Process a thought' },
+  { icon: '📈', label: 'How my week is going', subtitle: 'Check in together' },
+  { icon: '🌊', label: "I'm feeling heavy", subtitle: 'Let it out' },
+  { icon: '✨', label: 'Just want to talk', subtitle: 'No agenda needed' },
 ]
 
 const DEFAULT_SUGGESTIONS = [
@@ -60,7 +61,7 @@ function TypingDots() {
               key={i}
               style={{
                 width: 7, height: 7, borderRadius: 4,
-                backgroundColor: '#4A9A86',
+                backgroundColor: colors.bloom,
                 opacity: anim,
               }}
             />
@@ -81,11 +82,11 @@ function ChatBubble({ message }: { message: BloomMessage }) {
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 }}>
         <View style={{
           maxWidth: '78%',
-          paddingHorizontal: 16, paddingVertical: 10,
-          borderRadius: 20, borderBottomRightRadius: 6,
-          backgroundColor: '#4A9A86',
+          paddingHorizontal: 18, paddingVertical: 12,
+          borderRadius: 22, borderBottomRightRadius: 6,
+          backgroundColor: colors.bloom,
         }}>
-          <Text style={{ fontSize: 15, lineHeight: 22, color: '#fff' }}>
+          <Text style={{ fontSize: 16, lineHeight: 23, color: '#fff' }}>
             {message.content}
           </Text>
         </View>
@@ -95,7 +96,7 @@ function ChatBubble({ message }: { message: BloomMessage }) {
 
   return (
     <View style={{ marginBottom: 16, maxWidth: '85%' }}>
-      <Text style={{ fontSize: 15, lineHeight: 24, color: '#1f2937' }}>
+      <Text style={{ fontSize: 16, lineHeight: 25, color: '#1f2937' }}>
         {message.content}
       </Text>
     </View>
@@ -106,21 +107,42 @@ function ChatBubble({ message }: { message: BloomMessage }) {
 
 function BreathingOrb({ size = 56 }: { size?: number }) {
   const scale = useRef(new RNAnimated.Value(1)).current
+  const glowOpacity = useRef(new RNAnimated.Value(0.2)).current
 
   useEffect(() => {
     RNAnimated.loop(
       RNAnimated.sequence([
-        RNAnimated.timing(scale, { toValue: 1.12, duration: 2000, useNativeDriver: true }),
+        RNAnimated.timing(scale, { toValue: 1.15, duration: 2000, useNativeDriver: true }),
         RNAnimated.timing(scale, { toValue: 1, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start()
+
+    RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(glowOpacity, { toValue: 0.45, duration: 2000, useNativeDriver: true }),
+        RNAnimated.timing(glowOpacity, { toValue: 0.15, duration: 2000, useNativeDriver: true }),
       ])
     ).start()
   }, [])
 
-  const dot = size * 0.6
+  const dot = size * 0.55
   return (
-    <RNAnimated.View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center', transform: [{ scale }] }}>
-      <View style={{ width: dot, height: dot, borderRadius: dot / 2, backgroundColor: '#4A9A86' }} />
-    </RNAnimated.View>
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      {/* Glow ring */}
+      <RNAnimated.View style={{
+        position: 'absolute',
+        width: size, height: size, borderRadius: size / 2,
+        backgroundColor: colors.bloom,
+        opacity: glowOpacity,
+      }} />
+      {/* Core orb */}
+      <RNAnimated.View style={{ transform: [{ scale }] }}>
+        <View style={{
+          width: dot, height: dot, borderRadius: dot / 2,
+          backgroundColor: colors.bloom,
+        }} />
+      </RNAnimated.View>
+    </View>
   )
 }
 
@@ -181,25 +203,23 @@ export default function Bloom() {
     await sendUserMessage(suggestion)
   }
 
-  // Only greeting message exists and user hasn't typed yet
   const showOnboarding = !hasStarted && messages.length <= 1
 
   return (
     <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#fff' }}
+      style={{ flex: 1, backgroundColor: '#FAFAF8' }}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Header */}
       <View style={{
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        paddingTop: insets.top + 8, paddingBottom: 12, paddingHorizontal: 20,
-        borderBottomWidth: 1, borderBottomColor: 'rgba(0,0,0,0.04)',
+        paddingTop: insets.top + 8, paddingBottom: 14, paddingHorizontal: 20,
       }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#4A9A86' }} />
+          <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.bloom }} />
           <View>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#000' }}>Bloom</Text>
-            <RNAnimated.Text style={{ fontSize: 11, color: '#bbb', opacity: taglineFade }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>Bloom</Text>
+            <RNAnimated.Text style={{ fontSize: 11, color: colors.textTertiary, opacity: taglineFade }}>
               {TAGLINES[taglineIdx]}
             </RNAnimated.Text>
           </View>
@@ -207,26 +227,38 @@ export default function Bloom() {
         <TouchableOpacity
           onPress={() => router.back()}
           activeOpacity={0.7}
-          style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}
+          style={{
+            width: 36, height: 36, borderRadius: 18,
+            backgroundColor: colors.surface1,
+            justifyContent: 'center', alignItems: 'center',
+          }}
         >
-          <Text style={{ fontSize: 16, color: '#999' }}>✕</Text>
+          <Text style={{ fontSize: 16, color: colors.textSecondary }}>✕</Text>
         </TouchableOpacity>
       </View>
 
       {showOnboarding ? (
         /* ─── Onboarding / Empty State ─────────────── */
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 32 }}>
-          <View style={{ alignItems: 'center', marginBottom: 32 }}>
-            <BreathingOrb size={72} />
+          {/* Breathing Orb — larger, centered */}
+          <View style={{ alignItems: 'center', marginBottom: 40 }}>
+            <BreathingOrb size={88} />
           </View>
 
-          <Text style={{ fontSize: 24, fontWeight: '600', color: '#000', textAlign: 'center', marginBottom: 6 }}>
+          <Text style={{
+            fontSize: 26, fontWeight: '700', color: colors.primary,
+            textAlign: 'center', marginBottom: 8, letterSpacing: -0.5,
+          }}>
             Hi {firstName}.
           </Text>
-          <Text style={{ fontSize: 16, color: '#999', textAlign: 'center', marginBottom: 40, lineHeight: 24 }}>
+          <Text style={{
+            fontSize: 17, color: '#8A8A8A', textAlign: 'center',
+            marginBottom: 44, lineHeight: 26,
+          }}>
             What would you like to{'\n'}explore today?
           </Text>
 
+          {/* Starter cards — redesigned with subtitle */}
           <View style={{ gap: 10 }}>
             {STARTERS.map(s => (
               <TouchableOpacity
@@ -234,26 +266,31 @@ export default function Bloom() {
                 onPress={() => handleStarter(s.label)}
                 activeOpacity={0.7}
                 style={{
-                  flexDirection: 'row', alignItems: 'center', gap: 14,
-                  backgroundColor: '#fafafa', borderRadius: 16,
-                  paddingHorizontal: 20, paddingVertical: 16,
+                  flexDirection: 'row', alignItems: 'center', gap: 16,
+                  backgroundColor: '#fff', borderRadius: 18,
+                  paddingHorizontal: 20, paddingVertical: 18,
                   borderWidth: 1, borderColor: '#f0f0f0',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.03,
+                  shadowRadius: 8,
+                  elevation: 1,
                 }}
               >
-                <Text style={{ fontSize: 18 }}>{s.icon}</Text>
-                <Text style={{ fontSize: 15, fontWeight: '500', color: '#333' }}>{s.label}</Text>
+                <View style={{
+                  width: 44, height: 44, borderRadius: 14,
+                  backgroundColor: '#f5f5f3',
+                  justifyContent: 'center', alignItems: 'center',
+                }}>
+                  <Text style={{ fontSize: 22 }}>{s.icon}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary, marginBottom: 2 }}>{s.label}</Text>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>{s.subtitle}</Text>
+                </View>
               </TouchableOpacity>
             ))}
           </View>
-
-          {/* Or type */}
-          <TouchableOpacity
-            onPress={() => setHasStarted(true)}
-            activeOpacity={0.6}
-            style={{ alignSelf: 'center', marginTop: 24 }}
-          >
-            <Text style={{ fontSize: 13, color: '#ccc' }}>or type something</Text>
-          </TouchableOpacity>
         </View>
       ) : (
         /* ─── Chat Stream ──────────────────────────── */
@@ -265,14 +302,22 @@ export default function Bloom() {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            {/* Small Bloom orb indicator in chat */}
+            <View style={{ alignItems: 'center', marginBottom: 20 }}>
+              <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: colors.bloom, opacity: 0.6 }} />
+            </View>
+
             {messages.map(msg => (
               <ChatBubble key={msg.id} message={msg} />
             ))}
             {isLoading && <TypingDots />}
             {error && (
-              <Text style={{ textAlign: 'center', fontSize: 12, color: '#f87171', paddingVertical: 8 }}>
-                {error}
-              </Text>
+              <View style={{
+                backgroundColor: colors.errorBg,
+                borderRadius: 14, padding: 14, marginTop: 8,
+              }}>
+                <Text style={{ fontSize: 14, color: colors.error }}>{error}</Text>
+              </View>
             )}
           </ScrollView>
 
@@ -286,39 +331,43 @@ export default function Bloom() {
                     onPress={() => handleSuggestion(s)}
                     activeOpacity={0.7}
                     style={{
-                      paddingHorizontal: 14, paddingVertical: 8,
-                      borderRadius: 20, backgroundColor: '#f5f5f5',
-                      borderWidth: 1, borderColor: '#eee',
+                      paddingHorizontal: 16, paddingVertical: 10,
+                      borderRadius: 20, backgroundColor: '#fff',
+                      borderWidth: 1, borderColor: '#EBEBEB',
                     }}
                   >
-                    <Text style={{ fontSize: 13, color: '#666' }}>{s}</Text>
+                    <Text style={{ fontSize: 13, color: '#555', fontWeight: '500' }}>{s}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
             </View>
           )}
 
-          {/* Input */}
+          {/* Input — pill style */}
           <View style={{
-            paddingHorizontal: 16, paddingTop: 8,
-            paddingBottom: Platform.OS === 'ios' ? insets.bottom + 4 : 16,
-            borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.04)',
+            paddingHorizontal: 16, paddingTop: 10,
+            paddingBottom: Platform.OS === 'ios' ? insets.bottom + 6 : 16,
           }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center',
+              backgroundColor: '#f0f0ee',
+              borderRadius: 28,
+              paddingLeft: 20, paddingRight: 6,
+              paddingVertical: 6,
+            }}>
               <TextInput
                 value={inputValue}
                 onChangeText={setInputValue}
-                placeholder="Write a message..."
-                placeholderTextColor="#bbb"
+                placeholder="Type a message..."
+                placeholderTextColor={colors.textTertiary}
                 editable={!isLoading}
                 onSubmitEditing={handleSend}
                 returnKeyType="send"
                 style={{
                   flex: 1,
-                  paddingHorizontal: 18, paddingVertical: 12,
-                  borderRadius: 24, fontSize: 15,
-                  backgroundColor: '#f5f5f5',
-                  color: '#000',
+                  paddingVertical: 10,
+                  fontSize: 16,
+                  color: colors.primary,
                 }}
               />
               <TouchableOpacity
@@ -326,13 +375,12 @@ export default function Bloom() {
                 disabled={!inputValue.trim() || isLoading}
                 activeOpacity={0.7}
                 style={{
-                  width: 44, height: 44, borderRadius: 22,
-                  backgroundColor: '#4A9A86',
+                  width: 40, height: 40, borderRadius: 20,
+                  backgroundColor: inputValue.trim() && !isLoading ? colors.bloom : '#ddd',
                   justifyContent: 'center', alignItems: 'center',
-                  opacity: (!inputValue.trim() || isLoading) ? 0.35 : 1,
                 }}
               >
-                <Send size={18} color="#fff" />
+                <ArrowUp size={18} color="#fff" strokeWidth={2.5} />
               </TouchableOpacity>
             </View>
           </View>

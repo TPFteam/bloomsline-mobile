@@ -3,6 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, KeyboardAvo
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
+import { BackButton } from '@/components/ui/BackButton'
+import { colors } from '@/lib/theme'
 
 export default function SignIn() {
   const router = useRouter()
@@ -39,12 +41,9 @@ export default function SignIn() {
     >
       <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
         {/* Back */}
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ paddingHorizontal: 24, paddingVertical: 16 }}
-        >
-          <Text style={{ fontSize: 17, color: '#000' }}>← Back</Text>
-        </TouchableOpacity>
+        <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
+          <BackButton />
+        </View>
 
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
           <Text style={{ fontSize: 32, fontWeight: '700', color: '#000', marginBottom: 8 }}>
