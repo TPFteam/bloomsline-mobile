@@ -2,22 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Animated } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useBloomChat } from '@/lib/hooks/useBloomChat'
+import { useI18n } from '@/lib/i18n'
 import { ArrowUp, Mic } from 'lucide-react-native'
 import { colors } from '@/lib/theme'
-
-const BLOOM_SUGGESTIONS = [
-    'How am I feeling today?',
-    'Help me reflect',
-    'I need encouragement',
-]
-
-const BLOOM_GREETINGS = [
-    "What's on your mind today?",
-    "How are you feeling right now?",
-    "I'm here whenever you're ready.",
-    "Let's check in together.",
-    "What would feel good to talk about?",
-]
 
 interface BloomFullScreenProps {
     onClose: () => void
@@ -26,11 +13,12 @@ interface BloomFullScreenProps {
 
 export function BloomFullScreen({ onClose, firstName }: BloomFullScreenProps) {
     const insets = useSafeAreaInsets()
+    const { t, locale } = useI18n()
     const chatScrollRef = useRef<ScrollView>(null)
     const [chatInput, setChatInput] = useState('')
     const fadeAnim = useRef(new Animated.Value(0)).current
     const logoFloat = useRef(new Animated.Value(0)).current
-    const [greeting] = useState(() => BLOOM_GREETINGS[Math.floor(Math.random() * BLOOM_GREETINGS.length)])
+    const [greeting] = useState(() => t.bloom.greetings[Math.floor(Math.random() * t.bloom.greetings.length)])
 
     const {
         messages,
@@ -38,9 +26,9 @@ export function BloomFullScreen({ onClose, firstName }: BloomFullScreenProps) {
         sendUserMessage,
         suggestions,
         error,
-    } = useBloomChat({ locale: 'en', entryPoint: 'general' })
+    } = useBloomChat({ locale, entryPoint: 'general' })
 
-    const displaySuggestions = suggestions.length > 0 ? suggestions : BLOOM_SUGGESTIONS
+    const displaySuggestions = suggestions.length > 0 ? suggestions : t.bloom.suggestions
     const hasMessages = messages.length > 1
 
     useEffect(() => {
@@ -119,7 +107,7 @@ export function BloomFullScreen({ onClose, firstName }: BloomFullScreenProps) {
                                 fontSize: 28, fontWeight: '700', color: colors.primary,
                                 textAlign: 'center', lineHeight: 36, letterSpacing: -0.5,
                             }}>
-                                {firstName ? `Hey ${firstName}. ` : ''}{greeting}
+                                {firstName ? `${locale === 'fr' ? 'Salut' : 'Hey'} ${firstName}. ` : ''}{greeting}
                             </Text>
 
                             {/* Suggestion cards */}
@@ -204,7 +192,7 @@ export function BloomFullScreen({ onClose, firstName }: BloomFullScreenProps) {
                         <TextInput
                             value={chatInput}
                             onChangeText={setChatInput}
-                            placeholder="Type a message..."
+                            placeholder={t.bloom.placeholder}
                             placeholderTextColor={colors.textTertiary}
                             editable={!isLoading}
                             onSubmitEditing={handleSend}

@@ -5,11 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
 import { BackButton } from '@/components/ui/BackButton'
 import { colors } from '@/lib/theme'
+import { useI18n } from '@/lib/i18n'
 
 export default function SignUp() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { signUp, signInWithGoogle } = useAuth()
+  const { t } = useI18n()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -48,10 +50,10 @@ export default function SignUp() {
 
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
           <Text style={{ fontSize: 32, fontWeight: '700', color: '#000', marginBottom: 8 }}>
-            Start your journey.
+            {t.auth.signUpTitle}
           </Text>
           <Text style={{ fontSize: 17, color: '#999', marginBottom: 40 }}>
-            Every story begins with a single moment.
+            {t.auth.signUpSubtitle}
           </Text>
 
           {error ? (
@@ -64,7 +66,7 @@ export default function SignUp() {
             <TextInput
               value={fullName}
               onChangeText={setFullName}
-              placeholder="Full name"
+              placeholder={t.auth.fullNamePlaceholder}
               placeholderTextColor="#bbb"
               style={{
                 height: 56,
@@ -78,7 +80,7 @@ export default function SignUp() {
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="Email"
+              placeholder={t.auth.emailPlaceholder}
               placeholderTextColor="#bbb"
               autoCapitalize="none"
               keyboardType="email-address"
@@ -94,7 +96,7 @@ export default function SignUp() {
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="Password"
+              placeholder={t.auth.passwordPlaceholder}
               placeholderTextColor="#bbb"
               secureTextEntry
               style={{
@@ -123,14 +125,14 @@ export default function SignUp() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Create account</Text>
+              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>{t.auth.createAccount}</Text>
             )}
           </TouchableOpacity>
 
           {/* Divider */}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 16 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: '#eee' }} />
-            <Text style={{ marginHorizontal: 16, color: '#bbb', fontSize: 13 }}>or</Text>
+            <Text style={{ marginHorizontal: 16, color: '#bbb', fontSize: 13 }}>{t.common.or}</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: '#eee' }} />
           </View>
 
@@ -144,7 +146,7 @@ export default function SignUp() {
               alignItems: 'center',
             }}
           >
-            <Text style={{ color: '#000', fontSize: 17, fontWeight: '600' }}>Continue with Google</Text>
+            <Text style={{ color: '#000', fontSize: 17, fontWeight: '600' }}>{t.auth.continueWithGoogle}</Text>
           </TouchableOpacity>
         </View>
       </View>

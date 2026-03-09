@@ -4,31 +4,11 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useBloomChat, BloomMessage } from '@/lib/hooks/useBloomChat'
 import { useAuth } from '@/lib/auth-context'
+import { useI18n } from '@/lib/i18n'
 import { ArrowUp } from 'lucide-react-native'
 import { colors } from '@/lib/theme'
 
-const TAGLINES = [
-  'Listening to you',
-  'Here for you',
-  'Always by your side',
-  'You matter',
-  'Take your time',
-  "I'm here",
-]
-
-const STARTERS = [
-  { icon: '🌿', label: 'Something on my mind', subtitle: 'Process a thought' },
-  { icon: '📈', label: 'How my week is going', subtitle: 'Check in together' },
-  { icon: '🌊', label: "I'm feeling heavy", subtitle: 'Let it out' },
-  { icon: '✨', label: 'Just want to talk', subtitle: 'No agenda needed' },
-]
-
-const DEFAULT_SUGGESTIONS = [
-  'How am I feeling today',
-  'What have you noticed about me',
-  'Help me reflect',
-  'I need encouragement',
-]
+const STARTER_ICONS = ['🌿', '📈', '🌊', '✨']
 
 // ─── Typing Dots ────────────────────────────────────
 
@@ -152,6 +132,7 @@ export default function Bloom() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { member } = useAuth()
+  const { t, locale } = useI18n()
   const scrollRef = useRef<ScrollView>(null)
   const [inputValue, setInputValue] = useState('')
   const [taglineIdx, setTaglineIdx] = useState(0)
@@ -164,16 +145,16 @@ export default function Bloom() {
     sendUserMessage,
     error,
     suggestions,
-  } = useBloomChat({ locale: 'en', entryPoint: 'general' })
+  } = useBloomChat({ locale, entryPoint: 'general' })
 
-  const displaySuggestions = suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS
+  const displaySuggestions = suggestions.length > 0 ? suggestions : t.bloom.suggestions
   const firstName = member?.first_name || 'there'
 
   // Rotate taglines
   useEffect(() => {
     const interval = setInterval(() => {
       RNAnimated.timing(taglineFade, { toValue: 0, duration: 250, useNativeDriver: true }).start(() => {
-        setTaglineIdx(prev => (prev + 1) % TAGLINES.length)
+        setTaglineIdx(prev => (prev + 1) % t.bloom.taglines.length)
         RNAnimated.timing(taglineFade, { toValue: 1, duration: 250, useNativeDriver: true }).start()
       })
     }, 4000)
@@ -220,7 +201,7 @@ export default function Bloom() {
           <View>
             <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>Bloom</Text>
             <RNAnimated.Text style={{ fontSize: 11, color: colors.textTertiary, opacity: taglineFade }}>
-              {TAGLINES[taglineIdx]}
+              {t.bloom.taglines[taglineIdx]}
             </RNAnimated.Text>
           </View>
         </View>
@@ -249,21 +230,21 @@ export default function Bloom() {
             fontSize: 26, fontWeight: '700', color: colors.primary,
             textAlign: 'center', marginBottom: 8, letterSpacing: -0.5,
           }}>
-            Hi {firstName}.
+            {locale === 'fr' ? `Bonjour ${firstName}.` : `Hi ${firstName}.`}
           </Text>
           <Text style={{
             fontSize: 17, color: '#8A8A8A', textAlign: 'center',
             marginBottom: 44, lineHeight: 26,
           }}>
-            What would you like to{'\n'}explore today?
+            {locale === 'fr' ? `Qu'aimeriez-vous\nexplorer aujourd'hui ?` : `What would you like to\nexplore today?`}
           </Text>
 
           {/* Starter cards — redesigned with subtitle */}
           <View style={{ gap: 10 }}>
-            {STARTERS.map(s => (
+            {t.bloom.starterLabels.map((label, i) => (
               <TouchableOpacity
-                key={s.label}
-                onPress={() => handleStarter(s.label)}
+                key={label}
+                onPress={() => handleStarter(label)}
                 activeOpacity={0.7}
                 style={{
                   flexDirection: 'row', alignItems: 'center', gap: 16,
@@ -282,11 +263,11 @@ export default function Bloom() {
                   backgroundColor: '#f5f5f3',
                   justifyContent: 'center', alignItems: 'center',
                 }}>
-                  <Text style={{ fontSize: 22 }}>{s.icon}</Text>
+                  <Text style={{ fontSize: 22 }}>{STARTER_ICONS[i]}</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary, marginBottom: 2 }}>{s.label}</Text>
-                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>{s.subtitle}</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary, marginBottom: 2 }}>{label}</Text>
+                  <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t.bloom.starterSubtitles[i]}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -358,7 +339,7 @@ export default function Bloom() {
               <TextInput
                 value={inputValue}
                 onChangeText={setInputValue}
-                placeholder="Type a message..."
+                placeholder={t.bloom.placeholder}
                 placeholderTextColor={colors.textTertiary}
                 editable={!isLoading}
                 onSubmitEditing={handleSend}

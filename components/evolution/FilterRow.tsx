@@ -1,14 +1,23 @@
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native'
 import { Camera, Video, Mic, PenLine } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
+import { useI18n } from '@/lib/i18n'
 
-const TYPE_FILTERS: { key: string; label: string; Icon?: any }[] = [
-    { key: 'all', label: 'All' },
-    { key: 'photo', label: 'Photo', Icon: Camera },
-    { key: 'video', label: 'Video', Icon: Video },
-    { key: 'voice', label: 'Voice', Icon: Mic },
-    { key: 'write', label: 'Write', Icon: PenLine },
+const TYPE_FILTERS: { key: string; Icon?: any }[] = [
+    { key: 'all' },
+    { key: 'photo', Icon: Camera },
+    { key: 'video', Icon: Video },
+    { key: 'voice', Icon: Mic },
+    { key: 'write', Icon: PenLine },
 ]
+
+const LABEL_KEYS: Record<string, string> = {
+    all: 'filterAll',
+    photo: 'capturePhoto',
+    video: 'captureVideo',
+    voice: 'captureVoice',
+    write: 'captureWrite',
+}
 
 interface FilterRowProps {
     activeType: string
@@ -19,6 +28,13 @@ interface FilterRowProps {
 }
 
 export function FilterRow({ activeType, onTypeChange, activeMood, onMoodChange, availableMoods }: FilterRowProps) {
+    const { t } = useI18n()
+
+    const getLabel = (key: string) => {
+        if (key === 'all') return t.evolution.filterAll
+        return t.home[LABEL_KEYS[key] as keyof typeof t.home] || key
+    }
+
     return (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingBottom: 4 }}>
             {TYPE_FILTERS.map(f => {
@@ -36,7 +52,7 @@ export function FilterRow({ activeType, onTypeChange, activeMood, onMoodChange, 
                         }}
                     >
                         {f.Icon && <f.Icon size={14} color={active ? '#fff' : colors.textSecondary} strokeWidth={2} />}
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : colors.textSecondary }}>{f.label}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : colors.textSecondary }}>{getLabel(f.key)}</Text>
                     </TouchableOpacity>
                 )
             })}
@@ -68,7 +84,7 @@ export function FilterRow({ activeType, onTypeChange, activeMood, onMoodChange, 
                         }} />
                         {active && (
                             <Text style={{ fontSize: 12, fontWeight: '600', color: MOOD_COLORS[mood] || '#666', textTransform: 'capitalize' }}>
-                                {mood}
+                                {t.moods[mood as keyof typeof t.moods] || mood}
                             </Text>
                         )}
                     </TouchableOpacity>

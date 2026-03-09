@@ -6,12 +6,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
-import { Camera, Video, Mic, PenLine } from 'lucide-react-native'
+import { Camera, Video, Mic, PenLine, Settings } from 'lucide-react-native'
 import { colors, CAPTURE_TYPE_COLORS } from '@/lib/theme'
 
 // Extracted components
 import { BloomLogo } from '@/components/BloomLogo'
-import { DayNav, getToday, isSameDay, getGreetingText } from '@/components/DayNav'
+import { DayNav, getToday, isSameDay, getGreetingKey } from '@/components/DayNav'
+import { useI18n } from '@/lib/i18n'
 import { EmotionalTimeline } from '@/components/EmotionalTimeline'
 import { MomentDetail } from '@/components/MomentDetail'
 import { BloomFullScreen } from '@/components/BloomFullScreen'
@@ -30,6 +31,7 @@ export default function Home() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { user, member } = useAuth()
+  const { t } = useI18n()
   const [moments, setMoments] = useState<Moment[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<Date>(getToday)
@@ -115,20 +117,19 @@ export default function Home() {
             onPress={() => router.push('/(main)/settings')}
             activeOpacity={0.7}
             style={{
-              width: 40, height: 40, borderRadius: 20,
-              backgroundColor: '#fff',
-              borderWidth: 1, borderColor: '#EBEBEB',
+              width: 36, height: 36, borderRadius: 18,
+              backgroundColor: '#f5f5f5',
               justifyContent: 'center', alignItems: 'center',
             }}
           >
-            <Text style={{ fontSize: 16 }}>⚙</Text>
+            <Settings size={18} color="#666" strokeWidth={1.8} />
           </TouchableOpacity>
         </View>
 
         {/* Greeting */}
         <View style={{ marginBottom: 20 }}>
           <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>
-            {getGreetingText()},{'\n'}
+            {t.home[getGreetingKey()]},{'\n'}
             <Text style={{ color: '#8A8A8A' }}>{firstName}.</Text>
           </Text>
         </View>
@@ -150,10 +151,10 @@ export default function Home() {
               >
                 <Text style={{ fontSize: 48, marginBottom: 16 }}>✦</Text>
                 <Text style={{ fontSize: 20, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 8 }}>
-                  Capture your first moment
+                  {t.home.emptyTitle}
                 </Text>
                 <Text style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center' }}>
-                  How are you feeling right now?
+                  {t.home.emptySubtitle}
                 </Text>
               </TouchableOpacity>
             ) : (
@@ -167,7 +168,7 @@ export default function Home() {
               >
                 <Text style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>✦</Text>
                 <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textFaint, textAlign: 'center' }}>
-                  No moments captured
+                  {t.home.noMoments}
                 </Text>
               </View>
             )
@@ -193,10 +194,10 @@ export default function Home() {
             }}
           >
             <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', marginBottom: 10 }}>
-              My Evolution
+              {t.home.evolution}
             </Text>
             <Text style={{ fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 }}>
-              See your emotional arc →
+              {t.home.evolutionCta}
             </Text>
           </TouchableOpacity>
 
@@ -212,10 +213,10 @@ export default function Home() {
             }}
           >
             <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 10 }}>
-              My Practitioner
+              {t.home.practitioner}
             </Text>
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
-              Connect with your guide →
+              {t.home.practitionerCta}
             </Text>
           </TouchableOpacity>
         </View>
@@ -270,7 +271,7 @@ export default function Home() {
                     }}
                   >
                     <type.Icon size={28} color="#fff" strokeWidth={2} />
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{type.label}</Text>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{t.home[`capture${type.key.charAt(0).toUpperCase() + type.key.slice(1)}` as keyof typeof t.home]}</Text>
                   </TouchableOpacity>
                 </Animated.View>
               )
@@ -279,8 +280,8 @@ export default function Home() {
         </Pressable>
       )}
 
-      {/* Bottom area — either inline chat or action buttons */}
-      {bloomOpen ? (
+      {/* Bottom area — either inline chat or action buttons (hidden when viewing a moment) */}
+      {viewingMoment ? null : bloomOpen ? (
         <BloomFullScreen onClose={() => setBloomOpen(false)} firstName={firstName} />
       ) : (
         <View style={{
@@ -320,7 +321,7 @@ export default function Home() {
                   <Mic size={22} color="#fff" strokeWidth={2} />
                 </Animated.View>
               </View>
-              <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>Bloom</Text>
+              <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>{t.home.bloom}</Text>
             </TouchableOpacity>
 
             {/* Capture — plus button */}
@@ -356,7 +357,7 @@ export default function Home() {
                   +
                 </Animated.Text>
               </View>
-              <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>Capture</Text>
+              <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>{t.home.capture}</Text>
             </TouchableOpacity>
           </View>
         </View>

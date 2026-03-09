@@ -1,6 +1,7 @@
 import { View, Text, Dimensions } from 'react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
+import { useI18n } from '@/lib/i18n'
 
 const { width } = Dimensions.get('window')
 
@@ -10,6 +11,7 @@ interface MoodCalendarProps {
 }
 
 export function MoodCalendar({ moments, days }: MoodCalendarProps) {
+    const { t } = useI18n()
     // Build day → dominant mood map
     const dayMoodMap: Record<string, string> = {}
     const dayMoodFreq: Record<string, Record<string, number>> = {}
@@ -37,7 +39,7 @@ export function MoodCalendar({ moments, days }: MoodCalendarProps) {
     }
 
     const pixelSize = Math.floor((width - 48 - 6 * 6) / 7) // 7 columns, 6 gaps
-    const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+    const dayLabels = t.evolution.dayLabels
 
     // Find current streak
     let streak = 0
@@ -81,7 +83,7 @@ export function MoodCalendar({ moments, days }: MoodCalendarProps) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, backgroundColor: '#f0fdf4', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, alignSelf: 'flex-start' }}>
                     <Text style={{ fontSize: 14 }}>🌿</Text>
                     <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>
-                        {streak}-day streak
+                        {streak} {t.evolution.dayStreak}
                     </Text>
                 </View>
             )}

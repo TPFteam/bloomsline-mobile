@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import { BackButton } from '@/components/ui/BackButton'
 import { PageLoader } from '@/components/PageLoader'
 import { useAuth } from '@/lib/auth-context'
 import { colors } from '@/lib/theme'
+import { useI18n } from '@/lib/i18n'
 import { renderBlock } from '@/components/practitioner/BlockRenderer'
 import {
   fetchPractitioner,
@@ -38,6 +39,7 @@ import {
   saveTableEntry,
   submitResource,
   markResourceComplete,
+  fetchPractitionerNotes,
   PractitionerProfile,
   UpcomingSession,
   ResourceItem,
@@ -57,18 +59,25 @@ function formatFullDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
-function getSessionTypeLabel(type: string): string {
-  const labels: Record<string, string> = {
-    initial: 'Initial Session', initial_consultation: 'Initial Session',
-    follow_up: 'Follow-up', check_in: 'Check-in',
-    emergency: 'Emergency', crisis: 'Crisis',
-    assessment: 'Assessment', group: 'Group', other: 'Session',
+function getSessionTypeLabel(type: string, t?: any): string {
+  if (t) {
+    const map: Record<string, string> = {
+      initial: t.practitioner.sessionTypeInitial, initial_consultation: t.practitioner.sessionTypeInitial,
+      follow_up: t.practitioner.sessionTypeFollowUp, check_in: t.practitioner.sessionTypeCheckIn,
+      emergency: t.practitioner.sessionTypeEmergency, crisis: t.practitioner.sessionTypeCrisis,
+      assessment: t.practitioner.sessionTypeAssessment, group: t.practitioner.sessionTypeGroup, other: t.practitioner.sessionTypeOther,
+    }
+    if (map[type]) return map[type]
   }
-  return labels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
-function getFormatLabel(format: string): string {
-  return ({ video: 'Video', virtual: 'Video', in_person: 'In Person', phone: 'Phone' } as Record<string, string>)[format] || format
+function getFormatLabel(format: string, t?: any): string {
+  if (t) {
+    const map: Record<string, string> = { video: t.practitioner.formatVideo, virtual: t.practitioner.formatVideo, in_person: t.practitioner.formatInPerson, phone: t.practitioner.formatPhone }
+    if (map[format]) return map[format]
+  }
+  return format
 }
 
 // ─── Main Component ─────────────────────────────────
@@ -78,6 +87,7 @@ export default function PractitionerScreen() {
   const { width: screenWidth } = useWindowDimensions()
   const router = useRouter()
   const { member } = useAuth()
+  const { t, locale } = useI18n()
 
   const [loading, setLoading] = useState(true)
   const [practitioner, setPractitioner] = useState<PractitionerProfile | null>(null)
@@ -109,6 +119,9 @@ export default function PractitionerScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [tableReviewReady, setTableReviewReady] = useState(false)
+  const [practitionerNotes, setPractitionerNotes] = useState<string | null>(null)
+  const [responseStatus, setResponseStatus] = useState<string | null>(null)
+  const [previewNotes, setPreviewNotes] = useState<string | null>(null)
 
   // Quick access
   const [quickModal, setQuickModal] = useState<'practitioners' | 'assessments' | null>(null)
@@ -138,6 +151,15 @@ export default function PractitionerScreen() {
   }, [member?.id, practitionerId])
 
   useFocusEffect(useCallback(() => { fetchData() }, [fetchData]))
+
+  // Fetch practitioner notes when preview opens for completed resources
+  useEffect(() => {
+    if (viewingResource && viewingResource.status === 'completed' && member?.id) {
+      fetchPractitionerNotes(viewingResource.resourceId, member.id).then(setPreviewNotes)
+    } else {
+      setPreviewNotes(null)
+    }
+  }, [viewingResource?.id])
 
   const onRefresh = useCallback(async () => {
     await fetchData()
@@ -180,25 +202,25 @@ export default function PractitionerScreen() {
   // ─── Resource Actions ───────────────────────────────
 
   async function handleOpenResource(item: ResourceItem) {
-    setViewingResource(null); setFillLoading(true); setActiveResourceItem(item); setResponses({}); setDraftResponseId(null)
+    setViewingResource(null); setFillLoading(true); setActiveResourceItem(item); setResponses({}); setDraftResponseId(null); setPractitionerNotes(null); setResponseStatus(null)
     try {
       const result = await openResourceForFill(item, member!.id, member!.practitioner_id)
-      setFillResource(result.resource); setDraftResponseId(result.responseId); setResponses(result.responses)
+      setFillResource(result.resource); setDraftResponseId(result.responseId); setResponses(result.responses); setPractitionerNotes(result.practitionerNotes); setResponseStatus(result.responseStatus)
     } catch {
-      Alert.alert('Error', 'Failed to load resource.')
+      Alert.alert(t.common.error, t.practitioner.errorLoadResource)
       setFillResource(null); setActiveResourceItem(null)
     } finally { setFillLoading(false) }
   }
 
   function closeFill() {
-    setFillResource(null); setActiveResourceItem(null); setResponses({}); setDraftResponseId(null); setTableReviewReady(false); fetchData()
+    setFillResource(null); setActiveResourceItem(null); setResponses({}); setDraftResponseId(null); setTableReviewReady(false); setPractitionerNotes(null); setResponseStatus(null); fetchData()
   }
 
   function handleCloseFill() {
     if (activeResourceItem?.type === 'assignment' && draftResponseId && Object.keys(responses).length > 0) {
-      Alert.alert('Save progress?', 'You have unsaved changes.', [
-        { text: 'Discard', style: 'destructive', onPress: closeFill },
-        { text: 'Save & Close', onPress: () => handleSaveDraft().then(closeFill) },
+      Alert.alert(t.practitioner.saveProgress, t.practitioner.unsavedChanges, [
+        { text: t.practitioner.discard, style: 'destructive', onPress: closeFill },
+        { text: t.practitioner.saveAndClose, onPress: () => handleSaveDraft().then(closeFill) },
       ])
     } else closeFill()
   }
@@ -222,16 +244,16 @@ export default function PractitionerScreen() {
     try {
       if (activeResourceItem.type === 'assignment' && draftResponseId) {
         const ok = await submitResource(draftResponseId, activeResourceItem.id, responses)
-        if (!ok) { setSubmitting(false); showAlert('Error', 'Failed to submit.'); return }
+        if (!ok) { setSubmitting(false); showAlert(t.common.error, t.practitioner.errorSubmit); return }
       } else {
         await markResourceComplete(activeResourceItem, draftResponseId, responses)
       }
       setSubmitting(false)
       closeFill()
-      showAlert('Submitted', 'Your response has been submitted.')
+      showAlert(t.practitioner.submitted, t.practitioner.resourceSubmitted)
     } catch (e: any) {
       setSubmitting(false)
-      showAlert('Error', `Something went wrong: ${e?.message || 'Unknown error'}`)
+      showAlert(t.common.error, `${t.practitioner.errorSomethingWrong}: ${e?.message || t.practitioner.errorUnknown}`)
     }
   }
 
@@ -242,10 +264,10 @@ export default function PractitionerScreen() {
       await saveTableEntry(draftResponseId, responses)
       setSaving(false)
       closeFill()
-      showAlert('Saved', 'Your entry has been saved.')
+      showAlert(t.practitioner.saved, t.practitioner.entrySaved)
     } catch (e: any) {
       setSaving(false)
-      showAlert('Error', `Failed to save: ${e?.message || 'Unknown error'}`)
+      showAlert(t.common.error, `${t.practitioner.errorFailedSave}: ${e?.message || t.practitioner.errorUnknown}`)
     }
   }
 
@@ -253,7 +275,7 @@ export default function PractitionerScreen() {
     if (!activeResourceItem) return
     setSubmitting(true)
     await markResourceComplete(activeResourceItem, draftResponseId, responses)
-    closeFill(); showAlert('Done', 'Resource marked as complete.')
+    closeFill(); showAlert(t.common.done, t.practitioner.completed)
     setSubmitting(false)
   }
 
@@ -261,8 +283,8 @@ export default function PractitionerScreen() {
     if (!inviteEmail.trim()) return
     setInviteSending(true)
     const ok = await invitePractitioner(inviteEmail.trim())
-    if (ok) { Alert.alert('Sent!', 'Invitation sent.'); setInviteEmail('') }
-    else Alert.alert('Error', 'Failed to send invitation.')
+    if (ok) { Alert.alert(t.practitioner.inviteSent, t.practitioner.inviteSentMessage); setInviteEmail('') }
+    else Alert.alert(t.common.error, t.practitioner.inviteError)
     setInviteSending(false)
   }
 
@@ -292,7 +314,7 @@ export default function PractitionerScreen() {
         </View>
 
         <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38, marginBottom: 28 }}>
-          My Practitioner
+          {t.practitioner.title}
         </Text>
 
         {/* ═══════════════════════════════════════════════ */}
@@ -319,7 +341,7 @@ export default function PractitionerScreen() {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
-                  {practitioner.full_name || 'Your Practitioner'}
+                  {practitioner.full_name || t.practitioner.yourPractitioner}
                 </Text>
                 {practitioner.headline && (
                   <Text style={{ fontSize: 13, color: '#8A8A8A', marginTop: 2 }} numberOfLines={2}>
@@ -349,10 +371,10 @@ export default function PractitionerScreen() {
                   <Text style={{ fontSize: 28 }}>🌿</Text>
                 </View>
                 <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, textAlign: 'center', letterSpacing: -0.3 }}>
-                  Connect with your practitioner
+                  {t.practitioner.noConnection}
                 </Text>
                 <Text style={{ fontSize: 15, color: '#8A8A8A', marginTop: 8, textAlign: 'center', lineHeight: 22 }}>
-                  Invite your therapist to share progress, resources, and sessions together.
+                  {t.practitioner.noConnectionSubtitle}
                 </Text>
               </View>
 
@@ -365,7 +387,7 @@ export default function PractitionerScreen() {
                   <TextInput
                     value={inviteEmail}
                     onChangeText={setInviteEmail}
-                    placeholder="Enter practitioner's email"
+                    placeholder={t.practitioner.inviteEmail}
                     placeholderTextColor="#CCCCCC"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -410,15 +432,15 @@ export default function PractitionerScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 13, fontWeight: '600', color: inviteCopied ? colors.bloom : colors.primary }}>
-                    {inviteCopied ? '✓ Copied' : 'Copy link'}
+                    {inviteCopied ? t.practitioner.copied : t.practitioner.copyLink}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => Share.share({ message: 'Join me on Bloomsline Care! Sign up as a practitioner: https://bloomsline.com/practitioner' })}
+                  onPress={() => Share.share({ message: t.practitioner.shareMessage })}
                   activeOpacity={0.7}
                   style={{ flex: 1, paddingVertical: 12, borderRadius: 14, alignItems: 'center', backgroundColor: colors.surface2 }}
                 >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>Share</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{t.practitioner.share}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -443,10 +465,10 @@ export default function PractitionerScreen() {
             }}
           >
             <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', marginBottom: 10 }}>
-              Book Appointment
+              {t.practitioner.bookAppointment}
             </Text>
             <Text style={{ fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 }}>
-              Schedule a session →
+              {t.practitioner.scheduleSession}
             </Text>
           </TouchableOpacity>
 
@@ -464,10 +486,10 @@ export default function PractitionerScreen() {
               }}
             >
               <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 10 }}>
-                Practitioner Profile
+                {t.practitioner.viewProfile}
               </Text>
               <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
-                View full profile →
+                {t.practitioner.viewProfileCta}
               </Text>
             </TouchableOpacity>
           )}
@@ -479,12 +501,12 @@ export default function PractitionerScreen() {
         <View style={{ marginBottom: 32 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase' }}>
-              Resources
+              {t.practitioner.resources}
             </Text>
             {resources.length > 3 && (
               <TouchableOpacity onPress={() => setShowAllResources(!showAllResources)}>
                 <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>
-                  {showAllResources ? 'View less' : 'View all'}
+                  {showAllResources ? t.practitioner.viewLess : t.practitioner.viewAll}
                 </Text>
               </TouchableOpacity>
             )}
@@ -497,7 +519,7 @@ export default function PractitionerScreen() {
               ))}
             </View>
           ) : (
-            <EmptyState emoji="📋" title="No resources yet" subtitle="Your practitioner will share worksheets and exercises here." />
+            <EmptyState emoji="📋" title={t.practitioner.noResources} subtitle={t.practitioner.noResourcesSubtitle} />
           )}
         </View>
 
@@ -506,11 +528,11 @@ export default function PractitionerScreen() {
         {/* ═══════════════════════════════════════════════ */}
         <View style={{ marginBottom: 32 }}>
           <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 14 }}>
-            Upcoming Sessions
+            {t.practitioner.upcomingSessions}
           </Text>
 
           {upcomingSessions.length === 0 ? (
-            <EmptyState emoji="📅" title="No upcoming sessions" subtitle="Your practitioner will schedule sessions with you." />
+            <EmptyState emoji="📅" title={t.practitioner.noUpcoming} subtitle={t.practitioner.noUpcomingSubtitle} />
           ) : (
             <View style={{ gap: 10 }}>
               {upcomingSessions.map((session) => (
@@ -534,19 +556,19 @@ export default function PractitionerScreen() {
         <View style={{ marginBottom: 32 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
             <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase' }}>
-              Session History
+              {t.practitioner.sessionHistory}
             </Text>
             {pastSessions.length > 3 && (
               <TouchableOpacity onPress={() => setShowAllHistory(!showAllHistory)}>
                 <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>
-                  {showAllHistory ? 'View less' : 'View all'}
+                  {showAllHistory ? t.practitioner.viewLess : t.practitioner.viewAll}
                 </Text>
               </TouchableOpacity>
             )}
           </View>
 
           {pastSessions.length === 0 ? (
-            <EmptyState emoji="🕐" title="No session history" subtitle="Completed sessions will appear here." />
+            <EmptyState emoji="🕐" title={t.practitioner.noHistory} subtitle={t.practitioner.noHistorySubtitle} />
           ) : (
             <View style={{ gap: 10 }}>
               {displayHistory.map((session) => (
@@ -561,7 +583,7 @@ export default function PractitionerScreen() {
         {/* ═══════════════════════════════════════════════ */}
         <View>
           <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 14 }}>
-            Quick Access
+            {t.practitioner.quickAccess}
           </Text>
           <View style={{ gap: 10 }}>
             <TouchableOpacity
@@ -573,10 +595,10 @@ export default function PractitionerScreen() {
               }}
             >
               <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', marginBottom: 10 }}>
-                My Practitioners
+                {t.practitioner.myPractitioners}
               </Text>
               <Text style={{ fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 }}>
-                View practitioner details →
+                {t.practitioner.myPractitionersCta}
               </Text>
             </TouchableOpacity>
 
@@ -589,10 +611,10 @@ export default function PractitionerScreen() {
               }}
             >
               <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 10 }}>
-                My Assessments
+                {t.practitioner.myAssessments}
               </Text>
               <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
-                Worksheets & exercises →
+                {t.practitioner.myAssessmentsCta}
               </Text>
             </TouchableOpacity>
           </View>
@@ -612,16 +634,16 @@ export default function PractitionerScreen() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.disabled, alignSelf: 'center', marginBottom: 20 }} />
 
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3, marginBottom: 4 }}>
-              Request Reschedule
+              {t.practitioner.rescheduleTitle}
             </Text>
             <Text style={{ fontSize: 15, color: '#8A8A8A', marginBottom: 20 }}>
-              Let your practitioner know why you'd like to reschedule.
+              {t.practitioner.rescheduleSubtitle}
             </Text>
 
             <TextInput
               value={rescheduleReason}
               onChangeText={setRescheduleReason}
-              placeholder="Reason for rescheduling..."
+              placeholder={t.practitioner.reschedulePlaceholder}
               placeholderTextColor="#CCCCCC"
               multiline
               style={{
@@ -633,11 +655,11 @@ export default function PractitionerScreen() {
             {/* Suggest date */}
             <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 16, marginBottom: 20 }}>
               <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 10 }}>
-                Suggest a new date (optional)
+                {t.practitioner.suggestDate}
               </Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 11, color: '#8A8A8A', marginBottom: 4 }}>Date</Text>
+                  <Text style={{ fontSize: 11, color: '#8A8A8A', marginBottom: 4 }}>{t.practitioner.date}</Text>
                   <TextInput
                     value={suggestedDate} onChangeText={setSuggestedDate}
                     placeholder="YYYY-MM-DD" placeholderTextColor="#CCCCCC"
@@ -645,7 +667,7 @@ export default function PractitionerScreen() {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 11, color: '#8A8A8A', marginBottom: 4 }}>Time</Text>
+                  <Text style={{ fontSize: 11, color: '#8A8A8A', marginBottom: 4 }}>{t.practitioner.time}</Text>
                   <TextInput
                     value={suggestedTime} onChangeText={setSuggestedTime}
                     placeholder="HH:MM" placeholderTextColor="#CCCCCC"
@@ -660,7 +682,7 @@ export default function PractitionerScreen() {
                 onPress={() => setRescheduleSessionId(null)}
                 style={{ flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 28, backgroundColor: colors.surface1 }}
               >
-                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>Cancel</Text>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>{t.common.cancel}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => rescheduleSessionId && handleRequestReschedule(rescheduleSessionId)}
@@ -674,7 +696,7 @@ export default function PractitionerScreen() {
                 {actionLoading === rescheduleSessionId ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>Send Request</Text>
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>{t.practitioner.sendRequest}</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -711,7 +733,7 @@ export default function PractitionerScreen() {
                   )}
                   <View style={{ backgroundColor: colors.surface1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
                     <Text style={{ fontSize: 11, fontWeight: '500', color: '#8A8A8A' }}>
-                      {viewingResource.type === 'assignment' ? 'Assigned' : 'Shared'}
+                      {viewingResource.type === 'assignment' ? t.practitioner.assigned : t.practitioner.shared}
                     </Text>
                   </View>
                 </View>
@@ -734,7 +756,7 @@ export default function PractitionerScreen() {
                         <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>{practitioner.credentials.join(', ')}</Text>
                       ) : null}
                     </View>
-                    <Text style={{ fontSize: 10, color: colors.textTertiary, fontWeight: '500' }}>{viewingResource.type === 'assignment' ? 'Assigned by' : 'Shared by'}</Text>
+                    <Text style={{ fontSize: 10, color: colors.textTertiary, fontWeight: '500' }}>{viewingResource.type === 'assignment' ? t.practitioner.assignedBy : t.practitioner.sharedBy}</Text>
                   </View>
                 )}
 
@@ -769,8 +791,30 @@ export default function PractitionerScreen() {
 
                 {viewingResource.dueDate && (
                   <Text style={{ fontSize: 13, color: '#8A8A8A', marginBottom: 16 }}>
-                    Due {formatDate(viewingResource.dueDate)}
+                    {t.practitioner.due.replace('{date}', formatDate(viewingResource.dueDate))}
                   </Text>
+                )}
+
+                {/* Practitioner Notes in Preview */}
+                {previewNotes && (
+                  <View style={{
+                    backgroundColor: '#F0FAF5',
+                    borderRadius: 16,
+                    padding: 16,
+                    marginBottom: 16,
+                    borderWidth: 1,
+                    borderColor: '#D1F0E0',
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 16 }}>💬</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#166534', letterSpacing: 0.3 }}>
+                        {practitioner?.full_name ? t.practitioner.noteFrom.replace('{name}', practitioner.full_name) : t.practitioner.noteFromPractitioner}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 14, color: '#15803D', lineHeight: 20 }}>
+                      {previewNotes}
+                    </Text>
+                  </View>
                 )}
 
                 </ScrollView>
@@ -785,8 +829,8 @@ export default function PractitionerScreen() {
                   }}
                 >
                   <Text style={{ fontSize: 17, fontWeight: '600', color: viewingResource.status === 'completed' ? colors.primary : '#fff' }}>
-                    {viewingResource.status === 'completed' ? 'View Again'
-                      : viewingResource.status === 'in_progress' ? 'Continue' : 'Start'}
+                    {viewingResource.status === 'completed' ? t.common.done
+                      : viewingResource.status === 'in_progress' ? t.common.continue : t.practitioner.start}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -821,7 +865,7 @@ export default function PractitionerScreen() {
                 {activeResourceItem?.type === 'assignment' && draftResponseId ? (
                   <TouchableOpacity onPress={handleSaveDraft} disabled={saving}>
                     <Text style={{ fontSize: 14, fontWeight: '600', color: saving ? '#CCCCCC' : colors.bloom }}>
-                      {saving ? 'Saving...' : 'Save'}
+                      {saving ? t.common.saving : t.common.save}
                     </Text>
                   </TouchableOpacity>
                 ) : <View style={{ width: 36 }} />}
@@ -847,7 +891,28 @@ export default function PractitionerScreen() {
                         <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>{practitioner.credentials.join(', ')}</Text>
                       ) : null}
                     </View>
-                    <Text style={{ fontSize: 11, color: colors.textTertiary }}>Shared by</Text>
+                    <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t.practitioner.sharedBy}</Text>
+                  </View>
+                )}
+                {/* Practitioner Notes Banner - show when reviewed or completed */}
+                {practitionerNotes && (responseStatus === 'reviewed' || activeResourceItem?.status === 'completed') && (
+                  <View style={{
+                    backgroundColor: '#F0FAF5',
+                    borderRadius: 16,
+                    padding: 16,
+                    marginBottom: 24,
+                    borderWidth: 1,
+                    borderColor: '#D1F0E0',
+                  }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 16 }}>💬</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#166534', letterSpacing: 0.3 }}>
+                        {practitioner?.full_name ? t.practitioner.noteFrom.replace('{name}', practitioner.full_name) : t.practitioner.noteFromPractitioner}
+                      </Text>
+                    </View>
+                    <Text style={{ fontSize: 14, color: '#15803D', lineHeight: 20 }}>
+                      {practitionerNotes}
+                    </Text>
                   </View>
                 )}
                 {(() => {
@@ -870,7 +935,7 @@ export default function PractitionerScreen() {
               }}>
                 {activeResourceItem?.status === 'completed' ? (
                   <View style={{ flex: 1, backgroundColor: colors.surface1, borderRadius: 28, paddingVertical: 16, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.bloom }}>Completed ✓</Text>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.bloom }}>{t.practitioner.completed}</Text>
                   </View>
                 ) : activeResourceItem?.resourceType === 'table' ? (
                   tableReviewReady && draftResponseId ? (
@@ -879,7 +944,7 @@ export default function PractitionerScreen() {
                       style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 16, alignItems: 'center' }}
                     >
                       {saving ? <ActivityIndicator size="small" color="#fff" /> : (
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Save Entry</Text>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.practitioner.saveEntry}</Text>
                       )}
                     </TouchableOpacity>
                   ) : null
@@ -890,7 +955,7 @@ export default function PractitionerScreen() {
                         onPress={handleSaveDraft} disabled={saving}
                         style={{ flex: 1, backgroundColor: colors.surface1, borderRadius: 28, paddingVertical: 16, alignItems: 'center' }}
                       >
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>{saving ? 'Saving...' : 'Save Draft'}</Text>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>{saving ? t.common.saving : t.practitioner.saveDraft}</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
@@ -898,7 +963,7 @@ export default function PractitionerScreen() {
                       style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 16, alignItems: 'center' }}
                     >
                       {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Submit</Text>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.practitioner.submit}</Text>
                       )}
                     </TouchableOpacity>
                   </>
@@ -909,9 +974,9 @@ export default function PractitionerScreen() {
                   >
                     {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
                       <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>
-                        {activeResourceItem?.type === 'shared' ? 'Mark as Read'
-                          : ['table', 'worksheet', 'exercise', 'assessment'].includes(activeResourceItem?.resourceType || '') ? 'Submit'
-                          : 'Mark Complete'}
+                        {activeResourceItem?.type === 'shared' ? t.practitioner.markAsRead
+                          : ['table', 'worksheet', 'exercise', 'assessment'].includes(activeResourceItem?.resourceType || '') ? t.practitioner.submit
+                          : t.practitioner.markComplete}
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -974,9 +1039,9 @@ export default function PractitionerScreen() {
                 {/* Stats */}
                 <View style={{ flexDirection: 'row', gap: 10 }}>
                   {[
-                    { value: pastSessions.filter(s => s.status === 'completed').length, label: 'Sessions' },
-                    { value: resources.length, label: 'Resources' },
-                    { value: upcomingSessions.length, label: 'Upcoming' },
+                    { value: pastSessions.filter(s => s.status === 'completed').length, label: t.practitioner.statsSessions },
+                    { value: resources.length, label: t.practitioner.statsResources },
+                    { value: upcomingSessions.length, label: t.practitioner.statsUpcoming },
                   ].map((stat) => (
                     <View key={stat.label} style={{ flex: 1, backgroundColor: colors.surface2, borderRadius: 16, padding: 14, alignItems: 'center' }}>
                       <Text style={{ fontSize: 22, fontWeight: '700', color: colors.primary }}>{stat.value}</Text>
@@ -986,7 +1051,7 @@ export default function PractitionerScreen() {
                 </View>
               </>
             ) : (
-              <EmptyState emoji="👤" title="No practitioner" subtitle="Connect with a practitioner to get started." />
+              <EmptyState emoji="👤" title={t.practitioner.noPractitioner} subtitle={t.practitioner.noPractitionerSubtitle} />
             )}
           </Pressable>
         </Pressable>
@@ -1004,7 +1069,7 @@ export default function PractitionerScreen() {
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.disabled, alignSelf: 'center', marginBottom: 20 }} />
 
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3, marginBottom: 16 }}>
-              My Assessments
+              {t.practitioner.myAssessments}
             </Text>
 
             {/* Filter tabs */}
@@ -1022,9 +1087,9 @@ export default function PractitionerScreen() {
                     fontSize: 13, fontWeight: '600',
                     color: assessmentFilter === tab ? colors.primary : '#8A8A8A',
                   }}>
-                    {tab === 'all' ? `All (${resources.length})`
-                      : tab === 'pending' ? `To Do (${resources.filter(r => r.status !== 'completed').length})`
-                      : `Done (${resources.filter(r => r.status === 'completed').length})`}
+                    {tab === 'all' ? `${t.practitioner.all} (${resources.length})`
+                      : tab === 'pending' ? `${t.practitioner.pending} (${resources.filter(r => r.status !== 'completed').length})`
+                      : `${t.practitioner.filterCompleted} (${resources.filter(r => r.status === 'completed').length})`}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -1038,7 +1103,7 @@ export default function PractitionerScreen() {
                   ))}
                 </View>
               ) : (
-                <EmptyState emoji="📝" title="Nothing here" subtitle="No resources in this category." />
+                <EmptyState emoji="📝" title={t.practitioner.nothingHere} subtitle={t.practitioner.noCategoryResources} />
               )}
             </ScrollView>
           </Pressable>
@@ -1063,6 +1128,7 @@ function EmptyState({ emoji, title, subtitle }: { emoji: string; title: string; 
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useI18n()
   const isCompleted = status === 'completed'
   const isInProgress = status === 'in_progress'
   return (
@@ -1074,13 +1140,14 @@ function StatusBadge({ status }: { status: string }) {
         fontSize: 11, fontWeight: '600',
         color: isCompleted ? colors.bloom : isInProgress ? colors.primary : '#8A8A8A',
       }}>
-        {isCompleted ? '✓ Done' : isInProgress ? 'In progress' : 'To do'}
+        {isCompleted ? t.practitioner.done : isInProgress ? t.practitioner.inProgress : t.practitioner.toDo}
       </Text>
     </View>
   )
 }
 
 function ResourceCard({ item, onPress }: { item: ResourceItem; onPress: () => void }) {
+  const { t } = useI18n()
   return (
     <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={{
       flexDirection: 'row', alignItems: 'center', gap: 14,
@@ -1095,7 +1162,7 @@ function ResourceCard({ item, onPress }: { item: ResourceItem; onPress: () => vo
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
           <StatusBadge status={item.status} />
           {item.dueDate && (
-            <Text style={{ fontSize: 11, color: '#8A8A8A' }}>Due {formatDate(item.dueDate)}</Text>
+            <Text style={{ fontSize: 11, color: '#8A8A8A' }}>{t.practitioner.due.replace('{date}', formatDate(item.dueDate))}</Text>
           )}
         </View>
       </View>
@@ -1111,10 +1178,12 @@ function UpcomingSessionCard({
   onConfirm: () => void; onReschedule: () => void
   onAcceptProposed: () => void; onDeclineProposed: () => void
 }) {
+  const { t, locale } = useI18n()
   const sessionDate = new Date(session.scheduled_at)
   const needsConfirmation = !session.member_confirmed && !session.reschedule_requested && session.reschedule_status !== 'proposed'
   const hasProposedDate = session.reschedule_status === 'proposed' && session.practitioner_proposed_date
   const isLoading = actionLoading === session.id
+  const loc = locale === 'fr' ? 'fr-FR' : 'en-US'
 
   return (
     <View style={{
@@ -1125,10 +1194,10 @@ function UpcomingSessionCard({
       {hasProposedDate && (
         <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 14 }}>
           <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 2 }}>
-            New date proposed
+            {t.practitioner.newDateProposed}
           </Text>
           <Text style={{ fontSize: 13, color: '#8A8A8A', marginBottom: 10 }}>
-            {formatFullDate(session.practitioner_proposed_date!)} at {formatTime(session.practitioner_proposed_date!)}
+            {formatFullDate(session.practitioner_proposed_date!)} · {formatTime(session.practitioner_proposed_date!)}
           </Text>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TouchableOpacity
@@ -1136,14 +1205,14 @@ function UpcomingSessionCard({
               style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 10, alignItems: 'center', opacity: isLoading ? 0.5 : 1 }}
             >
               {isLoading ? <ActivityIndicator size="small" color="#fff" /> : (
-                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>Accept</Text>
+                <Text style={{ color: '#fff', fontSize: 13, fontWeight: '600' }}>{t.practitioner.accept}</Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onDeclineProposed} disabled={isLoading}
               style={{ flex: 1, backgroundColor: colors.surface1, borderRadius: 28, paddingVertical: 10, alignItems: 'center', opacity: isLoading ? 0.5 : 1 }}
             >
-              <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>Decline</Text>
+              <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>{t.practitioner.decline}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -1153,21 +1222,21 @@ function UpcomingSessionCard({
       {needsConfirmation && (
         <View style={{ flexDirection: 'row', marginBottom: 12 }}>
           <View style={{ backgroundColor: colors.surface1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: '#8A8A8A' }}>Awaiting confirmation</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: '#8A8A8A' }}>{t.practitioner.awaitingConfirmation}</Text>
           </View>
         </View>
       )}
       {session.reschedule_requested && session.reschedule_status === 'pending' && (
         <View style={{ flexDirection: 'row', marginBottom: 12 }}>
           <View style={{ backgroundColor: colors.surface1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: '#8A8A8A' }}>Reschedule requested</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: '#8A8A8A' }}>{t.practitioner.rescheduleRequested}</Text>
           </View>
         </View>
       )}
       {session.member_confirmed && !hasProposedDate && (
         <View style={{ flexDirection: 'row', marginBottom: 12 }}>
           <View style={{ backgroundColor: colors.surface1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.bloom }}>✓ Confirmed</Text>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.bloom }}>{t.practitioner.confirmed}</Text>
           </View>
         </View>
       )}
@@ -1179,21 +1248,21 @@ function UpcomingSessionCard({
           alignItems: 'center', justifyContent: 'center',
         }}>
           <Text style={{ fontSize: 10, color: '#8A8A8A', textTransform: 'uppercase', fontWeight: '600' }}>
-            {sessionDate.toLocaleDateString(undefined, { month: 'short' })}
+            {sessionDate.toLocaleDateString(loc, { month: 'short' })}
           </Text>
           <Text style={{ fontSize: 20, fontWeight: '800', color: colors.primary }}>{sessionDate.getDate()}</Text>
         </View>
 
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: colors.primary, letterSpacing: -0.3, marginBottom: 4 }}>
-            {getSessionTypeLabel(session.session_type)}
+            {getSessionTypeLabel(session.session_type, t)}
           </Text>
           <Text style={{ fontSize: 13, color: '#8A8A8A' }}>
-            {formatTime(session.scheduled_at)} · {getFormatLabel(session.session_format)} · {session.duration_minutes} min
+            {formatTime(session.scheduled_at)} · {getFormatLabel(session.session_format, t)} · {session.duration_minutes} min
           </Text>
           {session.practitioner && (
             <Text style={{ fontSize: 13, color: '#8A8A8A', marginTop: 2 }}>
-              with <Text style={{ fontWeight: '600', color: colors.primary }}>{session.practitioner.full_name}</Text>
+              {t.practitioner.with} <Text style={{ fontWeight: '600', color: colors.primary }}>{session.practitioner.full_name}</Text>
             </Text>
           )}
         </View>
@@ -1207,14 +1276,14 @@ function UpcomingSessionCard({
             style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 12, alignItems: 'center', opacity: isLoading ? 0.5 : 1 }}
           >
             {isLoading ? <ActivityIndicator size="small" color="#fff" /> : (
-              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>Confirm</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>{t.practitioner.confirm}</Text>
             )}
           </TouchableOpacity>
           <TouchableOpacity
             onPress={onReschedule} disabled={isLoading}
             style={{ flex: 1, backgroundColor: colors.surface1, borderRadius: 28, paddingVertical: 12, alignItems: 'center', opacity: isLoading ? 0.5 : 1 }}
           >
-            <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>Reschedule</Text>
+            <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>{t.practitioner.reschedule}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1223,10 +1292,12 @@ function UpcomingSessionCard({
 }
 
 function PastSessionCard({ session }: { session: UpcomingSession }) {
+  const { t, locale } = useI18n()
   const sessionDate = new Date(session.scheduled_at)
   const isCompleted = session.status === 'completed'
   const isCancelled = session.status === 'cancelled'
   const isNoShow = session.status === 'no_show'
+  const loc = locale === 'fr' ? 'fr-FR' : 'en-US'
 
   return (
     <View style={{
@@ -1239,7 +1310,7 @@ function PastSessionCard({ session }: { session: UpcomingSession }) {
           alignItems: 'center', justifyContent: 'center',
         }}>
           <Text style={{ fontSize: 9, color: '#8A8A8A', textTransform: 'uppercase', fontWeight: '600' }}>
-            {sessionDate.toLocaleDateString(undefined, { month: 'short' })}
+            {sessionDate.toLocaleDateString(loc, { month: 'short' })}
           </Text>
           <Text style={{ fontSize: 16, fontWeight: '800', color: colors.primary }}>{sessionDate.getDate()}</Text>
         </View>
@@ -1247,19 +1318,19 @@ function PastSessionCard({ session }: { session: UpcomingSession }) {
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
-              {getSessionTypeLabel(session.session_type)}
+              {getSessionTypeLabel(session.session_type, t)}
             </Text>
             <View style={{ backgroundColor: colors.surface1, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 }}>
               <Text style={{ fontSize: 10, fontWeight: '600', color: isCompleted ? colors.bloom : isCancelled ? colors.error : '#8A8A8A' }}>
-                {isCompleted ? '✓ Done' : isCancelled ? 'Cancelled' : isNoShow ? 'No Show' : session.status}
+                {isCompleted ? t.practitioner.done : isCancelled ? t.practitioner.cancelled : isNoShow ? t.practitioner.noShow : session.status}
               </Text>
             </View>
           </View>
           <Text style={{ fontSize: 12, color: '#8A8A8A' }}>
-            {formatTime(session.scheduled_at)} · {getFormatLabel(session.session_format)} · {session.duration_minutes} min
+            {formatTime(session.scheduled_at)} · {getFormatLabel(session.session_format, t)} · {session.duration_minutes} min
           </Text>
           {session.practitioner && (
-            <Text style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>with {session.practitioner.full_name}</Text>
+            <Text style={{ fontSize: 12, color: '#8A8A8A', marginTop: 2 }}>{t.practitioner.with} {session.practitioner.full_name}</Text>
           )}
         </View>
       </View>

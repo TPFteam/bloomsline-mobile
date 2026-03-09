@@ -349,7 +349,7 @@ export async function openResourceForFill(
   item: ResourceItem,
   memberId: string,
   practitionerId: string,
-): Promise<{ resource: any; responseId: string | null; responses: Record<string, unknown> }> {
+): Promise<{ resource: any; responseId: string | null; responses: Record<string, unknown>; practitionerNotes: string | null; responseStatus: string | null }> {
   const { data: resource, error } = await supabase
     .from('resources')
     .select('*')
@@ -360,6 +360,8 @@ export async function openResourceForFill(
 
   let responseId: string | null = null
   let responses: Record<string, unknown> = {}
+  let practitionerNotes: string | null = null
+  let responseStatus: string | null = null
 
   if (item.type === 'assignment') {
     const { data: existing } = await supabase
@@ -374,6 +376,8 @@ export async function openResourceForFill(
     if (existing) {
       responseId = existing.id
       responses = existing.responses || {}
+      practitionerNotes = existing.practitioner_notes || null
+      responseStatus = existing.status || null
     } else {
       const { data: newResp } = await supabase
         .from('resource_responses')
@@ -418,6 +422,8 @@ export async function openResourceForFill(
       if (existing) {
         responseId = existing.id
         responses = existing.responses || {}
+        practitionerNotes = existing.practitioner_notes || null
+        responseStatus = existing.status || null
       } else {
         const { data: newResp, error: insertErr } = await supabase
           .from('resource_responses')
@@ -458,7 +464,7 @@ export async function openResourceForFill(
     }
   }
 
-  return { resource, responseId, responses }
+  return { resource, responseId, responses, practitionerNotes, responseStatus }
 }
 
 export async function saveDraft(
@@ -486,6 +492,23 @@ export async function saveTableEntry(
     throw error
   }
   return true
+}
+
+export async function fetchPractitionerNotes(
+  resourceId: string,
+  memberId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from('resource_responses')
+    .select('practitioner_notes, status')
+    .eq('resource_id', resourceId)
+    .eq('member_id', memberId)
+    .in('status', ['reviewed', 'submitted'])
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return data?.practitioner_notes || null
 }
 
 export async function submitResource(

@@ -37,7 +37,8 @@
           "photosPermission": "Allow Bloomsline to access your photos to capture moments.",
           "cameraPermission": "Allow Bloomsline to use your camera to capture moments."
         }
-      ]
+      ],
+      "expo-localization"
     ]
   }
 }

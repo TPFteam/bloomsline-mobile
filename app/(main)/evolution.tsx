@@ -7,6 +7,7 @@ import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
 import { GalleryVerticalEnd as GitBranch, LayoutGrid } from 'lucide-react-native'
 import { MOOD_SCORES, colors } from '@/lib/theme'
+import { useI18n } from '@/lib/i18n'
 
 // Extracted components
 import { BackButton } from '@/components/ui/BackButton'
@@ -31,6 +32,7 @@ export default function Evolution() {
   const [filterMood, setFilterMood] = useState<string | null>(null)
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null)
   const [viewMode, setViewMode] = useState<'river' | 'grid'>('river')
+  const { t } = useI18n()
 
   const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
 
@@ -98,10 +100,10 @@ export default function Evolution() {
     frequencyScore * 0.3 + valenceScore * 0.35 + consistencyScore * 0.35
   )
 
-  const scoreLabel = bloomScore >= 80 ? 'Amazing week' :
-    bloomScore >= 60 ? 'Going strong' :
-      bloomScore >= 40 ? 'Building up' :
-        bloomScore >= 20 ? 'Keep going' : 'Just starting'
+  const scoreLabel = bloomScore >= 80 ? t.evolution.amazingWeek :
+    bloomScore >= 60 ? t.evolution.goingStrong :
+      bloomScore >= 40 ? t.evolution.buildingUp :
+        bloomScore >= 20 ? t.evolution.keepGoing : t.evolution.justStarting
 
   // Filtered moments for library
   const filteredMoments = useMemo(() => {
@@ -146,7 +148,7 @@ export default function Evolution() {
               }}
             >
               <Text style={{ fontSize: 14, fontWeight: '600', color: range === r ? '#fff' : colors.textSecondary }}>
-                {r === '7d' ? '7 days' : r === '30d' ? '30 days' : '90 days'}
+                {r === '7d' ? t.evolution.days7 : r === '30d' ? t.evolution.days30 : t.evolution.days90}
               </Text>
             </TouchableOpacity>
           ))}
@@ -161,7 +163,7 @@ export default function Evolution() {
         {sortedMoods.length > 0 && (
           <View style={{ marginBottom: 28 }}>
             <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 16 }}>
-              Mood spectrum
+              {t.evolution.moodSpectrum}
             </Text>
             <MoodRing moodCounts={sortedMoods} totalMoments={totalMoodEntries} />
           </View>
@@ -177,7 +179,7 @@ export default function Evolution() {
         {/* Mood Calendar */}
         <View style={{ marginBottom: 28 }}>
           <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 16 }}>
-            Mood calendar
+            {t.evolution.moodCalendar}
           </Text>
           <MoodCalendar moments={moments} days={days} />
         </View>
@@ -186,7 +188,7 @@ export default function Evolution() {
         <View style={{ height: 1, backgroundColor: '#f0f0f0', marginBottom: 20 }} />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase' }}>
-            Your moments
+            {t.evolution.yourMoments}
           </Text>
           <View style={{ flexDirection: 'row', backgroundColor: colors.surface1, borderRadius: 12, padding: 3 }}>
             <TouchableOpacity

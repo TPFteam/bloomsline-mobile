@@ -3,10 +3,12 @@ import { View, Text, TouchableOpacity, Animated } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '@/lib/theme'
+import { useI18n } from '@/lib/i18n'
 
 export default function Welcome() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const { t } = useI18n()
   const fadeIn = useRef(new Animated.Value(0)).current
   const slideUp = useRef(new Animated.Value(30)).current
   const logoScale = useRef(new Animated.Value(0.8)).current
@@ -74,7 +76,7 @@ export default function Welcome() {
           letterSpacing: -0.8,
           lineHeight: 42,
         }}>
-          Your emotional{'\n'}journey starts here.
+          {t.auth.welcomeHeadline}
         </Text>
 
         {/* Subtitle */}
@@ -86,7 +88,7 @@ export default function Welcome() {
           lineHeight: 26,
           letterSpacing: 0.2,
         }}>
-          Capture moments. See patterns.{'\n'}Watch yourself evolve.
+          {t.auth.welcomeSubtitle}
         </Text>
       </Animated.View>
 
@@ -114,7 +116,7 @@ export default function Welcome() {
             elevation: 8,
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>Get started</Text>
+          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>{t.auth.getStarted}</Text>
         </TouchableOpacity>
 
         {/* Secondary: Sign in */}
@@ -129,7 +131,7 @@ export default function Welcome() {
             alignItems: 'center',
           }}
         >
-          <Text style={{ color: '#666', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>I already have an account</Text>
+          <Text style={{ color: '#666', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>{t.auth.haveAccount}</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>

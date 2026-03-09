@@ -1,6 +1,7 @@
 import { View, Text, Dimensions } from 'react-native'
 import { MOOD_SCORES, MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
+import { useI18n } from '@/lib/i18n'
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
 
 const { width } = Dimensions.get('window')
@@ -11,6 +12,7 @@ interface EmotionalLandscapeProps {
 }
 
 export function EmotionalLandscape({ moments, days }: EmotionalLandscapeProps) {
+    const { t } = useI18n()
     const chartW = width - 48
     const chartH = 140
     const padTop = 16
@@ -77,7 +79,7 @@ export function EmotionalLandscape({ moments, days }: EmotionalLandscapeProps) {
     return (
         <View style={{ backgroundColor: colors.surface3, borderRadius: 24, overflow: 'hidden', paddingTop: 16 }}>
             <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase', paddingHorizontal: 20, marginBottom: 4 }}>
-                Emotional landscape
+                {t.evolution.emotionalLandscape}
             </Text>
             <Svg width={chartW} height={chartH}>
                 <Defs>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity } from 'react-native'
 import { colors } from '@/lib/theme'
+import { useI18n } from '@/lib/i18n'
 
 function extractLocalized(val: any): string {
   if (!val) return ''
@@ -18,6 +19,7 @@ const PLACEHOLDER = '#CCCCCC'
 function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onReviewStateChange }: {
   block: any; content: string; blockValue: unknown; onBlockChange: (v: unknown) => void; onReviewStateChange?: (inReview: boolean) => void
 }) {
+  const { t } = useI18n()
   const columns: any[] = Array.isArray(block.columns) ? block.columns : []
   const instr = block.instructions || null
   // Decide row count once on mount (stable during editing)
@@ -48,7 +50,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
     onReviewStateChange?.(showReview)
   }, [showReview])
 
-  if (columns.length === 0) return <Text style={{ color: MUTED }}>No columns defined</Text>
+  if (columns.length === 0) return <Text style={{ color: MUTED }}>{t.blocks.noColumns}</Text>
 
   const safeEntry = Math.min(currentEntry, rows.length - 1)
   const safeCol = Math.min(currentCol, columns.length - 1)
@@ -78,13 +80,13 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
           <TouchableOpacity onPress={() => setExpandedView(false)} style={{
             paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
           }}>
-            <Text style={{ fontSize: 12, fontWeight: '500', color: MUTED }}>Guided</Text>
+            <Text style={{ fontSize: 12, fontWeight: '500', color: MUTED }}>{t.blocks.guided}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setExpandedView(true)} style={{
             paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8,
             backgroundColor: '#fff',
           }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>Form</Text>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.primary }}>{t.blocks.form}</Text>
           </TouchableOpacity>
         </View>
 
@@ -92,7 +94,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
           {rows.map((r: any, ri: number) => (
             <View key={ri} style={{ backgroundColor: '#fff', borderRadius: 18, padding: 16, borderWidth: 1, borderColor: '#EBEBEB' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }}>Entry {ri + 1}</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }}>{t.blocks.entry.replace('{n}', String(ri + 1))}</Text>
                 {rows.length > 1 && (
                   <TouchableOpacity onPress={() => {
                     onBlockChange(rows.filter((_: any, i: number) => i !== ri))
@@ -109,7 +111,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
                   <TextInput
                     value={r[c.id] || ''}
                     onChangeText={(t) => updateCell(ri, c.id, t)}
-                    placeholder="Type here..."
+                    placeholder={t.blocks.typeHere}
                     placeholderTextColor={PLACEHOLDER}
                     multiline
                     style={{
@@ -126,7 +128,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
           flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, marginTop: 8,
         }}>
           <Text style={{ fontSize: 20, fontWeight: '300', color: colors.primary }}>+</Text>
-          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Add Entry</Text>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{t.blocks.addEntry}</Text>
         </TouchableOpacity>
       </View>
     )
@@ -142,11 +144,11 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
         <View style={{
           flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16,
         }}>
-          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary }}>Review Answers</Text>
+          <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary }}>{t.blocks.reviewAnswers}</Text>
           <TouchableOpacity onPress={() => setShowReview(false)} style={{
             paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: colors.surface2,
           }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: MUTED }}>← Edit</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: MUTED }}>{t.blocks.edit}</Text>
           </TouchableOpacity>
         </View>
 
@@ -174,7 +176,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
                 {val ? (
                   <Text style={{ fontSize: 15, color: colors.primary, lineHeight: 21 }}>{val}</Text>
                 ) : (
-                  <Text style={{ fontSize: 14, color: '#CCC', fontStyle: 'italic' }}>Not answered — tap to add</Text>
+                  <Text style={{ fontSize: 14, color: '#CCC', fontStyle: 'italic' }}>{t.blocks.notAnswered}</Text>
                 )}
               </TouchableOpacity>
             )
@@ -182,7 +184,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
         </View>
 
         <Text style={{ fontSize: 12, color: MUTED, textAlign: 'center', marginTop: 12 }}>
-          Tap any answer to edit it
+          {t.blocks.tapToEdit}
         </Text>
       </View>
     )
@@ -225,7 +227,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
           backgroundColor: '#fff', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#EBEBEB',
         }}>
           <Text style={{ fontSize: 15, fontWeight: '700', color: colors.primary, marginBottom: 12 }}>
-            Entry {safeEntry + 1}
+            {t.blocks.entry.replace('{n}', String(safeEntry + 1))}
           </Text>
           {columns.map((c: any, ci: number) => {
             const val = (rows[safeEntry]?.[c.id] || '').trim()
@@ -264,7 +266,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
 
       {/* Progress text */}
       <Text style={{ fontSize: 12, color: MUTED, textAlign: 'center', marginBottom: 12 }}>
-        {filledCount}/{columns.length} completed
+        {t.blocks.completed.replace('{count}', String(filledCount)).replace('{total}', String(columns.length))}
       </Text>
 
       {/* Previous answers in current entry — compact summary */}
@@ -312,7 +314,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
         <TextInput
           value={row[col.id] || ''}
           onChangeText={(t) => updateCell(safeEntry, col.id, t)}
-          placeholder="Type here..."
+          placeholder={t.blocks.typeHere}
           placeholderTextColor={PLACEHOLDER}
           multiline
           style={{
@@ -329,7 +331,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
             onPress={() => { setCurrentCol(returnToCol); setReturnToCol(null) }}
             style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24, backgroundColor: colors.primary + '10' }}
           >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>← Back to current</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{t.blocks.backToCurrent}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -349,7 +351,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
             onPress={() => { setCurrentCol(returnToCol); setReturnToCol(null) }}
             style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24, backgroundColor: colors.primary }}
           >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Done editing →</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t.blocks.doneEditing}</Text>
           </TouchableOpacity>
         ) : safeCol < columns.length - 1 ? (
           <TouchableOpacity
@@ -359,7 +361,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
               backgroundColor: colors.primary,
             }}
           >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Next →</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t.blocks.nextArrow}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -369,7 +371,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
               backgroundColor: colors.primary,
             }}
           >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>Continue →</Text>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t.blocks.continueArrow}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -385,6 +387,7 @@ export function renderBlock(
   onBlockChange: (v: unknown) => void,
   onReviewStateChange?: (inReview: boolean) => void,
   readOnly?: boolean,
+  t?: any,
 ) {
   const content = typeof block.content === 'string' ? block.content : extractLocalized(block.content)
   const isRequired = !!block.required
@@ -482,7 +485,7 @@ export function renderBlock(
             <TextInput
               value={(blockValue as string) || ''}
               editable={!readOnly} onChangeText={(t) => onChange(t)}
-              placeholder="Share your thoughts..."
+              placeholder={t?.blocks?.shareThoughts || "Share your thoughts..."}
               placeholderTextColor={PLACEHOLDER}
               multiline
               style={{
@@ -545,7 +548,7 @@ export function renderBlock(
                   borderWidth: 2, borderColor: sel ? SELECTED_BORDER : 'transparent',
                 }}>
                   <Text style={{ fontSize: 15, fontWeight: '600', color: sel ? colors.primary : MUTED }}>
-                    {val === 'yes' ? 'Yes' : 'No'}
+                    {val === 'yes' ? (t?.common?.yes || 'Yes') : (t?.common?.no || 'No')}
                   </Text>
                 </TouchableOpacity>
               )
@@ -784,9 +787,9 @@ export function renderBlock(
           <Text style={LABEL}>{content}{Star}</Text>
           <TextInput
             value={blockValue !== undefined && blockValue !== null ? String(blockValue) : ''}
-            editable={!readOnly} onChangeText={(t) => { if (t === '') onChange(undefined); else { const n = Number(t); if (!isNaN(n)) onChange(n) } }}
+            editable={!readOnly} onChangeText={(v) => { if (v === '') onChange(undefined); else { const n = Number(v); if (!isNaN(n)) onChange(n) } }}
             keyboardType="numeric"
-            placeholder="Enter a number..."
+            placeholder={t?.blocks?.enterNumber || "Enter a number..."}
             placeholderTextColor={PLACEHOLDER}
             style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 16, color: colors.primary }}
           />
@@ -831,7 +834,7 @@ export function renderBlock(
                 <TextInput
                   value={item}
                   editable={!readOnly} onChangeText={(t) => { const a = [...listItems]; a[i] = t; onChange(a) }}
-                  placeholder={`Item ${i + 1}...`}
+                  placeholder={(t?.blocks?.itemPlaceholder || 'Item {n}...').replace('{n}', String(i + 1))}
                   placeholderTextColor={PLACEHOLDER}
                   style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 14, padding: 12, fontSize: 15, color: colors.primary }}
                 />
@@ -844,7 +847,7 @@ export function renderBlock(
             ))}
             <TouchableOpacity onPress={() => !readOnly && onChange([...listItems, ''])} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8 }}>
               <Text style={{ fontSize: 20, fontWeight: '300', color: colors.primary }}>+</Text>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>Add item</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{t?.blocks?.addItem || 'Add item'}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -931,7 +934,7 @@ export function renderBlock(
     default:
       return (
         <View style={{ padding: 12, backgroundColor: colors.surface2, borderRadius: 12 }}>
-          <Text style={{ fontSize: 13, color: MUTED }}>Unsupported: {block.type}</Text>
+          <Text style={{ fontSize: 13, color: MUTED }}>{(t?.blocks?.unsupported || 'Unsupported: {type}').replace('{type}', block.type)}</Text>
         </View>
       )
   }

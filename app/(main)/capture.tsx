@@ -4,7 +4,9 @@ import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { createMoment } from '@/lib/services/moments'
 import * as ImagePicker from 'expo-image-picker'
-import { Camera, ImageIcon, X, Plus, Check } from 'lucide-react-native'
+import { Audio } from 'expo-av'
+import { Camera, ImageIcon, X, Plus, Check, Mic, Play, Pause, Trash2, RotateCcw } from 'lucide-react-native'
+import { useI18n } from '@/lib/i18n'
 
 const MOODS = [
   { key: 'grateful', emoji: '🙏', label: 'Grateful' },
@@ -26,11 +28,110 @@ const MOODS = [
 type CaptureType = 'photo' | 'video' | 'voice' | 'write'
 type Step = 'capture' | 'mood' | 'save'
 
+function formatDuration(ms: number): string {
+  const totalSec = Math.floor(ms / 1000)
+  const min = Math.floor(totalSec / 60)
+  const sec = totalSec % 60
+  return `${min}:${sec.toString().padStart(2, '0')}`
+}
+
+// ─── Audio Player Component ───────────────────────────
+function AudioPlayer({ uri, duration, compact }: { uri: string; duration: number; compact?: boolean }) {
+  const [sound, setSound] = useState<Audio.Sound | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [position, setPosition] = useState(0)
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      sound?.unloadAsync()
+    }
+  }, [sound])
+
+  const handlePlayPause = async () => {
+    if (playing && sound) {
+      await sound.pauseAsync()
+      setPlaying(false)
+      if (intervalRef.current) clearInterval(intervalRef.current)
+      return
+    }
+
+    if (sound) {
+      await sound.playAsync()
+    } else {
+      const { sound: newSound } = await Audio.Sound.createAsync({ uri })
+      setSound(newSound)
+      newSound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          setPlaying(false)
+          setPosition(0)
+          if (intervalRef.current) clearInterval(intervalRef.current)
+        }
+      })
+      await newSound.playAsync()
+    }
+
+    setPlaying(true)
+    intervalRef.current = setInterval(async () => {
+      if (sound) {
+        const status = await sound.getStatusAsync()
+        if (status.isLoaded) setPosition(status.positionMillis)
+      }
+    }, 200)
+  }
+
+  const progress = duration > 0 ? position / duration : 0
+
+  if (compact) {
+    return (
+      <TouchableOpacity
+        onPress={handlePlayPause}
+        style={{
+          width: 64, height: 64, borderRadius: 12, backgroundColor: '#000',
+          justifyContent: 'center', alignItems: 'center',
+        }}
+      >
+        {playing ? <Pause size={22} color="#fff" /> : <Play size={22} color="#fff" style={{ marginLeft: 2 }} />}
+      </TouchableOpacity>
+    )
+  }
+
+  return (
+    <View style={{
+      backgroundColor: '#f5f5f5', borderRadius: 20, padding: 20,
+      flexDirection: 'row', alignItems: 'center', gap: 16,
+    }}>
+      <TouchableOpacity
+        onPress={handlePlayPause}
+        style={{
+          width: 52, height: 52, borderRadius: 26, backgroundColor: '#000',
+          justifyContent: 'center', alignItems: 'center',
+        }}
+      >
+        {playing ? <Pause size={20} color="#fff" /> : <Play size={20} color="#fff" style={{ marginLeft: 2 }} />}
+      </TouchableOpacity>
+      <View style={{ flex: 1 }}>
+        {/* Progress bar */}
+        <View style={{ height: 4, backgroundColor: '#e0e0e0', borderRadius: 2, marginBottom: 8 }}>
+          <View style={{ height: 4, backgroundColor: '#000', borderRadius: 2, width: `${Math.min(progress * 100, 100)}%` }} />
+        </View>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Text style={{ fontSize: 12, color: '#999', fontVariant: ['tabular-nums'] }}>{formatDuration(position)}</Text>
+          <Text style={{ fontSize: 12, color: '#999', fontVariant: ['tabular-nums'] }}>{formatDuration(duration)}</Text>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+// ─── Main Capture Component ───────────────────────────
 export default function Capture() {
   const router = useRouter()
   const { type } = useLocalSearchParams<{ type?: string }>()
   const captureType = (type as CaptureType) || 'photo'
   const insets = useSafeAreaInsets()
+  const { t } = useI18n()
 
   const [step, setStep] = useState<Step>(captureType === 'write' ? 'capture' : 'capture')
   const [selectedMoods, setSelectedMoods] = useState<string[]>([])
@@ -38,7 +139,12 @@ export default function Capture() {
   const [mediaItems, setMediaItems] = useState<{ uri: string; mimeType: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [recording, setRecording] = useState(false)
+  const [recordingInstance, setRecordingInstance] = useState<Audio.Recording | null>(null)
+  const [recordingDuration, setRecordingDuration] = useState(0)
+  const [audioUri, setAudioUri] = useState<string | null>(null)
+  const [audioDuration, setAudioDuration] = useState(0)
   const pulseAnim = useRef(new Animated.Value(1)).current
+  const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // For voice recording pulse
   useEffect(() => {
@@ -53,6 +159,14 @@ export default function Capture() {
       pulseAnim.setValue(1)
     }
   }, [recording])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (durationInterval.current) clearInterval(durationInterval.current)
+      recordingInstance?.stopAndUnloadAsync().catch(() => {})
+    }
+  }, [])
 
   const toggleMood = (mood: string) => {
     setSelectedMoods(prev =>
@@ -95,15 +209,70 @@ export default function Capture() {
     }
   }
 
-  // Voice: toggle recording (placeholder — needs expo-av integration)
-  const toggleRecording = () => {
-    if (recording) {
+  // Voice: toggle recording
+  const toggleRecording = async () => {
+    if (recording && recordingInstance) {
+      // Stop recording
+      if (durationInterval.current) clearInterval(durationInterval.current)
+      try {
+        await recordingInstance.stopAndUnloadAsync()
+        const uri = recordingInstance.getURI()
+        if (uri) {
+          // Get actual duration
+          const { sound } = await Audio.Sound.createAsync({ uri })
+          const status = await sound.getStatusAsync()
+          const dur = status.isLoaded ? status.durationMillis || recordingDuration : recordingDuration
+          await sound.unloadAsync()
+
+          setAudioUri(uri)
+          setAudioDuration(dur)
+          setMediaItems([{ uri, mimeType: 'audio/m4a' }])
+        }
+      } catch (e) {
+        console.error('Error stopping recording:', e)
+      }
       setRecording(false)
-      // TODO: stop recording, get URI, add to mediaItems
+      setRecordingInstance(null)
     } else {
-      setRecording(true)
-      // TODO: start recording with expo-av
+      // Start recording
+      try {
+        const permission = await Audio.requestPermissionsAsync()
+        if (!permission.granted) return
+
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        })
+
+        const { recording: newRecording } = await Audio.Recording.createAsync(
+          Audio.RecordingOptionsPresets.HIGH_QUALITY
+        )
+        setRecordingInstance(newRecording)
+        setRecording(true)
+        setRecordingDuration(0)
+
+        // Track duration
+        const start = Date.now()
+        durationInterval.current = setInterval(() => {
+          setRecordingDuration(Date.now() - start)
+        }, 100)
+      } catch (e) {
+        console.error('Error starting recording:', e)
+      }
     }
+  }
+
+  const deleteRecording = () => {
+    setAudioUri(null)
+    setAudioDuration(0)
+    setMediaItems([])
+    setRecordingDuration(0)
+  }
+
+  const reRecord = async () => {
+    deleteRecording()
+    // Small delay then start recording again
+    setTimeout(() => toggleRecording(), 300)
   }
 
   const handleSave = async () => {
@@ -120,24 +289,24 @@ export default function Capture() {
   const canProceedFromCapture = captureType === 'write'
     ? note.trim().length > 0
     : captureType === 'voice'
-    ? !recording // can proceed if not currently recording
-    : true // photo/video can always proceed (media optional with note)
+    ? !recording && mediaItems.length > 0
+    : mediaItems.length > 0 // photo/video require at least one item
 
   const stepLabels: Step[] = ['capture', 'mood', 'save']
   const currentStepIndex = stepLabels.indexOf(step)
 
   const title = {
-    photo: 'Capture a photo',
-    video: 'Record a video',
-    voice: 'Record your thoughts',
-    write: 'Write it down',
+    photo: t.capture.titlePhoto,
+    video: t.capture.titleVideo,
+    voice: t.capture.titleVoice,
+    write: t.capture.titleWrite,
   }[captureType]
 
   const subtitle = {
-    photo: 'Take a photo or choose from your gallery',
-    video: 'Record a clip or upload from gallery',
-    voice: 'Tap to start recording',
-    write: 'Let your thoughts flow freely',
+    photo: t.capture.subtitlePhoto,
+    video: t.capture.subtitleVideo,
+    voice: audioUri ? t.capture.subtitleVoiceDone : t.capture.subtitleVoice,
+    write: t.capture.subtitleWrite,
   }[captureType]
 
   return (
@@ -226,10 +395,10 @@ export default function Capture() {
                       </View>
                       <View>
                         <Text style={{ fontSize: 17, fontWeight: '600', color: '#fff' }}>
-                          {captureType === 'video' ? 'Record video' : 'Take a photo'}
+                          {captureType === 'video' ? t.capture.recordVideo : t.capture.takePhoto}
                         </Text>
                         <Text style={{ fontSize: 13, color: '#888', marginTop: 2 }}>
-                          {captureType === 'video' ? 'Up to 60 seconds' : 'Open camera'}
+                          {captureType === 'video' ? t.capture.upTo60Seconds : t.capture.openCamera}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -249,8 +418,8 @@ export default function Capture() {
                         <ImageIcon size={22} color="#666" />
                       </View>
                       <View>
-                        <Text style={{ fontSize: 17, fontWeight: '600', color: '#000' }}>Choose from gallery</Text>
-                        <Text style={{ fontSize: 13, color: '#999', marginTop: 2 }}>Up to 7 items</Text>
+                        <Text style={{ fontSize: 17, fontWeight: '600', color: '#000' }}>{t.capture.chooseGallery}</Text>
+                        <Text style={{ fontSize: 13, color: '#999', marginTop: 2 }}>{t.capture.upTo7Items}</Text>
                       </View>
                     </TouchableOpacity>
                   </View>
@@ -260,36 +429,88 @@ export default function Capture() {
 
             {/* Voice capture */}
             {captureType === 'voice' && (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 60 }}>
-                <Animated.View
-                  style={{
-                    width: 140,
-                    height: 140,
-                    borderRadius: 70,
-                    backgroundColor: recording ? '#EF4444' : '#000',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    transform: [{ scale: recording ? pulseAnim : 1 }],
-                    shadowColor: recording ? '#EF4444' : '#000',
-                    shadowOffset: { width: 0, height: 8 },
-                    shadowOpacity: 0.3,
-                    shadowRadius: 20,
-                  }}
-                >
-                  <TouchableOpacity onPress={toggleRecording} style={{ width: 140, height: 140, justifyContent: 'center', alignItems: 'center' }}>
-                    {recording ? (
-                      <View style={{ width: 36, height: 36, borderRadius: 6, backgroundColor: '#fff' }} />
-                    ) : (
-                      <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#EF4444' }} />
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-                <Text style={{ fontSize: 17, fontWeight: '600', color: '#000', marginTop: 32 }}>
-                  {recording ? 'Recording...' : 'Tap to record'}
-                </Text>
-                <Text style={{ fontSize: 13, color: '#999', marginTop: 8 }}>
-                  {recording ? 'Tap the button to stop' : 'Share what\'s on your mind'}
-                </Text>
+              <View style={{ flex: 1, alignItems: 'center', paddingVertical: 40 }}>
+                {audioUri ? (
+                  /* ── Recording complete: show player ── */
+                  <View style={{ width: '100%', alignItems: 'center' }}>
+                    {/* Mic icon */}
+                    <View style={{
+                      width: 100, height: 100, borderRadius: 50, backgroundColor: '#f5f5f5',
+                      justifyContent: 'center', alignItems: 'center', marginBottom: 24,
+                    }}>
+                      <Mic size={40} color="#000" />
+                    </View>
+
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#000', marginBottom: 4 }}>
+                      {t.capture.voiceRecording}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#999', marginBottom: 24 }}>
+                      {formatDuration(audioDuration)}
+                    </Text>
+
+                    {/* Audio player */}
+                    <View style={{ width: '100%', marginBottom: 24 }}>
+                      <AudioPlayer uri={audioUri} duration={audioDuration} />
+                    </View>
+
+                    {/* Re-record / Delete actions */}
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <TouchableOpacity
+                        onPress={reRecord}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 8,
+                          backgroundColor: '#f5f5f5', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16,
+                        }}
+                      >
+                        <RotateCcw size={16} color="#666" />
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#333' }}>{t.capture.reRecord}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={deleteRecording}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 8,
+                          backgroundColor: '#FEF2F2', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16,
+                        }}
+                      >
+                        <Trash2 size={16} color="#EF4444" />
+                        <Text style={{ fontSize: 14, fontWeight: '500', color: '#EF4444' }}>{t.common.delete}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  /* ── Not yet recorded: show record button ── */
+                  <View style={{ justifyContent: 'center', alignItems: 'center', paddingVertical: 20 }}>
+                    <Animated.View
+                      style={{
+                        width: 140,
+                        height: 140,
+                        borderRadius: 70,
+                        backgroundColor: recording ? '#EF4444' : '#000',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        transform: [{ scale: recording ? pulseAnim : 1 }],
+                        shadowColor: recording ? '#EF4444' : '#000',
+                        shadowOffset: { width: 0, height: 8 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 20,
+                      }}
+                    >
+                      <TouchableOpacity onPress={toggleRecording} style={{ width: 140, height: 140, justifyContent: 'center', alignItems: 'center' }}>
+                        {recording ? (
+                          <View style={{ width: 36, height: 36, borderRadius: 6, backgroundColor: '#fff' }} />
+                        ) : (
+                          <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#EF4444' }} />
+                        )}
+                      </TouchableOpacity>
+                    </Animated.View>
+                    <Text style={{ fontSize: 17, fontWeight: '600', color: '#000', marginTop: 32 }}>
+                      {recording ? t.capture.recording : t.capture.tapToRecord}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#999', marginTop: 8 }}>
+                      {recording ? formatDuration(recordingDuration) : t.capture.shareYourMind}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -299,7 +520,7 @@ export default function Capture() {
                 <TextInput
                   value={note}
                   onChangeText={setNote}
-                  placeholder="Start writing..."
+                  placeholder={t.capture.writePlaceholder}
                   placeholderTextColor="#ccc"
                   multiline
                   autoFocus
@@ -310,8 +531,11 @@ export default function Capture() {
                     color: '#000',
                     textAlignVertical: 'top',
                     lineHeight: 28,
-                    paddingTop: 0,
-                  }}
+                    backgroundColor: '#f8f8f8',
+                    borderRadius: 20,
+                    padding: 20,
+                    outlineStyle: 'none',
+                  } as any}
                 />
               </View>
             )}
@@ -322,11 +546,18 @@ export default function Capture() {
         {step === 'mood' && (
           <View>
             <Text style={{ fontSize: 28, fontWeight: '700', color: '#000', marginTop: 24, marginBottom: 6 }}>
-              How are you feeling?
+              {t.capture.moodTitle}
             </Text>
             <Text style={{ fontSize: 15, color: '#999', marginBottom: 32 }}>
-              Select one or more
+              {t.capture.moodSubtitle}
             </Text>
+
+            {/* Audio preview on mood step */}
+            {audioUri && captureType === 'voice' && (
+              <View style={{ marginBottom: 24 }}>
+                <AudioPlayer uri={audioUri} duration={audioDuration} />
+              </View>
+            )}
 
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center' }}>
               {MOODS.map(mood => {
@@ -347,7 +578,7 @@ export default function Capture() {
                   >
                     <Text style={{ fontSize: 18 }}>{mood.emoji}</Text>
                     <Text style={{ fontSize: 15, fontWeight: '500', color: selected ? '#fff' : '#333' }}>
-                      {mood.label}
+                      {t.moods[mood.key as keyof typeof t.moods] || mood.key}
                     </Text>
                   </TouchableOpacity>
                 )
@@ -360,20 +591,27 @@ export default function Capture() {
         {step === 'save' && (
           <View>
             <Text style={{ fontSize: 28, fontWeight: '700', color: '#000', marginTop: 24, marginBottom: 6 }}>
-              Add a note
+              {t.capture.saveTitle}
             </Text>
             <Text style={{ fontSize: 15, color: '#999', marginBottom: 32 }}>
-              Optional — a thought, a feeling, anything.
+              {t.capture.saveSubtitle}
             </Text>
 
-            {/* Media preview */}
-            {mediaItems.length > 0 && (
+            {/* Media preview — images/video */}
+            {mediaItems.length > 0 && !audioUri && (
               <View style={{ flexDirection: 'row', gap: 8, marginBottom: 20 }}>
                 {mediaItems.map((item, i) => (
                   <View key={i} style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', backgroundColor: '#f0f0f0' }}>
                     <Image source={{ uri: item.uri }} style={{ width: 64, height: 64 }} />
                   </View>
                 ))}
+              </View>
+            )}
+
+            {/* Audio preview on save step */}
+            {audioUri && captureType === 'voice' && (
+              <View style={{ marginBottom: 20 }}>
+                <AudioPlayer uri={audioUri} duration={audioDuration} />
               </View>
             )}
 
@@ -385,7 +623,7 @@ export default function Capture() {
                   return (
                     <View key={m} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#f5f5f5', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16 }}>
                       <Text style={{ fontSize: 14 }}>{mood?.emoji}</Text>
-                      <Text style={{ fontSize: 13, color: '#333', fontWeight: '500' }}>{mood?.label}</Text>
+                      <Text style={{ fontSize: 13, color: '#333', fontWeight: '500' }}>{t.moods[mood?.key as keyof typeof t.moods] || mood?.key}</Text>
                     </View>
                   )
                 })}
@@ -397,7 +635,7 @@ export default function Capture() {
               <TextInput
                 value={note}
                 onChangeText={setNote}
-                placeholder="Write something..."
+                placeholder={t.capture.notePlaceholder}
                 placeholderTextColor="#ccc"
                 multiline
                 style={{
@@ -430,9 +668,7 @@ export default function Capture() {
               alignItems: 'center',
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>
-              {(captureType === 'photo' || captureType === 'video') && mediaItems.length === 0 ? 'Skip media' : 'Continue'}
-            </Text>
+            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>{t.common.continue}</Text>
           </TouchableOpacity>
         )}
 
@@ -448,7 +684,7 @@ export default function Capture() {
               alignItems: 'center',
             }}
           >
-            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Continue</Text>
+            <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>{t.common.continue}</Text>
           </TouchableOpacity>
         )}
 
@@ -471,7 +707,7 @@ export default function Capture() {
             ) : (
               <>
                 <Check size={20} color="#fff" />
-                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Save moment</Text>
+                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>{t.capture.saveMoment}</Text>
               </>
             )}
           </TouchableOpacity>

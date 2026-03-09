@@ -1,5 +1,6 @@
 import { View, Text } from 'react-native'
 import { colors } from '@/lib/theme'
+import { useI18n } from '@/lib/i18n'
 import Svg, { Circle, Text as SvgText } from 'react-native-svg'
 
 interface BloomScoreRingProps {
@@ -9,6 +10,7 @@ interface BloomScoreRingProps {
 }
 
 export function BloomScoreRing({ score, trend, label }: BloomScoreRingProps) {
+    const { t } = useI18n()
     const size = 160
     const stroke = 10
     const radius = (size - stroke) / 2
@@ -55,7 +57,7 @@ export function BloomScoreRing({ score, trend, label }: BloomScoreRingProps) {
             </Svg>
             {trend !== 0 && (
                 <Text style={{ fontSize: 13, color: trend > 0 ? '#10B981' : '#EF4444', fontWeight: '600', marginTop: 4 }}>
-                    {trend > 0 ? '+' : ''}{trend} from last period
+                    {trend > 0 ? '+' : ''}{trend} {t.evolution.fromLastPeriod}
                 </Text>
             )}
         </View>

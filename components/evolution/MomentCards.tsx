@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Image, Dimensions } from 'react-native'
 import { Mic } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
+import { useI18n } from '@/lib/i18n'
 
 const { width } = Dimensions.get('window')
 
@@ -48,6 +49,7 @@ export function groupMomentsByWeek(moments: Moment[]): { label: string; moments:
 // ─── MomentRiverCard ────────────────────────────────
 
 function MomentRiverCard({ moment, cardWidth, onPress }: { moment: Moment; cardWidth: number; onPress: () => void }) {
+    const { t } = useI18n()
     const mood = moment.moods?.[0]
     const moodColor = MOOD_COLORS[mood] || '#94A3B8'
     const time = new Date(moment.created_at)
@@ -149,7 +151,7 @@ function MomentRiverCard({ moment, cardWidth, onPress }: { moment: Moment; cardW
                             backgroundColor: moodColor + '14',
                             borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
                         }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor, textTransform: 'capitalize' }}>{mood}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor, textTransform: 'capitalize' }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
                         </View>
                     ) : <View />}
                     <Text style={{ fontSize: 11, color: colors.textFaint }}>{timeStr}</Text>
@@ -171,6 +173,7 @@ function MomentRiverCard({ moment, cardWidth, onPress }: { moment: Moment; cardW
 // ─── GridCard ───────────────────────────────────────
 
 function GridCard({ moment, onPress }: { moment: Moment; onPress: () => void }) {
+    const { t } = useI18n()
     const mood = moment.moods?.[0]
     const moodColor = MOOD_COLORS[mood] || '#94A3B8'
     const timeStr = new Date(moment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -258,7 +261,7 @@ function GridCard({ moment, onPress }: { moment: Moment; onPress: () => void }) 
                     {mood ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: moodColor }} />
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor, textTransform: 'capitalize' }}>{mood}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor, textTransform: 'capitalize' }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
                         </View>
                     ) : <View />}
                     <Text style={{ fontSize: 11, color: colors.textFaint }}>{timeStr}</Text>
@@ -276,6 +279,7 @@ interface MomentViewProps {
 }
 
 export function EmotionalRiver({ moments, onMomentPress }: MomentViewProps) {
+    const { t } = useI18n()
     const cardWidth = (width - 48) / 2 - 14
     const groups = useMemo(() => groupMomentsByWeek(moments), [moments])
 
@@ -283,9 +287,9 @@ export function EmotionalRiver({ moments, onMomentPress }: MomentViewProps) {
         return (
             <View style={{ backgroundColor: colors.surface2, borderRadius: 24, padding: 40, alignItems: 'center', marginTop: 8 }}>
                 <Text style={{ fontSize: 40, opacity: 0.25, marginBottom: 16 }}>✦</Text>
-                <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textFaint, textAlign: 'center' }}>No moments captured</Text>
+                <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textFaint, textAlign: 'center' }}>{t.evolution.noMoments}</Text>
                 <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>
-                    Your moments will flow here as you capture them
+                    {t.evolution.noMomentsSubtitle}
                 </Text>
             </View>
         )
@@ -301,7 +305,7 @@ export function EmotionalRiver({ moments, onMomentPress }: MomentViewProps) {
                             borderRadius: 12, paddingHorizontal: 14, paddingVertical: 6,
                         }}>
                             <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textTertiary, textTransform: 'uppercase' }}>
-                                {group.label} · {group.moments.length}
+                                {group.label === 'This Week' ? t.evolution.thisWeek : group.label === 'Last Week' ? t.evolution.lastWeek : group.label} · {group.moments.length}
                             </Text>
                         </View>
                     </View>
@@ -358,15 +362,16 @@ export function EmotionalRiver({ moments, onMomentPress }: MomentViewProps) {
 // ─── MomentsGrid ────────────────────────────────────
 
 export function MomentsGrid({ moments, onMomentPress }: MomentViewProps) {
+    const { t } = useI18n()
     const groups = useMemo(() => groupMomentsByWeek(moments), [moments])
 
     if (moments.length === 0) {
         return (
             <View style={{ backgroundColor: colors.surface2, borderRadius: 24, padding: 40, alignItems: 'center', marginTop: 8 }}>
                 <Text style={{ fontSize: 40, opacity: 0.25, marginBottom: 16 }}>✦</Text>
-                <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textFaint, textAlign: 'center' }}>No moments captured</Text>
+                <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textFaint, textAlign: 'center' }}>{t.evolution.noMoments}</Text>
                 <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center', marginTop: 8 }}>
-                    Your moments will flow here as you capture them
+                    {t.evolution.noMomentsSubtitle}
                 </Text>
             </View>
         )
@@ -377,10 +382,10 @@ export function MomentsGrid({ moments, onMomentPress }: MomentViewProps) {
             {groups.map((group, gi) => (
                 <View key={gi}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, marginTop: gi > 0 ? 20 : 0 }}>
-                        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }}>{group.label}</Text>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }}>{group.label === 'This Week' ? t.evolution.thisWeek : group.label === 'Last Week' ? t.evolution.lastWeek : group.label}</Text>
                         <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.bloom }} />
                         <Text style={{ fontSize: 13, color: colors.textSecondary }}>
-                            {group.moments.length} {group.moments.length === 1 ? 'moment' : 'moments'}
+                            {group.moments.length} {group.moments.length === 1 ? t.evolution.moment : t.evolution.moments}
                         </Text>
                     </View>
 

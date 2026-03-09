@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Mic } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
+import { useI18n } from '@/lib/i18n'
 
 interface MomentDetailProps {
     moment: Moment
@@ -10,6 +11,7 @@ interface MomentDetailProps {
 }
 
 export function MomentDetail({ moment, onClose }: MomentDetailProps) {
+    const { t, locale } = useI18n()
     const insets = useSafeAreaInsets()
     const hasImage = moment.media_url && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
     const isVoice = moment.type === 'voice'
@@ -78,7 +80,7 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
                                         paddingVertical: 6,
                                     }}>
                                         <Text style={{ fontSize: 14, fontWeight: '600', color: MOOD_COLORS[mood] || '#666', textTransform: 'capitalize' }}>
-                                            {mood}
+                                            {t.moods[mood as keyof typeof t.moods] || mood}
                                         </Text>
                                     </View>
                                 ))}
@@ -119,7 +121,7 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
                         <Text style={{ fontSize: 13, color: colors.textTertiary }}>
                             {new Date(moment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             {' · '}
-                            {new Date(moment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {new Date(moment.created_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric' })}
                             {moment.type !== 'write' ? ` · ${moment.type}` : ''}
                         </Text>
                     </View>

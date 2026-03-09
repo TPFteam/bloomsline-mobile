@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { View, Text, TouchableOpacity, Image } from 'react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
+import { useI18n } from '@/lib/i18n'
 
 interface RememberThisCardProps {
     moments: Moment[]
@@ -9,6 +10,7 @@ interface RememberThisCardProps {
 }
 
 export function RememberThisCard({ moments, onPress }: RememberThisCardProps) {
+    const { t } = useI18n()
     // Pick a random moment older than 2 days, different each load
     const memory = useMemo(() => {
         const now = Date.now()
@@ -24,18 +26,18 @@ export function RememberThisCard({ moments, onPress }: RememberThisCardProps) {
 
     const mood = memory.moods?.[0]
     const daysAgo = Math.round((Date.now() - new Date(memory.created_at).getTime()) / (24 * 60 * 60 * 1000))
-    const timeLabel = daysAgo === 7 ? 'One week ago' : daysAgo === 1 ? 'Yesterday' : `${daysAgo} days ago`
+    const timeLabel = daysAgo === 7 ? t.remember.oneWeekAgo : daysAgo === 1 ? t.remember.yesterday : t.remember.daysAgo.replace('{days}', String(daysAgo))
 
     return (
         <TouchableOpacity onPress={() => onPress(memory)} activeOpacity={0.8} style={{ marginBottom: 24 }}>
             <View style={{ backgroundColor: colors.surface3, borderRadius: 24, padding: 20 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 }}>
                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: colors.bloom }} />
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.bloom }}>Bloom</Text>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.bloom }}>{t.remember.bloom}</Text>
                 </View>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary, lineHeight: 22 }}>
-                    {timeLabel}, you felt{' '}
-                    <Text style={{ color: MOOD_COLORS[mood] || '#666', textTransform: 'capitalize' as any }}>{mood}</Text>
+                    {timeLabel}, {t.remember.youFelt}{' '}
+                    <Text style={{ color: MOOD_COLORS[mood] || '#666', textTransform: 'capitalize' as any }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
                 </Text>
 
                 {/* Mini moment preview */}

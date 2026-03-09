@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import { colors } from '@/lib/theme'
 import { useAuth } from '@/lib/auth-context'
+import { useI18n } from '@/lib/i18n'
 import {
   fetchBookingSettings, fetchAvailableSlots, createBooking,
   BookingSettings, SessionType, TimeSlot,
@@ -21,6 +22,8 @@ export default function BookingScreen() {
   const navigation = useNavigation()
   const { practitionerId } = useLocalSearchParams<{ practitionerId: string }>()
   const { user, member } = useAuth()
+  const { t, locale } = useI18n()
+  const loc = locale === 'fr' ? 'fr-FR' : 'en-US'
 
   const goBack = () => {
     if (navigation.canGoBack()) {
@@ -111,7 +114,7 @@ export default function BookingScreen() {
     return { days, offset: firstDay }
   }, [calendarMonth, settings])
 
-  const monthLabel = new Date(calendarMonth.year, calendarMonth.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const monthLabel = new Date(calendarMonth.year, calendarMonth.month).toLocaleDateString(loc, { month: 'long', year: 'numeric' })
 
   function prevMonth() {
     setCalendarMonth(p => {
@@ -162,7 +165,7 @@ export default function BookingScreen() {
       setRequiresApproval(!!result.requiresApproval)
       setSubmitted(true)
     } else {
-      Alert.alert('Booking Failed', result.error || 'Please try again.')
+      Alert.alert(t.booking.bookingFailed, result.error || t.booking.bookingFailedMessage)
     }
   }
 
@@ -179,10 +182,10 @@ export default function BookingScreen() {
   if (!settings) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FAFAF8' }}>
-        <Header insets={insets} onBack={() => goBack()} title="Book Appointment" />
+        <Header insets={insets} onBack={() => goBack()} title={t.booking.title} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
           <Text style={{ fontSize: 15, color: '#8A8A8A', textAlign: 'center' }}>
-            Online booking is not available for this practitioner.
+            {t.booking.notAvailable}
           </Text>
         </View>
       </View>
@@ -194,7 +197,7 @@ export default function BookingScreen() {
   if (submitted) {
     return (
       <View style={{ flex: 1, backgroundColor: '#FAFAF8' }}>
-        <Header insets={insets} onBack={() => goBack()} title="Booking Confirmed" />
+        <Header insets={insets} onBack={() => goBack()} title={t.booking.bookingConfirmed} />
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
           <View style={{
             width: 64, height: 64, borderRadius: 32, backgroundColor: colors.bloom,
@@ -203,12 +206,10 @@ export default function BookingScreen() {
             <Text style={{ fontSize: 28, color: '#fff' }}>✓</Text>
           </View>
           <Text style={{ fontSize: 22, fontWeight: '700', color: colors.primary, marginBottom: 8, textAlign: 'center' }}>
-            {requiresApproval ? 'Request Sent' : 'Booking Confirmed'}
+            {requiresApproval ? t.booking.requestSent : t.booking.bookingConfirmed}
           </Text>
           <Text style={{ fontSize: 15, color: '#8A8A8A', textAlign: 'center', lineHeight: 22 }}>
-            {requiresApproval
-              ? 'Your booking request has been sent. The practitioner will confirm your appointment shortly.'
-              : 'Your session has been booked. You will receive a confirmation email.'}
+            {requiresApproval ? t.booking.requestMessage : t.booking.confirmMessage}
           </Text>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -218,7 +219,7 @@ export default function BookingScreen() {
               paddingHorizontal: 32, paddingVertical: 14,
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Done</Text>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.common.done}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -229,7 +230,7 @@ export default function BookingScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#FAFAF8' }}>
-      <Header insets={insets} onBack={() => stepIndex > 0 ? setStep(STEPS[stepIndex - 1]) : goBack()} title="Book Appointment" />
+      <Header insets={insets} onBack={() => stepIndex > 0 ? setStep(STEPS[stepIndex - 1]) : goBack()} title={t.booking.title} />
 
       {/* Progress */}
       <View style={{ flexDirection: 'row', paddingHorizontal: 20, paddingVertical: 12, gap: 6 }}>
@@ -248,7 +249,7 @@ export default function BookingScreen() {
           {step === 'service' && (
             <View style={{ gap: 12 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 4 }}>
-                Select a Service
+                {t.booking.selectService}
               </Text>
               {settings.booking_instructions && (
                 <Text style={{ fontSize: 13, color: '#8A8A8A', marginBottom: 8 }}>
@@ -269,7 +270,7 @@ export default function BookingScreen() {
                   >
                     <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>{st.name}</Text>
                     <View style={{ flexDirection: 'row', gap: 16, marginTop: 6 }}>
-                      <Text style={{ fontSize: 13, color: '#8A8A8A' }}>{st.duration} minutes</Text>
+                      <Text style={{ fontSize: 13, color: '#8A8A8A' }}>{st.duration} {t.booking.minutes}</Text>
                       {st.price != null && st.price > 0 && (
                         <Text style={{ fontSize: 13, color: '#8A8A8A' }}>${st.price}</Text>
                       )}
@@ -284,7 +285,7 @@ export default function BookingScreen() {
           {step === 'datetime' && (
             <View style={{ gap: 20 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary }}>
-                Choose Date & Time
+                {t.booking.chooseDatetime}
               </Text>
 
               {/* Calendar */}
@@ -301,8 +302,8 @@ export default function BookingScreen() {
 
                 {/* Day headers */}
                 <View style={{ flexDirection: 'row' }}>
-                  {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
-                    <View key={d} style={{ flex: 1, alignItems: 'center', paddingBottom: 8 }}>
+                  {t.booking.dayHeaders.map((d: string, i: number) => (
+                    <View key={`${d}-${i}`} style={{ flex: 1, alignItems: 'center', paddingBottom: 8 }}>
                       <Text style={{ fontSize: 12, fontWeight: '500', color: '#8A8A8A' }}>{d}</Text>
                     </View>
                   ))}
@@ -347,18 +348,18 @@ export default function BookingScreen() {
               {selectedDate && (
                 <View>
                   <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary, marginBottom: 12 }}>
-                    Available Times
+                    {t.booking.availableTimes}
                   </Text>
                   {slotsLoading ? (
                     <ActivityIndicator size="small" color={colors.bloom} style={{ marginTop: 12 }} />
                   ) : slots.length === 0 ? (
-                    <Text style={{ fontSize: 14, color: '#8A8A8A' }}>No available times on this date.</Text>
+                    <Text style={{ fontSize: 14, color: '#8A8A8A' }}>{t.booking.noTimes}</Text>
                   ) : (
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       {slots.map(slot => {
                         const isSelected = selectedSlot?.slot_start === slot.slot_start
-                        const time = new Date(slot.slot_start).toLocaleTimeString('en-US', {
-                          hour: 'numeric', minute: '2-digit', hour12: true,
+                        const time = new Date(slot.slot_start).toLocaleTimeString(loc, {
+                          hour: 'numeric', minute: '2-digit', hour12: locale !== 'fr',
                         })
                         return (
                           <TouchableOpacity
@@ -384,7 +385,7 @@ export default function BookingScreen() {
                   )}
                   {practitionerTz && practitionerTz !== Intl.DateTimeFormat().resolvedOptions().timeZone && (
                     <Text style={{ fontSize: 12, color: '#8A8A8A', marginTop: 8 }}>
-                      Times shown in your timezone ({Intl.DateTimeFormat().resolvedOptions().timeZone})
+                      {t.booking.timezone} ({Intl.DateTimeFormat().resolvedOptions().timeZone})
                     </Text>
                   )}
                 </View>
@@ -396,19 +397,19 @@ export default function BookingScreen() {
           {step === 'details' && (
             <View style={{ gap: 16 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 4 }}>
-                Your Details
+                {t.booking.yourDetails}
               </Text>
-              <InputField label="Full Name *" value={clientName} onChangeText={setClientName} placeholder="Your full name" />
-              <InputField label="Email *" value={clientEmail} onChangeText={setClientEmail} placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
-              <InputField label="Phone" value={clientPhone} onChangeText={setClientPhone} placeholder="Optional" keyboardType="phone-pad" />
+              <InputField label={t.booking.fullName} value={clientName} onChangeText={setClientName} placeholder={t.booking.namePlaceholder} />
+              <InputField label={t.booking.email} value={clientEmail} onChangeText={setClientEmail} placeholder={t.booking.emailPlaceholder} keyboardType="email-address" autoCapitalize="none" />
+              <InputField label={t.booking.phone} value={clientPhone} onChangeText={setClientPhone} placeholder={t.booking.phonePlaceholder} keyboardType="phone-pad" />
               <View>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
-                  Notes
+                  {t.booking.notes}
                 </Text>
                 <TextInput
                   value={notes}
                   onChangeText={setNotes}
-                  placeholder="Anything you'd like us to know"
+                  placeholder={t.booking.notesPlaceholder}
                   placeholderTextColor="#bbb"
                   multiline
                   style={{
@@ -425,38 +426,38 @@ export default function BookingScreen() {
           {step === 'confirm' && selectedService && selectedSlot && (
             <View style={{ gap: 16 }}>
               <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 4 }}>
-                Review & Confirm
+                {t.booking.reviewConfirm}
               </Text>
               <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#EBEBEB', gap: 14 }}>
-                <SummaryRow label="Service" value={selectedService.name} />
-                <SummaryRow label="Duration" value={`${selectedService.duration} min`} />
+                <SummaryRow label={t.booking.service} value={selectedService.name} />
+                <SummaryRow label={t.booking.duration} value={`${selectedService.duration} min`} />
                 {selectedService.price != null && selectedService.price > 0 && (
-                  <SummaryRow label="Price" value={`$${selectedService.price}`} />
+                  <SummaryRow label={t.booking.price} value={`$${selectedService.price}`} />
                 )}
                 <View style={{ height: 1, backgroundColor: '#EBEBEB' }} />
                 <SummaryRow
-                  label="Date"
-                  value={new Date(selectedSlot.slot_start).toLocaleDateString('en-US', {
+                  label={t.booking.dateLabel}
+                  value={new Date(selectedSlot.slot_start).toLocaleDateString(loc, {
                     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
                   })}
                 />
                 <SummaryRow
-                  label="Time"
-                  value={new Date(selectedSlot.slot_start).toLocaleTimeString('en-US', {
-                    hour: 'numeric', minute: '2-digit', hour12: true,
+                  label={t.booking.timeLabel}
+                  value={new Date(selectedSlot.slot_start).toLocaleTimeString(loc, {
+                    hour: 'numeric', minute: '2-digit', hour12: locale !== 'fr',
                   })}
                 />
                 <View style={{ height: 1, backgroundColor: '#EBEBEB' }} />
-                <SummaryRow label="Name" value={clientName} />
-                <SummaryRow label="Email" value={clientEmail} />
-                {clientPhone.trim() ? <SummaryRow label="Phone" value={clientPhone} /> : null}
-                {notes.trim() ? <SummaryRow label="Notes" value={notes} /> : null}
+                <SummaryRow label={t.booking.nameLabel} value={clientName} />
+                <SummaryRow label={t.booking.emailLabel} value={clientEmail} />
+                {clientPhone.trim() ? <SummaryRow label={t.booking.phoneLabel} value={clientPhone} /> : null}
+                {notes.trim() ? <SummaryRow label={t.booking.notesLabel} value={notes} /> : null}
               </View>
 
               {settings.cancellation_policy && (
                 <View style={{ backgroundColor: colors.surface1, borderRadius: 14, padding: 16 }}>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
-                    Cancellation Policy
+                    {t.booking.cancellationPolicy}
                   </Text>
                   <Text style={{ fontSize: 13, color: colors.primary, lineHeight: 18 }}>
                     {settings.cancellation_policy}
@@ -492,7 +493,7 @@ export default function BookingScreen() {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <Text style={{ fontSize: 16, fontWeight: '600', color: canContinue() ? '#fff' : '#8A8A8A' }}>
-                {step === 'confirm' ? 'Confirm Booking' : 'Continue'}
+                {step === 'confirm' ? t.booking.confirmBooking : t.common.continue}
               </Text>
             )}
           </TouchableOpacity>

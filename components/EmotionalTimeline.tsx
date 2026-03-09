@@ -2,6 +2,7 @@ import { View, Text, TouchableOpacity, Dimensions } from 'react-native'
 import { MOOD_SCORES, MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { formatTime } from '@/components/DayNav'
+import { useI18n } from '@/lib/i18n'
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from 'react-native-svg'
 
 const { width } = Dimensions.get('window')
@@ -19,6 +20,7 @@ interface EmotionalTimelineProps {
 }
 
 export function EmotionalTimeline({ moments, showNow, onMomentPress }: EmotionalTimelineProps) {
+    const { t } = useI18n()
     const sorted = [...moments]
         .filter(m => m.moods && m.moods.length > 0)
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -69,11 +71,11 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress }: Emotional
             {/* Card header */}
             <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase' }}>
-                    Emotional flow
+                    {t.timeline.emotionalFlow}
                 </Text>
                 <View style={{ backgroundColor: '#f0f0f0', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary }}>
-                        {sorted.length} {sorted.length === 1 ? 'moment' : 'moments'}
+                        {sorted.length} {sorted.length === 1 ? t.evolution.moment : t.evolution.moments}
                     </Text>
                 </View>
             </View>
@@ -124,7 +126,7 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress }: Emotional
                                 strokeDasharray="2,4" opacity={0.1}
                             />
                             <SvgText x={nowX} y={CURVE_TOP - 10} fontSize={9} fill={colors.textFaint} textAnchor="middle" fontWeight="600">
-                                now
+                                {t.timeline.now}
                             </SvgText>
                         </>
                     )}
@@ -191,7 +193,7 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress }: Emotional
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: latestColor }} />
                     <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary, textTransform: 'capitalize' }}>
-                        {latest.mood}
+                        {t.moods[latest.mood as keyof typeof t.moods] || latest.mood}
                     </Text>
                     <Text style={{ fontSize: 13, color: colors.textTertiary }}>
                         · {formatTime(latest.time.toISOString())}

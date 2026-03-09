@@ -5,11 +5,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
 import { BackButton } from '@/components/ui/BackButton'
 import { colors } from '@/lib/theme'
+import { useI18n } from '@/lib/i18n'
 
 export default function SignIn() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { signIn, signInWithGoogle } = useAuth()
+  const { t } = useI18n()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -47,10 +49,10 @@ export default function SignIn() {
 
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
           <Text style={{ fontSize: 32, fontWeight: '700', color: '#000', marginBottom: 8 }}>
-            Welcome back.
+            {t.auth.signInTitle}
           </Text>
           <Text style={{ fontSize: 17, color: '#999', marginBottom: 40 }}>
-            Pick up where you left off.
+            {t.auth.signInSubtitle}
           </Text>
 
           {error ? (
@@ -63,7 +65,7 @@ export default function SignIn() {
             <TextInput
               value={email}
               onChangeText={setEmail}
-              placeholder="Email"
+              placeholder={t.auth.emailPlaceholder}
               placeholderTextColor="#bbb"
               autoCapitalize="none"
               keyboardType="email-address"
@@ -79,7 +81,7 @@ export default function SignIn() {
             <TextInput
               value={password}
               onChangeText={setPassword}
-              placeholder="Password"
+              placeholder={t.auth.passwordPlaceholder}
               placeholderTextColor="#bbb"
               secureTextEntry
               style={{
@@ -108,14 +110,14 @@ export default function SignIn() {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>Sign in</Text>
+              <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>{t.auth.signIn}</Text>
             )}
           </TouchableOpacity>
 
           {/* Divider */}
           <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 16 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: '#eee' }} />
-            <Text style={{ marginHorizontal: 16, color: '#bbb', fontSize: 13 }}>or</Text>
+            <Text style={{ marginHorizontal: 16, color: '#bbb', fontSize: 13 }}>{t.common.or}</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: '#eee' }} />
           </View>
 
@@ -129,7 +131,7 @@ export default function SignIn() {
               alignItems: 'center',
             }}
           >
-            <Text style={{ color: '#000', fontSize: 17, fontWeight: '600' }}>Continue with Google</Text>
+            <Text style={{ color: '#000', fontSize: 17, fontWeight: '600' }}>{t.auth.continueWithGoogle}</Text>
           </TouchableOpacity>
         </View>
       </View>
