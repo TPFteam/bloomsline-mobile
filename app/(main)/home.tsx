@@ -129,8 +129,8 @@ export default function Home() {
         {/* Greeting */}
         <View style={{ marginBottom: 20 }}>
           <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>
-            {t.home[getGreetingKey()]},{'\n'}
-            <Text style={{ color: '#8A8A8A' }}>{firstName}.</Text>
+            {t.home[getGreetingKey()]}{firstName ? `,\n` : '.'}
+            {firstName ? <Text style={{ color: '#8A8A8A' }}>{firstName}.</Text> : null}
           </Text>
         </View>
 
