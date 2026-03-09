@@ -75,7 +75,7 @@ export default function Home() {
     router.push({ pathname: '/(main)/capture', params: { type } })
   }
 
-  const firstName = member?.first_name || user?.user_metadata?.full_name?.split(' ')[0] || ''
+  const firstName = member?.first_name || user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || ''
 
   const fetchMoments = useCallback(async () => {
     const start = new Date(selectedDate)
