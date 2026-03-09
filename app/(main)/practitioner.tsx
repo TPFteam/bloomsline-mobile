@@ -716,6 +716,28 @@ export default function PractitionerScreen() {
                   </View>
                 </View>
 
+                {/* Practitioner info */}
+                {practitioner && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16, padding: 12, backgroundColor: colors.surface2, borderRadius: 14 }}>
+                    {practitioner.avatar_url ? (
+                      <Image source={{ uri: practitioner.avatar_url }} style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface1 }} />
+                    ) : (
+                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.bloom, justifyContent: 'center', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{(practitioner.full_name || '?')[0].toUpperCase()}</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{practitioner.full_name}</Text>
+                      {practitioner.headline ? (
+                        <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>{practitioner.headline}</Text>
+                      ) : practitioner.credentials.length > 0 ? (
+                        <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 1 }} numberOfLines={1}>{practitioner.credentials.join(', ')}</Text>
+                      ) : null}
+                    </View>
+                    <Text style={{ fontSize: 10, color: colors.textTertiary, fontWeight: '500' }}>{viewingResource.type === 'assignment' ? 'Assigned by' : 'Shared by'}</Text>
+                  </View>
+                )}
+
                 {viewingResource.description && (
                   <View style={{ marginBottom: 16 }}>
                     <RenderHtml
@@ -807,6 +829,27 @@ export default function PractitionerScreen() {
 
               {/* Blocks */}
               <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
+                {/* Practitioner info */}
+                {practitioner && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' }}>
+                    {practitioner.avatar_url ? (
+                      <Image source={{ uri: practitioner.avatar_url }} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface1 }} />
+                    ) : (
+                      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.bloom, justifyContent: 'center', alignItems: 'center' }}>
+                        <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{(practitioner.full_name || '?')[0].toUpperCase()}</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{practitioner.full_name}</Text>
+                      {practitioner.headline ? (
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>{practitioner.headline}</Text>
+                      ) : practitioner.credentials.length > 0 ? (
+                        <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>{practitioner.credentials.join(', ')}</Text>
+                      ) : null}
+                    </View>
+                    <Text style={{ fontSize: 11, color: colors.textTertiary }}>Shared by</Text>
+                  </View>
+                )}
                 {(() => {
                   const blocks: any[] = Array.isArray(fillResource.blocks) ? fillResource.blocks
                     : Array.isArray(fillResource.content?.blocks) ? fillResource.content.blocks : []
