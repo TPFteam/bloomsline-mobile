@@ -499,24 +499,30 @@ export default function PractitionerScreen() {
         {/* RESOURCES */}
         {/* ═══════════════════════════════════════════════ */}
         <View style={{ marginBottom: 32 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase' }}>
-              {t.practitioner.resources}
-            </Text>
-            {resources.length > 3 && (
-              <TouchableOpacity onPress={() => setShowAllResources(!showAllResources)}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>
-                  {showAllResources ? t.practitioner.viewLess : t.practitioner.viewAll}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 14 }}>
+            {t.practitioner.resources}
+          </Text>
 
           {resources.length > 0 ? (
             <View style={{ gap: 10 }}>
-              {displayResources.map((item) => (
+              {resources.slice(0, 3).map((item) => (
                 <ResourceCard key={item.id} item={item} onPress={() => setViewingResource(item)} />
               ))}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => { setAssessmentFilter('all'); setQuickModal('assessments') }}
+                style={{
+                  backgroundColor: '#fff', borderRadius: 22, padding: 24,
+                  borderWidth: 1, borderColor: '#EBEBEB', marginTop: 4,
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 10 }}>
+                  {t.practitioner.myAssessments}
+                </Text>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
+                  {t.practitioner.myAssessmentsCta}
+                </Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <EmptyState emoji="📋" title={t.practitioner.noResources} subtitle={t.practitioner.noResourcesSubtitle} />
@@ -602,21 +608,6 @@ export default function PractitionerScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => { setAssessmentFilter('all'); setQuickModal('assessments') }}
-              style={{
-                backgroundColor: '#fff', borderRadius: 22, padding: 24,
-                borderWidth: 1, borderColor: '#EBEBEB',
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 10 }}>
-                {t.practitioner.myAssessments}
-              </Text>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
-                {t.practitioner.myAssessmentsCta}
-              </Text>
-            </TouchableOpacity>
           </View>
         </View>
         </>)}
