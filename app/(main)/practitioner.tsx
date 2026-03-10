@@ -561,32 +561,6 @@ export default function PractitionerScreen() {
           )}
         </View>
 
-        {/* ═══════════════════════════════════════════════ */}
-        {/* QUICK ACCESS */}
-        {/* ═══════════════════════════════════════════════ */}
-        <View>
-          <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 14 }}>
-            {t.practitioner.quickAccess}
-          </Text>
-          <View style={{ gap: 10 }}>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => setQuickModal('practitioners')}
-              style={{
-                backgroundColor: colors.bloom, borderRadius: 22, padding: 24,
-                shadowColor: colors.bloom, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 8,
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', marginBottom: 10 }}>
-                {t.practitioner.myPractitioners}
-              </Text>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 }}>
-                {t.practitioner.myPractitionersCta}
-              </Text>
-            </TouchableOpacity>
-
-          </View>
-        </View>
         </>)}
       </PullToRefreshScrollView>
 
