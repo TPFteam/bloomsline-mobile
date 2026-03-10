@@ -87,14 +87,13 @@ export default function PractitionerScreen() {
   const { width: screenWidth } = useWindowDimensions()
   const router = useRouter()
   const { member } = useAuth()
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
 
   const [loading, setLoading] = useState(true)
   const [practitioner, setPractitioner] = useState<PractitionerProfile | null>(null)
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingSession[]>([])
   const [pastSessions, setPastSessions] = useState<UpcomingSession[]>([])
   const [resources, setResources] = useState<ResourceItem[]>([])
-  const [showAllResources, setShowAllResources] = useState(false)
   const [showAllHistory, setShowAllHistory] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
 
@@ -292,7 +291,6 @@ export default function PractitionerScreen() {
 
   if (loading) return <PageLoader />
 
-  const displayResources = showAllResources ? resources : resources.slice(0, 3)
   const displayHistory = showAllHistory ? pastSessions : pastSessions.slice(0, 3)
   const filteredResources = assessmentFilter === 'all' ? resources
     : assessmentFilter === 'pending' ? resources.filter(r => r.status !== 'completed')
