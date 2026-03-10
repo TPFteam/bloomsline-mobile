@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { FileText, Table2, BookOpen, Dumbbell, FileQuestion } from 'lucide-react-native'
 import {
   View,
   Text,
@@ -1069,6 +1070,14 @@ export default function PractitionerScreen() {
   )
 }
 
+const RESOURCE_ICON_MAP: Record<string, { icon: any; color: string; bg: string }> = {
+  worksheet: { icon: FileText, color: colors.bloom, bg: '#E8F5F2' },
+  table: { icon: Table2, color: '#6366F1', bg: '#EEF2FF' },
+  psychoeducation: { icon: BookOpen, color: '#F59E0B', bg: '#FEF3C7' },
+  exercise: { icon: Dumbbell, color: '#EC4899', bg: '#FCE7F3' },
+  default: { icon: FileQuestion, color: '#8A8A8A', bg: colors.surface1 },
+}
+
 // ─── Shared Components ──────────────────────────────
 
 function EmptyState({ emoji, title, subtitle }: { emoji: string; title: string; subtitle: string }) {
@@ -1110,10 +1119,12 @@ function ResourceCard({ item, onPress }: { item: ResourceItem; onPress: () => vo
       backgroundColor: '#fff', borderRadius: 18, padding: 16,
       borderWidth: 1, borderColor: '#EBEBEB',
     }}>
-      <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surface1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 20 }}>
-          {item.resourceType === 'table' ? '📊' : item.resourceType === 'worksheet' ? '📝' : item.resourceType === 'psychoeducation' ? '📖' : item.resourceType === 'exercise' ? '🏋️' : '📄'}
-        </Text>
+      <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: RESOURCE_ICON_MAP[item.resourceType || '']?.bg || '#F0F5F4', alignItems: 'center', justifyContent: 'center' }}>
+        {(() => {
+          const cfg = RESOURCE_ICON_MAP[item.resourceType || ''] || RESOURCE_ICON_MAP.default
+          const Icon = cfg.icon
+          return <Icon size={20} color={cfg.color} strokeWidth={1.8} />
+        })()}
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }} numberOfLines={1}>{item.title}</Text>
