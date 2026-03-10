@@ -1028,7 +1028,7 @@ export default function PractitionerScreen() {
                 )}
 
                 {/* Stats */}
-                <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                   {[
                     { value: pastSessions.filter(s => s.status === 'completed').length, label: t.practitioner.statsSessions },
                     { value: resources.length, label: t.practitioner.statsResources },
@@ -1040,6 +1040,20 @@ export default function PractitionerScreen() {
                     </View>
                   ))}
                 </View>
+
+                {/* View Profile */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    setQuickModal(null)
+                    router.push({ pathname: '/(main)/practitioner-profile', params: { practitionerId: member!.practitioner_id } })
+                  }}
+                  style={{
+                    backgroundColor: colors.primary, borderRadius: 16, paddingVertical: 14, alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.practitioner.viewProfileCta}</Text>
+                </TouchableOpacity>
               </>
             ) : (
               <EmptyState emoji="👤" title={t.practitioner.noPractitioner} subtitle={t.practitioner.noPractitionerSubtitle} />
