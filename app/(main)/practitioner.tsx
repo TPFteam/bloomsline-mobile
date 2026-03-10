@@ -470,27 +470,6 @@ export default function PractitionerScreen() {
             </Text>
           </TouchableOpacity>
 
-          {practitioner.slug && (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                if (member?.practitioner_id) {
-                  router.push({ pathname: '/(main)/practitioner-profile', params: { practitionerId: member.practitioner_id } })
-                }
-              }}
-              style={{
-                backgroundColor: '#fff', borderRadius: 22, padding: 24,
-                borderWidth: 1, borderColor: '#EBEBEB',
-              }}
-            >
-              <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 10 }}>
-                {t.practitioner.viewProfile}
-              </Text>
-              <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
-                {t.practitioner.viewProfileCta}
-              </Text>
-            </TouchableOpacity>
-          )}
         </View>
 
         {/* ═══════════════════════════════════════════════ */}
