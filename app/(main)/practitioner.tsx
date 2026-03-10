@@ -1111,7 +1111,9 @@ function ResourceCard({ item, onPress }: { item: ResourceItem; onPress: () => vo
       borderWidth: 1, borderColor: '#EBEBEB',
     }}>
       <View style={{ width: 44, height: 44, borderRadius: 14, backgroundColor: colors.surface1, alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ fontSize: 20 }}>📄</Text>
+        <Text style={{ fontSize: 20 }}>
+          {item.resourceType === 'table' ? '📊' : item.resourceType === 'worksheet' ? '📝' : item.resourceType === 'psychoeducation' ? '📖' : item.resourceType === 'exercise' ? '🏋️' : '📄'}
+        </Text>
       </View>
       <View style={{ flex: 1 }}>
         <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }} numberOfLines={1}>{item.title}</Text>
