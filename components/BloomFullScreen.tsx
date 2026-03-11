@@ -1,10 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Animated } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, TextInput, KeyboardAvoidingView, Platform, Animated, Easing } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useBloomChat } from '@/lib/hooks/useBloomChat'
 import { useI18n } from '@/lib/i18n'
 import { ArrowUp, Mic } from 'lucide-react-native'
 import { colors } from '@/lib/theme'
+
+const BLOOM_EMOTIONS = [
+  { color: '#4A9A86', spread: 0,  scale: 1,   rotation: 0   },
+  { color: '#5BBE6E', spread: 8,  scale: 1.15, rotation: 12  },
+  { color: '#5A9ECF', spread: 5,  scale: 1.05, rotation: -8  },
+  { color: '#E8956A', spread: 4,  scale: 1.1,  rotation: 6   },
+  { color: '#C47DB5', spread: 2,  scale: 0.95, rotation: -4  },
+  { color: '#4A9A86', spread: 0,  scale: 1,   rotation: 0   },
+]
+const BLOOM_DOT = 16
+const BLOOM_GAP = 18
 
 interface BloomFullScreenProps {
     onClose: () => void
@@ -17,8 +28,25 @@ export function BloomFullScreen({ onClose, firstName }: BloomFullScreenProps) {
     const chatScrollRef = useRef<ScrollView>(null)
     const [chatInput, setChatInput] = useState('')
     const fadeAnim = useRef(new Animated.Value(0)).current
-    const logoFloat = useRef(new Animated.Value(0)).current
     const [greeting] = useState(() => t.bloom.greetings[Math.floor(Math.random() * t.bloom.greetings.length)])
+
+    // Emotional dots animation
+    const dotAnims = useRef(
+      [0, 1, 2, 3].map(() => ({
+        translateX: new Animated.Value(0),
+        translateY: new Animated.Value(0),
+        scale: new Animated.Value(1),
+      }))
+    ).current
+    const dotRotation = useRef(new Animated.Value(0)).current
+    const [dotColor, setDotColor] = useState(BLOOM_EMOTIONS[0].color)
+    const emotionIdx = useRef(0)
+    const dotPositions = [
+      { x: 0, y: -BLOOM_GAP },
+      { x: -BLOOM_GAP, y: 0 },
+      { x: BLOOM_GAP, y: 0 },
+      { x: 0, y: BLOOM_GAP },
+    ]
 
     const {
         messages,
@@ -31,6 +59,30 @@ export function BloomFullScreen({ onClose, firstName }: BloomFullScreenProps) {
     const displaySuggestions = suggestions.length > 0 ? suggestions : t.bloom.suggestions
     const hasMessages = messages.length > 1
 
+    function runDotCycle() {
+      const nextIdx = (emotionIdx.current + 1) % BLOOM_EMOTIONS.length
+      emotionIdx.current = nextIdx
+      const em = BLOOM_EMOTIONS[nextIdx]
+      setDotColor(em.color)
+
+      const anims = dotAnims.map((anim, i) => {
+        const bp = dotPositions[i]
+        const sx = bp.x !== 0 ? (bp.x > 0 ? em.spread : -em.spread) : 0
+        const sy = bp.y !== 0 ? (bp.y > 0 ? em.spread : -em.spread) : 0
+        return Animated.sequence([
+          Animated.delay(i * 80),
+          Animated.parallel([
+            Animated.spring(anim.translateX, { toValue: sx, friction: 6, tension: 30, useNativeDriver: true }),
+            Animated.spring(anim.translateY, { toValue: sy, friction: 6, tension: 30, useNativeDriver: true }),
+            Animated.spring(anim.scale, { toValue: em.scale + (i % 2 === 0 ? 0.06 : -0.03), friction: 5, tension: 35, useNativeDriver: true }),
+          ]),
+        ])
+      })
+      const rot = Animated.timing(dotRotation, { toValue: em.rotation, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      Animated.parallel([...anims, rot]).start()
+      setTimeout(runDotCycle, 2800)
+    }
+
     useEffect(() => {
         Animated.timing(fadeAnim, {
             toValue: 1,
@@ -38,12 +90,8 @@ export function BloomFullScreen({ onClose, firstName }: BloomFullScreenProps) {
             useNativeDriver: true,
         }).start()
 
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(logoFloat, { toValue: -8, duration: 2500, useNativeDriver: true }),
-                Animated.timing(logoFloat, { toValue: 8, duration: 2500, useNativeDriver: true }),
-            ])
-        ).start()
+        const timeout = setTimeout(runDotCycle, 800)
+        return () => clearTimeout(timeout)
     }, [])
 
     useEffect(() => {
@@ -89,18 +137,35 @@ export function BloomFullScreen({ onClose, firstName }: BloomFullScreenProps) {
                             paddingTop: insets.top + 80,
                             paddingHorizontal: 40,
                         }}>
-                            {/* Bloom logo — soft float */}
-                            <Animated.View style={{
-                                marginBottom: 40,
-                                transform: [{ translateY: logoFloat }],
-                            }}>
-                                <View style={{ width: 48, height: 48, justifyContent: 'center', alignItems: 'center' }}>
-                                    <View style={{
-                                        width: 28, height: 28, borderRadius: 14,
-                                        backgroundColor: colors.bloom,
-                                    }} />
-                                </View>
-                            </Animated.View>
+                            {/* Bloom emotional dots */}
+                            <View style={{ marginBottom: 40, width: 64, height: 64, justifyContent: 'center', alignItems: 'center' }}>
+                                <Animated.View style={{
+                                    width: 64, height: 64,
+                                    justifyContent: 'center', alignItems: 'center',
+                                    transform: [{ rotate: dotRotation.interpolate({ inputRange: [-12, 0, 12], outputRange: ['-12deg', '0deg', '12deg'] }) }],
+                                }}>
+                                    {dotAnims.map((anim, i) => (
+                                        <Animated.View
+                                            key={i}
+                                            style={{
+                                                position: 'absolute',
+                                                width: BLOOM_DOT, height: BLOOM_DOT, borderRadius: BLOOM_DOT / 2,
+                                                backgroundColor: dotColor,
+                                                shadowColor: dotColor,
+                                                shadowOffset: { width: 0, height: 2 },
+                                                shadowOpacity: 0.35,
+                                                shadowRadius: 6,
+                                                elevation: 4,
+                                                transform: [
+                                                    { translateX: Animated.add(new Animated.Value(dotPositions[i].x), anim.translateX) },
+                                                    { translateY: Animated.add(new Animated.Value(dotPositions[i].y), anim.translateY) },
+                                                    { scale: anim.scale },
+                                                ],
+                                            }}
+                                        />
+                                    ))}
+                                </Animated.View>
+                            </View>
 
                             {/* Greeting */}
                             <Text style={{
