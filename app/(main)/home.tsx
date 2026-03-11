@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
-import { Camera, Video, Mic, PenLine, Settings } from 'lucide-react-native'
+import { Camera, Video, Mic, PenLine, Settings, BookOpen } from 'lucide-react-native'
 import { colors, CAPTURE_TYPE_COLORS } from '@/lib/theme'
 
 // Extracted components
@@ -358,6 +358,28 @@ export default function Home() {
                 </Animated.Text>
               </View>
               <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>{t.home.capture}</Text>
+            </TouchableOpacity>
+
+            {/* Stories — write button */}
+            <TouchableOpacity
+              onPress={() => router.push('/(main)/stories')}
+              activeOpacity={0.8}
+              style={{ alignItems: 'center', gap: 8 }}
+            >
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: '#fff',
+                borderWidth: 1, borderColor: '#E5E5E3',
+                justifyContent: 'center', alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+                elevation: 2,
+              }}>
+                <BookOpen size={22} color={colors.primary} strokeWidth={1.8} />
+              </View>
+              <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>{t.stories?.section || 'Stories'}</Text>
             </TouchableOpacity>
           </View>
         </View>
