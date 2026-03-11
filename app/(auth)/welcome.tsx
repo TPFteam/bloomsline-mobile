@@ -7,15 +7,18 @@ import { useI18n } from '@/lib/i18n'
 
 // Emotion states the dots cycle through
 const EMOTIONS = [
-  { name: 'calm',    color: '#4A9A86', spread: 0, scale: 1,    rotation: 0   },
-  { name: 'joy',     color: '#5BBE6E', spread: 6, scale: 1.15, rotation: 15  },
-  { name: 'wonder',  color: '#5A9ECF', spread: 4, scale: 1.05, rotation: -10 },
-  { name: 'warmth',  color: '#E8956A', spread: 3, scale: 1.1,  rotation: 8   },
-  { name: 'tender',  color: '#C47DB5', spread: 2, scale: 0.95, rotation: -5  },
-  { name: 'peace',   color: '#4A9A86', spread: 0, scale: 1,    rotation: 0   },
+  { name: 'calm',    color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1    },
+  { name: 'joy',     color: '#5BBE6E', glowColor: '#5BBE6E25', spread: 10, scale: 1.2,  rotation: 15,  glowScale: 1.3  },
+  { name: 'wonder',  color: '#5A9ECF', glowColor: '#5A9ECF20', spread: 7,  scale: 1.08, rotation: -10, glowScale: 1.15 },
+  { name: 'warmth',  color: '#E8956A', glowColor: '#E8956A25', spread: 5,  scale: 1.15, rotation: 8,   glowScale: 1.25 },
+  { name: 'tender',  color: '#C47DB5', glowColor: '#C47DB520', spread: 3,  scale: 0.95, rotation: -5,  glowScale: 1.1  },
+  { name: 'peace',   color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1    },
 ]
 
 const CYCLE_DURATION = 2800
+const DOT_SIZE = 18
+const DOT_RADIUS = DOT_SIZE / 2
+const DOT_GAP = 22
 
 export default function Welcome() {
   const router = useRouter()
@@ -25,43 +28,55 @@ export default function Welcome() {
   // Entrance animations
   const fadeIn = useRef(new Animated.Value(0)).current
   const slideUp = useRef(new Animated.Value(30)).current
-  const logoScale = useRef(new Animated.Value(0.8)).current
+  const logoScale = useRef(new Animated.Value(0.6)).current
 
-  // Dot animations — each dot has its own position, scale, color, and opacity
+  // Dot animations
   const dotAnims = useRef(
     [0, 1, 2, 3].map(() => ({
       translateX: new Animated.Value(0),
       translateY: new Animated.Value(0),
       scale: new Animated.Value(1),
-      opacity: new Animated.Value(1),
     }))
   ).current
 
-  // Overall rotation for the cross pattern
+  // Glow animation
+  const glowScale = useRef(new Animated.Value(1)).current
+  const glowOpacity = useRef(new Animated.Value(0.15)).current
+
+  // Overall rotation
   const rotation = useRef(new Animated.Value(0)).current
 
-  // Color state (can't animate colors with native driver, so we use state)
+  // Color state
   const [dotColor, setDotColor] = useState(EMOTIONS[0].color)
+  const [glowColor, setGlowColor] = useState(EMOTIONS[0].glowColor)
   const emotionIndex = useRef(0)
 
-  // Base positions for each dot (cross pattern)
+  // Base positions (cross pattern, wider spacing)
   const dotPositions = [
-    { x: 0, y: -17 },  // top
-    { x: -17, y: 0 },  // left
-    { x: 17, y: 0 },   // right
-    { x: 0, y: 17 },   // bottom
+    { x: 0, y: -DOT_GAP },   // top
+    { x: -DOT_GAP, y: 0 },   // left
+    { x: DOT_GAP, y: 0 },    // right
+    { x: 0, y: DOT_GAP },    // bottom
   ]
 
   useEffect(() => {
-    // Entrance
+    // Entrance — logo blooms in from small
     Animated.parallel([
-      Animated.timing(fadeIn, { toValue: 1, duration: 800, useNativeDriver: true }),
+      Animated.timing(fadeIn, { toValue: 1, duration: 900, useNativeDriver: true }),
       Animated.spring(slideUp, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
-      Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 50, useNativeDriver: true }),
+      Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 30, useNativeDriver: true }),
     ]).start()
 
+    // Gentle breathing glow from the start
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowOpacity, { toValue: 0.3, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(glowOpacity, { toValue: 0.1, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ])
+    ).start()
+
     // Start emotion cycle after entrance
-    const timeout = setTimeout(() => runEmotionCycle(), 1200)
+    const timeout = setTimeout(() => runEmotionCycle(), 1400)
     return () => clearTimeout(timeout)
   }, [])
 
@@ -71,43 +86,31 @@ export default function Welcome() {
     const emotion = EMOTIONS[nextIdx]
 
     setDotColor(emotion.color)
+    setGlowColor(emotion.glowColor)
 
-    // Animate each dot
+    // Animate each dot with stagger
     const dotAnimations = dotAnims.map((anim, i) => {
       const basePos = dotPositions[i]
-      // Spread: move dots outward from center
       const spreadX = basePos.x !== 0 ? (basePos.x > 0 ? emotion.spread : -emotion.spread) : 0
       const spreadY = basePos.y !== 0 ? (basePos.y > 0 ? emotion.spread : -emotion.spread) : 0
-
-      // Stagger: each dot starts slightly offset for organic feel
-      const staggerDelay = i * 80
+      const staggerDelay = i * 100
 
       return Animated.sequence([
         Animated.delay(staggerDelay),
         Animated.parallel([
-          Animated.spring(anim.translateX, {
-            toValue: spreadX,
-            friction: 7,
-            tension: 35,
-            useNativeDriver: true,
-          }),
-          Animated.spring(anim.translateY, {
-            toValue: spreadY,
-            friction: 7,
-            tension: 35,
-            useNativeDriver: true,
-          }),
+          Animated.spring(anim.translateX, { toValue: spreadX, friction: 6, tension: 30, useNativeDriver: true }),
+          Animated.spring(anim.translateY, { toValue: spreadY, friction: 6, tension: 30, useNativeDriver: true }),
           Animated.spring(anim.scale, {
-            toValue: emotion.scale + (i % 2 === 0 ? 0.05 : -0.03),
-            friction: 6,
-            tension: 40,
+            toValue: emotion.scale + (i % 2 === 0 ? 0.08 : -0.04),
+            friction: 5,
+            tension: 35,
             useNativeDriver: true,
           }),
         ]),
       ])
     })
 
-    // Gentle rotation of the whole group
+    // Rotation + glow scale
     const rotationAnim = Animated.timing(rotation, {
       toValue: emotion.rotation,
       duration: CYCLE_DURATION * 0.7,
@@ -115,9 +118,15 @@ export default function Welcome() {
       useNativeDriver: true,
     })
 
-    Animated.parallel([...dotAnimations, rotationAnim]).start()
+    const glowAnim = Animated.spring(glowScale, {
+      toValue: emotion.glowScale,
+      friction: 6,
+      tension: 25,
+      useNativeDriver: true,
+    })
 
-    // Schedule next emotion
+    Animated.parallel([...dotAnimations, rotationAnim, glowAnim]).start()
+
     setTimeout(() => runEmotionCycle(), CYCLE_DURATION)
   }
 
@@ -139,12 +148,25 @@ export default function Welcome() {
       }}>
         {/* Emotional blooming logo */}
         <Animated.View style={{
-          marginBottom: 56,
+          marginBottom: 48,
           transform: [{ scale: logoScale }],
+          alignItems: 'center',
+          justifyContent: 'center',
         }}>
+          {/* Ambient glow behind dots */}
           <Animated.View style={{
-            width: 64,
-            height: 64,
+            position: 'absolute',
+            width: 120,
+            height: 120,
+            borderRadius: 60,
+            backgroundColor: glowColor,
+            opacity: glowOpacity,
+            transform: [{ scale: glowScale }],
+          }} />
+
+          <Animated.View style={{
+            width: 80,
+            height: 80,
             justifyContent: 'center',
             alignItems: 'center',
             transform: [{ rotate: rotateInterpolation }],
@@ -154,10 +176,15 @@ export default function Welcome() {
                 key={i}
                 style={{
                   position: 'absolute',
-                  width: 14,
-                  height: 14,
-                  borderRadius: 7,
+                  width: DOT_SIZE,
+                  height: DOT_SIZE,
+                  borderRadius: DOT_RADIUS,
                   backgroundColor: dotColor,
+                  shadowColor: dotColor,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 8,
+                  elevation: 6,
                   transform: [
                     { translateX: Animated.add(new Animated.Value(dotPositions[i].x), anim.translateX) },
                     { translateY: Animated.add(new Animated.Value(dotPositions[i].y), anim.translateY) },
@@ -201,7 +228,6 @@ export default function Welcome() {
         paddingBottom: 16,
         opacity: fadeIn,
       }}>
-        {/* Primary: Get started */}
         <TouchableOpacity
           onPress={() => router.push('/(auth)/sign-up')}
           activeOpacity={0.85}
@@ -221,7 +247,6 @@ export default function Welcome() {
           <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>{t.auth.getStarted}</Text>
         </TouchableOpacity>
 
-        {/* Secondary: Sign in */}
         <TouchableOpacity
           onPress={() => router.push('/(auth)/sign-in')}
           activeOpacity={0.7}
