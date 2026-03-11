@@ -159,6 +159,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.error('setup-member failed:', err)
+        // Network/CORS failure — sign out to prevent ghost session
+        await supabase.auth.signOut()
+        setLoading(false)
+        return
       }
     }
 

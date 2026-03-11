@@ -7,7 +7,7 @@ import { colors } from '@/lib/theme'
 import { supabase } from '@/lib/supabase'
 
 export default function Index() {
-  const { session, loading, isPractitioner, signOut } = useAuth()
+  const { session, loading, isPractitioner, member, signOut } = useAuth()
   const router = useRouter()
   const { t } = useI18n()
   const [showPractitioner, setShowPractitioner] = useState(false)
@@ -43,13 +43,15 @@ export default function Index() {
     if (session) {
       if (isPractitioner) {
         setShowPractitioner(true)
-      } else {
+      } else if (member) {
         router.replace('/(main)/home')
       }
+      // session exists but no member yet — stay on loading spinner
+      // (fetchMember will either set member or sign out)
     } else {
       router.replace('/(auth)/welcome')
     }
-  }, [session, loading, isPractitioner, settingSession])
+  }, [session, loading, isPractitioner, member, settingSession])
 
   if (showPractitioner) {
     return (
