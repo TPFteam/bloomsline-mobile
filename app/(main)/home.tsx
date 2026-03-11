@@ -107,7 +107,7 @@ export default function Home() {
       <PullToRefreshScrollView
         onRefresh={onRefresh}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 130, paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 180, paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
