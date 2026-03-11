@@ -290,7 +290,17 @@ export default function Home() {
           left: 0, right: 0,
           alignItems: 'center',
         }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 24 }}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 24,
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            paddingHorizontal: 28, paddingVertical: 14,
+            borderRadius: 40,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 16,
+            elevation: 6,
+          }}>
             {/* Bloom — mic button */}
             <TouchableOpacity
               onPress={() => setBloomOpen(true)}
