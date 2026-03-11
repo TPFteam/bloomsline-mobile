@@ -12,7 +12,6 @@ export default function Welcome() {
   const fadeIn = useRef(new Animated.Value(0)).current
   const slideUp = useRef(new Animated.Value(30)).current
   const logoScale = useRef(new Animated.Value(0.8)).current
-  const glowPulse = useRef(new Animated.Value(0.3)).current
 
   useEffect(() => {
     // Entrance animation
@@ -21,14 +20,6 @@ export default function Welcome() {
       Animated.spring(slideUp, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
       Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 50, useNativeDriver: true }),
     ]).start()
-
-    // Ambient glow pulse
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowPulse, { toValue: 0.6, duration: 2500, useNativeDriver: true }),
-        Animated.timing(glowPulse, { toValue: 0.3, duration: 2500, useNativeDriver: true }),
-      ])
-    ).start()
   }, [])
 
   return (
@@ -47,17 +38,6 @@ export default function Welcome() {
           marginBottom: 56,
           transform: [{ scale: logoScale }],
         }}>
-          {/* Glow ring */}
-          <Animated.View style={{
-            position: 'absolute',
-            top: -20,
-            left: -20,
-            width: 88,
-            height: 88,
-            borderRadius: 44,
-            backgroundColor: colors.bloom,
-            opacity: glowPulse,
-          }} />
           {/* 4-petal cross logo in teal */}
           <View style={{ width: 48, height: 48, position: 'relative' }}>
             <View style={{ position: 'absolute', top: 0, left: 16, width: 14, height: 14, borderRadius: 7, backgroundColor: colors.bloom }} />
