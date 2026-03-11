@@ -7,12 +7,12 @@ import { useI18n } from '@/lib/i18n'
 
 // Emotion states the dots cycle through
 const EMOTIONS = [
-  { name: 'calm',    color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1    },
-  { name: 'joy',     color: '#5BBE6E', glowColor: '#5BBE6E25', spread: 10, scale: 1.2,  rotation: 15,  glowScale: 1.3  },
-  { name: 'wonder',  color: '#5A9ECF', glowColor: '#5A9ECF20', spread: 7,  scale: 1.08, rotation: -10, glowScale: 1.15 },
-  { name: 'warmth',  color: '#E8956A', glowColor: '#E8956A25', spread: 5,  scale: 1.15, rotation: 8,   glowScale: 1.25 },
-  { name: 'tender',  color: '#C47DB5', glowColor: '#C47DB520', spread: 3,  scale: 0.95, rotation: -5,  glowScale: 1.1  },
-  { name: 'peace',   color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1    },
+  { name: 'calm',    color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1,    word: { en: 'calm', fr: 'calme' }       },
+  { name: 'joy',     color: '#5BBE6E', glowColor: '#5BBE6E25', spread: 10, scale: 1.2,  rotation: 15,  glowScale: 1.3,  word: { en: 'joy', fr: 'joie' }          },
+  { name: 'wonder',  color: '#5A9ECF', glowColor: '#5A9ECF20', spread: 7,  scale: 1.08, rotation: -10, glowScale: 1.15, word: { en: 'wonder', fr: 'émerveillement' } },
+  { name: 'warmth',  color: '#E8956A', glowColor: '#E8956A25', spread: 5,  scale: 1.15, rotation: 8,   glowScale: 1.25, word: { en: 'warmth', fr: 'chaleur' }    },
+  { name: 'tender',  color: '#C47DB5', glowColor: '#C47DB520', spread: 3,  scale: 0.95, rotation: -5,  glowScale: 1.1,  word: { en: 'tenderness', fr: 'tendresse' } },
+  { name: 'peace',   color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1,    word: { en: 'peace', fr: 'paix' }        },
 ]
 
 const CYCLE_DURATION = 2800
@@ -23,7 +23,7 @@ const DOT_GAP = 22
 export default function Welcome() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
   // Entrance animations
   const fadeIn = useRef(new Animated.Value(0)).current
@@ -46,9 +46,14 @@ export default function Welcome() {
   // Overall rotation
   const rotation = useRef(new Animated.Value(0)).current
 
-  // Color state
+  // Emotion word fade
+  const wordOpacity = useRef(new Animated.Value(0.8)).current
+  const wordSlide = useRef(new Animated.Value(0)).current
+
+  // Color + word state
   const [dotColor, setDotColor] = useState(EMOTIONS[0].color)
   const [glowColor, setGlowColor] = useState(EMOTIONS[0].glowColor)
+  const [emotionWord, setEmotionWord] = useState(EMOTIONS[0].word)
   const emotionIndex = useRef(0)
 
   // Base positions (cross pattern, wider spacing)
@@ -87,6 +92,16 @@ export default function Welcome() {
 
     setDotColor(emotion.color)
     setGlowColor(emotion.glowColor)
+
+    // Fade out old word, swap, fade in new word
+    Animated.timing(wordOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+      setEmotionWord(emotion.word)
+      wordSlide.setValue(6)
+      Animated.parallel([
+        Animated.timing(wordOpacity, { toValue: 0.8, duration: 400, useNativeDriver: true }),
+        Animated.spring(wordSlide, { toValue: 0, friction: 8, tension: 50, useNativeDriver: true }),
+      ]).start()
+    })
 
     // Animate each dot with stagger
     const dotAnimations = dotAnims.map((anim, i) => {
@@ -196,26 +211,45 @@ export default function Welcome() {
           </Animated.View>
         </Animated.View>
 
+        {/* Emotion word — cycles with the dots */}
+        <Animated.View style={{
+          marginBottom: 24,
+          opacity: wordOpacity,
+          transform: [{ translateY: wordSlide }],
+        }}>
+          <Text style={{
+            fontSize: 14,
+            fontWeight: '600',
+            color: dotColor,
+            textAlign: 'center',
+            letterSpacing: 2,
+            textTransform: 'uppercase',
+          }}>
+            {emotionWord[locale] || emotionWord.en}
+          </Text>
+        </Animated.View>
+
         {/* Headline */}
         <Text style={{
-          fontSize: 34,
+          fontSize: 30,
           fontWeight: '700',
           color: colors.primary,
           textAlign: 'center',
-          letterSpacing: -0.8,
-          lineHeight: 42,
+          letterSpacing: -0.6,
+          lineHeight: 38,
+          paddingHorizontal: 8,
         }}>
           {t.auth.welcomeHeadline}
         </Text>
 
         {/* Subtitle */}
         <Text style={{
-          fontSize: 17,
-          color: '#8A8A8A',
+          fontSize: 15,
+          color: '#AAAAAA',
           textAlign: 'center',
-          marginTop: 20,
-          lineHeight: 26,
-          letterSpacing: 0.2,
+          marginTop: 16,
+          lineHeight: 22,
+          letterSpacing: 0.3,
         }}>
           {t.auth.welcomeSubtitle}
         </Text>
