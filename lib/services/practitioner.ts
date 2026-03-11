@@ -566,6 +566,26 @@ export async function markResourceComplete(
   }
 }
 
+// ─── Save Resource Feedback ─────────────────────────
+
+export async function saveResourceFeedback(
+  feedback: 'negative' | 'neutral' | 'positive',
+  item: ResourceItem,
+  responseId: string | null,
+): Promise<void> {
+  if (responseId) {
+    await supabase
+      .from('resource_responses')
+      .update({ member_feedback: feedback })
+      .eq('id', responseId)
+  } else if (item.type === 'shared') {
+    await supabase
+      .from('member_shared_resources')
+      .update({ member_feedback: feedback })
+      .eq('id', item.id)
+  }
+}
+
 // ─── Invite Practitioner ────────────────────────────
 
 export async function invitePractitioner(email: string): Promise<boolean> {

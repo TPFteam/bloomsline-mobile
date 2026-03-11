@@ -165,6 +165,12 @@ export default {
     shared: 'Shared',
     assignedBy: 'Assigned by',
     sharedBy: 'Shared by',
+    resourceTypes: {
+      worksheet: 'Worksheet',
+      table: 'Table',
+      psychoeducation: 'Psychoeducation',
+      exercise: 'Exercise',
+    },
     noteFrom: 'Note from {name}',
     noteFromPractitioner: 'Note from your practitioner',
     completed: 'Completed ✓',

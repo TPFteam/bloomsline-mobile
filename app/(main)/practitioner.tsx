@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { FileText, Table2, BookOpen, Dumbbell, FileQuestion } from 'lucide-react-native'
+import { FileText, Table2, BookOpen, Dumbbell, FileQuestion, Frown, Meh, Smile, CheckCircle } from 'lucide-react-native'
 import {
   View,
   Text,
@@ -41,6 +41,7 @@ import {
   submitResource,
   markResourceComplete,
   fetchPractitionerNotes,
+  saveResourceFeedback,
   PractitionerProfile,
   UpcomingSession,
   ResourceItem,
@@ -88,7 +89,7 @@ export default function PractitionerScreen() {
   const { width: screenWidth } = useWindowDimensions()
   const router = useRouter()
   const { member } = useAuth()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
   const [loading, setLoading] = useState(true)
   const [practitioner, setPractitioner] = useState<PractitionerProfile | null>(null)
@@ -122,6 +123,10 @@ export default function PractitionerScreen() {
   const [practitionerNotes, setPractitionerNotes] = useState<string | null>(null)
   const [responseStatus, setResponseStatus] = useState<string | null>(null)
   const [previewNotes, setPreviewNotes] = useState<string | null>(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackSelection, setFeedbackSelection] = useState<'negative' | 'neutral' | 'positive' | null>(null)
+  const [pendingFeedbackItem, setPendingFeedbackItem] = useState<ResourceItem | null>(null)
+  const [pendingFeedbackResponseId, setPendingFeedbackResponseId] = useState<string | null>(null)
 
   // Quick access
   const [quickModal, setQuickModal] = useState<'practitioners' | 'assessments' | null>(null)
@@ -249,8 +254,11 @@ export default function PractitionerScreen() {
         await markResourceComplete(activeResourceItem, draftResponseId, responses)
       }
       setSubmitting(false)
-      closeFill()
-      showAlert(t.practitioner.submitted, t.practitioner.resourceSubmitted)
+      // Show feedback modal instead of closing immediately
+      setPendingFeedbackItem(activeResourceItem)
+      setPendingFeedbackResponseId(draftResponseId)
+      setFeedbackSelection(null)
+      setShowFeedback(true)
     } catch (e: any) {
       setSubmitting(false)
       showAlert(t.common.error, `${t.practitioner.errorSomethingWrong}: ${e?.message || t.practitioner.errorUnknown}`)
@@ -275,8 +283,27 @@ export default function PractitionerScreen() {
     if (!activeResourceItem) return
     setSubmitting(true)
     await markResourceComplete(activeResourceItem, draftResponseId, responses)
-    closeFill(); showAlert(t.common.done, t.practitioner.completed)
     setSubmitting(false)
+    // Show feedback modal instead of closing immediately
+    setPendingFeedbackItem(activeResourceItem)
+    setPendingFeedbackResponseId(draftResponseId)
+    setFeedbackSelection(null)
+    setShowFeedback(true)
+  }
+
+  async function handleFeedbackDone() {
+    if (feedbackSelection && pendingFeedbackItem) {
+      try {
+        await saveResourceFeedback(feedbackSelection, pendingFeedbackItem, pendingFeedbackResponseId)
+      } catch (e) {
+        console.error('Failed to save feedback:', e)
+      }
+    }
+    setShowFeedback(false)
+    setPendingFeedbackItem(null)
+    setPendingFeedbackResponseId(null)
+    setFeedbackSelection(null)
+    closeFill()
   }
 
   async function handleInvite() {
@@ -670,7 +697,7 @@ export default function PractitionerScreen() {
                   {viewingResource.resourceType && (
                     <View style={{ backgroundColor: colors.surface1, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
                       <Text style={{ fontSize: 11, fontWeight: '500', color: '#8A8A8A', textTransform: 'capitalize' }}>
-                        {viewingResource.resourceType.replace(/_/g, ' ')}
+                        {(t.practitioner as any).resourceTypes?.[viewingResource.resourceType] || viewingResource.resourceType.replace(/_/g, ' ')}
                       </Text>
                     </View>
                   )}
@@ -859,11 +886,15 @@ export default function PractitionerScreen() {
                   </View>
                 )}
                 {(() => {
+                  const resInstructions = fillResource.instructions || fillResource.description || null
                   const blocks: any[] = Array.isArray(fillResource.blocks) ? fillResource.blocks
                     : Array.isArray(fillResource.content?.blocks) ? fillResource.content.blocks : []
                   return blocks.map((block: any, i: number) => (
                     <View key={block.id || i} style={{ marginBottom: 24 }}>
-                      {renderBlock(block, responses[block.id], (v) => setResponses(prev => ({ ...prev, [block.id]: v })), (inReview) => setTableReviewReady(inReview), activeResourceItem?.status === 'completed')}
+                      {renderBlock(
+                        resInstructions && block.type === 'table_exercise' ? { ...block, instructions: resInstructions } : block,
+                        responses[block.id], (v) => setResponses(prev => ({ ...prev, [block.id]: v })), (inReview) => setTableReviewReady(inReview), activeResourceItem?.status === 'completed', undefined, locale
+                      )}
                     </View>
                   ))
                 })()}
@@ -927,6 +958,50 @@ export default function PractitionerScreen() {
               </View>
             </>
           )}
+        </View>
+      </Modal>
+
+      {/* ─── Feedback Modal ─── */}
+      <Modal visible={showFeedback} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 24, padding: 32, width: '100%', maxWidth: 320, alignItems: 'center' }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.bloom, justifyContent: 'center', alignItems: 'center', marginBottom: 24 }}>
+              <CheckCircle size={30} color="#fff" />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 20, marginBottom: 32 }}>
+              {([
+                { key: 'negative' as const, Icon: Frown, color: '#EF4444', bg: '#FEF2F2' },
+                { key: 'neutral' as const, Icon: Meh, color: '#F59E0B', bg: '#FFFBEB' },
+                { key: 'positive' as const, Icon: Smile, color: '#22C55E', bg: '#F0FDF4' },
+              ]).map(({ key, Icon, color, bg }) => {
+                const selected = feedbackSelection === key
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    onPress={() => setFeedbackSelection(selected ? null : key)}
+                    style={{
+                      width: 64, height: 64, borderRadius: 32,
+                      backgroundColor: selected ? bg : colors.surface2,
+                      justifyContent: 'center', alignItems: 'center',
+                      borderWidth: selected ? 2 : 0,
+                      borderColor: selected ? color : 'transparent',
+                    }}
+                  >
+                    <Icon size={28} color={selected ? color : '#AAAAAA'} />
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+            <TouchableOpacity
+              onPress={handleFeedbackDone}
+              style={{
+                backgroundColor: colors.primary, borderRadius: 28,
+                paddingVertical: 14, paddingHorizontal: 48, width: '100%', alignItems: 'center',
+              }}
+            >
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.common.done}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 

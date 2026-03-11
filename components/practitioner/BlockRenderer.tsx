@@ -3,10 +3,40 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 
-function extractLocalized(val: any): string {
+function extractLocalized(val: any, locale?: string): string {
   if (!val) return ''
   if (typeof val === 'string') return val
-  return val.en || Object.values(val)[0] || ''
+  if (locale && val[locale]) return val[locale]
+  return val.fr || val.en || Object.values(val)[0] || ''
+}
+
+function stripHtmlTags(html: string): string {
+  return html
+    .replace(/<\/?(p|div|br)\b[^>]*\/?>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n /g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
+function CollapsibleInstructions({ text }: { text: string }) {
+  const plain = stripHtmlTags(text)
+  const [expanded, setExpanded] = useState(false)
+  const needsTruncate = plain.length > 120
+  const display = !expanded && needsTruncate ? plain.slice(0, 120).trimEnd() + '...' : plain
+
+  return (
+    <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 12 }}>
+      <Text style={{ fontSize: 13, color: colors.primary, lineHeight: 19 }}>{display}</Text>
+      {needsTruncate && (
+        <TouchableOpacity onPress={() => setExpanded(!expanded)} style={{ marginTop: 6 }}>
+          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.bloom }}>{expanded ? 'View less' : 'View more'}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  )
 }
 
 const LABEL = { fontSize: 15, fontWeight: '600' as const, color: colors.primary, marginBottom: 8 }
@@ -19,9 +49,9 @@ const PLACEHOLDER = '#CCCCCC'
 function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onReviewStateChange }: {
   block: any; content: string; blockValue: unknown; onBlockChange: (v: unknown) => void; onReviewStateChange?: (inReview: boolean) => void
 }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const columns: any[] = Array.isArray(block.columns) ? block.columns : []
-  const instr = block.instructions || null
+  const instr = extractLocalized(block.instructions, locale) || null
   // Decide row count once on mount (stable during editing)
   const [rowCount] = useState(() => {
     const raw: any[] = Array.isArray(blockValue) && (blockValue as any[]).length > 0 ? (blockValue as any[]) : []
@@ -69,11 +99,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
     return (
       <View>
         {content ? <Text style={LABEL}>{content}</Text> : null}
-        {instr && (
-          <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 12 }}>
-            <Text style={{ fontSize: 13, color: colors.primary }}>{instr}</Text>
-          </View>
-        )}
+        {instr && <CollapsibleInstructions text={instr} />}
 
         {/* Toggle */}
         <View style={{ flexDirection: 'row', backgroundColor: colors.surface2, borderRadius: 10, padding: 2, alignSelf: 'flex-end', marginBottom: 12 }}>
@@ -106,8 +132,8 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
               </View>
               {columns.map((c: any) => (
                 <View key={c.id} style={{ marginBottom: 10 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 4 }}>{c.header}</Text>
-                  {c.description && <Text style={{ fontSize: 11, color: MUTED, marginBottom: 4, fontStyle: 'italic' }}>{c.description}</Text>}
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 4 }}>{extractLocalized(c.header, locale)}</Text>
+                  {c.description && <Text style={{ fontSize: 11, color: MUTED, marginBottom: 4, fontStyle: 'italic' }}>{extractLocalized(c.description, locale)}</Text>}
                   <TextInput
                     value={r[c.id] || ''}
                     onChangeText={(t) => updateCell(ri, c.id, t)}
@@ -171,7 +197,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
                 }}
               >
                 <Text style={{ fontSize: 13, fontWeight: '600', color: MUTED, marginBottom: 4 }}>
-                  {c.header}
+                  {extractLocalized(c.header, locale)}
                 </Text>
                 {val ? (
                   <Text style={{ fontSize: 15, color: colors.primary, lineHeight: 21 }}>{val}</Text>
@@ -194,11 +220,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
   return (
     <View>
       {content ? <Text style={LABEL}>{content}</Text> : null}
-      {instr && (
-        <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 12 }}>
-          <Text style={{ fontSize: 13, color: colors.primary }}>{instr}</Text>
-        </View>
-      )}
+      {instr && <CollapsibleInstructions text={instr} />}
 
       {/* Entry selector */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 }}>
@@ -237,7 +259,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
                 borderBottomWidth: ci < columns.length - 1 ? 1 : 0, borderBottomColor: '#F0F0F0',
               }}>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: MUTED, marginBottom: 2 }}>
-                  {c.header}
+                  {extractLocalized(c.header, locale)}
                 </Text>
                 <Text style={{ fontSize: 15, color: val ? colors.primary : '#CCC', lineHeight: 21 }}>
                   {val || '—'}
@@ -302,11 +324,11 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
       }}>
         {/* Column header */}
         <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: 4 }}>
-          {col.header}
+          {extractLocalized(col.header, locale)}
         </Text>
         {col.description && (
           <Text style={{ fontSize: 13, color: MUTED, marginBottom: 16, lineHeight: 18 }}>
-            {col.description}
+            {extractLocalized(col.description, locale)}
           </Text>
         )}
 
@@ -388,8 +410,9 @@ export function renderBlock(
   onReviewStateChange?: (inReview: boolean) => void,
   readOnly?: boolean,
   t?: any,
+  locale?: string,
 ) {
-  const content = typeof block.content === 'string' ? block.content : extractLocalized(block.content)
+  const content = typeof block.content === 'string' ? block.content : extractLocalized(block.content, locale)
   const isRequired = !!block.required
   const Star = isRequired ? <Text style={{ color: colors.error }}> *</Text> : null
   const onChange = readOnly ? () => {} : onBlockChange
