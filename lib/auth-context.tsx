@@ -104,69 +104,90 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Track whether we've already called setup-member for this session
   const setupCalledRef = useRef<string | null>(null)
+  // Prevent concurrent fetchMember calls from racing
+  const fetchingRef = useRef(false)
 
   async function fetchMember(userId: string, accessToken?: string) {
-    // Check if user is a practitioner
-    const { data: userData } = await supabase
-      .from('users')
-      .select('user_type')
-      .eq('id', userId)
-      .single()
+    // If already fetching, skip — the in-flight call will handle everything
+    if (fetchingRef.current) return
+    fetchingRef.current = true
 
-    if (userData?.user_type === 'mentor') {
-      setIsPractitioner(true)
-      setLoading(false)
-      return
-    }
+    try {
+      // Check if user is a practitioner
+      const { data: userData } = await supabase
+        .from('users')
+        .select('user_type')
+        .eq('id', userId)
+        .single()
 
-    const { data } = await supabase
-      .from('members')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
-
-    if (data) {
-      setMember(data)
-      setLoading(false)
-      return
-    }
-
-    // No member record found — call setup-member API (handles new signups)
-    if (accessToken && setupCalledRef.current !== userId) {
-      setupCalledRef.current = userId
-      try {
-        const res = await fetch(`${API_URL}/api/auth/setup-member`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-        })
-        const result = await res.json()
-
-        if (result.ok) {
-          // Re-fetch member after setup
-          const { data: newMember } = await supabase
-            .from('members')
-            .select('*')
-            .eq('user_id', userId)
-            .single()
-          setMember(newMember)
-        } else {
-          // Not eligible — sign out (account deleted server-side)
-          setNotEligible(result.message || 'not_eligible')
-          await supabase.auth.signOut()
-        }
-      } catch (err) {
-        console.error('setup-member failed:', err)
-        // Network/CORS failure — sign out to prevent ghost session
-        await supabase.auth.signOut()
+      if (userData?.user_type === 'mentor') {
+        setIsPractitioner(true)
         setLoading(false)
         return
       }
-    }
 
-    setLoading(false)
+      const { data } = await supabase
+        .from('members')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
+
+      if (data) {
+        setMember(data)
+        setLoading(false)
+        return
+      }
+
+      // No member record found — call setup-member API (handles new signups)
+      if (accessToken && setupCalledRef.current !== userId) {
+        setupCalledRef.current = userId
+        try {
+          const res = await fetch(`${API_URL}/api/auth/setup-member`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${accessToken}`,
+            },
+          })
+          const result = await res.json()
+
+          if (result.ok) {
+            // Re-fetch member after setup
+            const { data: newMember } = await supabase
+              .from('members')
+              .select('*')
+              .eq('user_id', userId)
+              .single()
+            if (newMember) {
+              setMember(newMember)
+              setLoading(false)
+              return
+            }
+          }
+
+          // Not eligible or setup failed — sign out (account deleted server-side)
+          setNotEligible(result.message || result.reason || 'not_eligible')
+          await supabase.auth.signOut()
+        } catch (err) {
+          console.error('setup-member failed:', err)
+          setNotEligible('Could not verify your account. Please try again.')
+          await supabase.auth.signOut()
+        }
+        setLoading(false)
+        return
+      }
+
+      // setup-member already called but still no member — don't set loading false,
+      // let the in-flight call finish. If we get here repeatedly, bail out.
+      if (setupCalledRef.current === userId) {
+        // Already tried setup, still no member — sign out
+        setNotEligible('Account setup failed. Please try again.')
+        await supabase.auth.signOut()
+        setLoading(false)
+      }
+    } finally {
+      fetchingRef.current = false
+    }
   }
 
   async function signIn(email: string, password: string) {
