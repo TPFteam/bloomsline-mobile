@@ -28,6 +28,8 @@ type AuthContextType = {
   member: any | null
   loading: boolean
   isPractitioner: boolean
+  notEligible: string | null
+  clearNotEligible: () => void
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>
   signInWithGoogle: () => Promise<{ error: any }>
@@ -42,6 +44,8 @@ const AuthContext = createContext<AuthContextType>({
   member: null,
   loading: true,
   isPractitioner: false,
+  notEligible: null,
+  clearNotEligible: () => {},
   signIn: async () => ({ error: null }),
   signUp: async () => ({ error: null }),
   signInWithGoogle: async () => ({ error: null }),
@@ -56,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [member, setMember] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [isPractitioner, setIsPractitioner] = useState(false)
+  const [notEligible, setNotEligible] = useState<string | null>(null)
 
   useEffect(() => {
     // Use onAuthStateChange as the single source of truth.
@@ -147,8 +152,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             .eq('user_id', userId)
             .single()
           setMember(newMember)
+        } else {
+          // Not eligible — sign out (account deleted server-side)
+          setNotEligible(result.message || 'not_eligible')
+          await supabase.auth.signOut()
         }
-        // If not eligible, member stays null — app will show appropriate state
       } catch (err) {
         console.error('setup-member failed:', err)
       }
@@ -271,6 +279,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  function clearNotEligible() {
+    setNotEligible(null)
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     setMember(null)
@@ -278,7 +290,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, user, member, loading, isPractitioner, signIn, signUp, signInWithGoogle, signInWithAzure, sendMagicLink, signOut }}>
+    <AuthContext.Provider value={{ session, user, member, loading, isPractitioner, notEligible, clearNotEligible, signIn, signUp, signInWithGoogle, signInWithAzure, sendMagicLink, signOut }}>
       {children}
     </AuthContext.Provider>
   )

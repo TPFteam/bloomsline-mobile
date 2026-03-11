@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
+import { useAuth } from '@/lib/auth-context'
 
 // Emotion states the dots cycle through
 const EMOTIONS = [
@@ -24,6 +25,7 @@ export default function Welcome() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { t, locale } = useI18n()
+  const { notEligible, clearNotEligible } = useAuth()
 
   // Entrance animations
   const fadeIn = useRef(new Animated.Value(0)).current
@@ -254,6 +256,30 @@ export default function Welcome() {
           {t.auth.welcomeSubtitle}
         </Text>
       </Animated.View>
+
+      {/* Not eligible banner */}
+      {notEligible && (
+        <TouchableOpacity
+          onPress={clearNotEligible}
+          activeOpacity={0.9}
+          style={{
+            marginHorizontal: 24,
+            marginBottom: 12,
+            backgroundColor: '#FFF8F0',
+            borderRadius: 16,
+            padding: 20,
+            borderWidth: 1,
+            borderColor: '#F0E0D0',
+          }}
+        >
+          <Text style={{ fontSize: 15, color: '#8B6914', lineHeight: 22, textAlign: 'center' }}>
+            {notEligible}
+          </Text>
+          <Text style={{ fontSize: 12, color: '#B8A070', textAlign: 'center', marginTop: 8 }}>
+            {locale === 'fr' ? 'Appuyez pour fermer' : 'Tap to dismiss'}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Bottom CTAs */}
       <Animated.View style={{
