@@ -100,7 +100,7 @@ export default {
 
   // ─── Auth ───
   auth: {
-    welcomeHeadline: 'Votre voyage émotionnel commence ici.',
+    welcomeHeadline: 'Ce que vous portez mérite un espace pour respirer.',
     welcomeSubtitle: 'Capturez des moments. Voyez des tendances. Observez votre évolution.',
     getStarted: 'Commencer',
     haveAccount: 'J\'ai déjà un compte',
@@ -108,12 +108,26 @@ export default {
     signInSubtitle: 'Reprenez là où vous en étiez.',
     signUpTitle: 'Commencez votre voyage.',
     signUpSubtitle: 'Chaque histoire commence par un seul moment.',
-    emailPlaceholder: 'Email',
+    emailPlaceholder: 'Votre email',
     passwordPlaceholder: 'Mot de passe',
     fullNamePlaceholder: 'Nom complet',
     signIn: 'Se connecter',
     createAccount: 'Créer un compte',
     continueWithGoogle: 'Continuer avec Google',
+    continueWithOutlook: 'Continuer avec Outlook',
+    or: 'ou',
+    checkEmail: 'Vérifiez votre boîte mail',
+    magicLinkSent: 'Lien de connexion envoyé à {email}',
+    signupLinkSent: 'Lien d\'inscription envoyé à {email}',
+    useDifferentEmail: 'Utiliser un autre email',
+    practitionerRedirect: 'Bienvenue, praticien !',
+    practitionerRedirectBody: 'Cette application est réservée aux membres. Veuillez utiliser le tableau de bord pour gérer votre pratique.',
+    openDashboard: 'Ouvrir le tableau de bord',
+    signOut: 'Se déconnecter',
+    noAccount: 'Aucun compte trouvé pour cet email.',
+    goToSignUp: 'S\'inscrire',
+    alreadyHaveAccount: 'Déjà un compte ?',
+    dontHaveAccount: 'Pas encore de compte ?',
   },
 
   // ─── Practitioner ───

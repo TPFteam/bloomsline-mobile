@@ -100,7 +100,7 @@ export default {
 
   // ─── Auth ───
   auth: {
-    welcomeHeadline: 'Your emotional journey starts here.',
+    welcomeHeadline: 'What you carry deserves a place to breathe.',
     welcomeSubtitle: 'Capture moments. See patterns. Watch yourself evolve.',
     getStarted: 'Get started',
     haveAccount: 'I already have an account',
@@ -108,12 +108,26 @@ export default {
     signInSubtitle: 'Pick up where you left off.',
     signUpTitle: 'Start your journey.',
     signUpSubtitle: 'Every story begins with a single moment.',
-    emailPlaceholder: 'Email',
+    emailPlaceholder: 'Your email',
     passwordPlaceholder: 'Password',
     fullNamePlaceholder: 'Full name',
     signIn: 'Sign in',
     createAccount: 'Create account',
     continueWithGoogle: 'Continue with Google',
+    continueWithOutlook: 'Continue with Outlook',
+    or: 'or',
+    checkEmail: 'Check your email',
+    magicLinkSent: 'Sign-in link sent to {email}',
+    signupLinkSent: 'Sign-up link sent to {email}',
+    useDifferentEmail: 'Use a different email',
+    practitionerRedirect: 'Welcome, practitioner!',
+    practitionerRedirectBody: 'This app is for members. Please use the care dashboard to manage your practice.',
+    openDashboard: 'Open Care Dashboard',
+    signOut: 'Sign out',
+    noAccount: "We don't have an account for this email.",
+    goToSignUp: 'Sign up instead',
+    alreadyHaveAccount: 'Already have an account?',
+    dontHaveAccount: "Don't have an account?",
   },
 
   // ─── Practitioner ───

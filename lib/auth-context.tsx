@@ -20,15 +20,19 @@ function getRedirectUri(): string {
   return 'bloomsline://'
 }
 
+type MagicLinkResult = { error: any; redirectTo?: string }
+
 type AuthContextType = {
   session: Session | null
   user: User | null
   member: any | null
   loading: boolean
+  isPractitioner: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>
   signInWithGoogle: () => Promise<{ error: any }>
   signInWithAzure: () => Promise<{ error: any }>
+  sendMagicLink: (email: string, flow: 'signin' | 'signup') => Promise<MagicLinkResult>
   signOut: () => Promise<void>
 }
 
@@ -37,10 +41,12 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   member: null,
   loading: true,
+  isPractitioner: false,
   signIn: async () => ({ error: null }),
   signUp: async () => ({ error: null }),
   signInWithGoogle: async () => ({ error: null }),
   signInWithAzure: async () => ({ error: null }),
+  sendMagicLink: async () => ({ error: null }),
   signOut: async () => {},
 })
 
@@ -49,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [member, setMember] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isPractitioner, setIsPractitioner] = useState(false)
 
   useEffect(() => {
     // Use onAuthStateChange as the single source of truth.
@@ -94,6 +101,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setupCalledRef = useRef<string | null>(null)
 
   async function fetchMember(userId: string, accessToken?: string) {
+    // Check if user is a practitioner
+    const { data: userData } = await supabase
+      .from('users')
+      .select('user_type')
+      .eq('id', userId)
+      .single()
+
+    if (userData?.user_type === 'mentor') {
+      setIsPractitioner(true)
+      setLoading(false)
+      return
+    }
+
     const { data } = await supabase
       .from('members')
       .select('*')
@@ -220,13 +240,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  async function sendMagicLink(email: string, flow: 'signin' | 'signup'): Promise<MagicLinkResult> {
+    try {
+      // 1. Pre-flight check via care app API
+      const res = await fetch(`${API_URL}/api/auth/magic-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), flow }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        return { error: data.error, redirectTo: data.error === 'no_account' ? 'signup' : data.error === 'account_exists' ? 'signin' : undefined }
+      }
+
+      // 2. Send OTP from client (PKCE flow)
+      const redirectUrl = getRedirectUri()
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: `${redirectUrl}?flow=${flow}`,
+          shouldCreateUser: flow === 'signup',
+        },
+      })
+
+      if (error) return { error }
+      return { error: null }
+    } catch (err) {
+      return { error: err }
+    }
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     setMember(null)
+    setIsPractitioner(false)
   }
 
   return (
-    <AuthContext.Provider value={{ session, user, member, loading, signIn, signUp, signInWithGoogle, signInWithAzure, signOut }}>
+    <AuthContext.Provider value={{ session, user, member, loading, isPractitioner, signIn, signUp, signInWithGoogle, signInWithAzure, sendMagicLink, signOut }}>
       {children}
     </AuthContext.Provider>
   )
