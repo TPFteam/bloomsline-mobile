@@ -235,6 +235,7 @@ export default function Home() {
             position: 'absolute',
             top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: 'rgba(255,255,255,0.92)',
+            zIndex: 20,
           }}
         >
           {/* Floating cards */}
@@ -289,6 +290,7 @@ export default function Home() {
           bottom: insets.bottom + 20,
           left: 0, right: 0,
           alignItems: 'center',
+          zIndex: 10,
         }}>
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 24,
