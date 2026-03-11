@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
-import { Camera, Video, Mic, PenLine, Settings, BookOpen } from 'lucide-react-native'
+import { Camera, Video, Mic, PenLine, Settings } from 'lucide-react-native'
 import { colors, CAPTURE_TYPE_COLORS } from '@/lib/theme'
 
 // Extracted components
@@ -377,7 +377,7 @@ export default function Home() {
                 shadowRadius: 8,
                 elevation: 2,
               }}>
-                <BookOpen size={22} color={colors.primary} strokeWidth={1.8} />
+                <PenLine size={22} color={colors.primary} strokeWidth={1.8} />
               </View>
               <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>{t.stories?.section || 'Stories'}</Text>
             </TouchableOpacity>
