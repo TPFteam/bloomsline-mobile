@@ -860,14 +860,17 @@ export default function StoriesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       {/* Header */}
-      <View style={{ paddingTop: insets.top + 20, paddingHorizontal: spacing.screenPadding, paddingBottom: 16, backgroundColor: '#fff' }}>
+      <View style={{ paddingTop: insets.top + 12, paddingHorizontal: spacing.screenPadding, paddingBottom: 16, backgroundColor: '#fff' }}>
+        {/* Back button — own row */}
+        <View style={{ marginBottom: 28 }}>
+          <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace('/(main)/practitioner')} />
+        </View>
+
+        {/* Title + Create */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace('/(main)/practitioner')} />
-            <Text style={{ fontSize: 28, fontWeight: '700', color: colors.primary, letterSpacing: -0.5 }}>
-              {t.stories?.title || 'My Stories'}
-            </Text>
-          </View>
+          <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>
+            {t.stories?.title || 'My Stories'}
+          </Text>
           <TouchableOpacity
             onPress={startCreate}
             style={{
