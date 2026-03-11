@@ -860,7 +860,7 @@ export default function StoriesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       {/* Header */}
-      <View style={{ paddingTop: insets.top + 8, paddingHorizontal: spacing.screenPadding, paddingBottom: 16, backgroundColor: '#fff' }}>
+      <View style={{ paddingTop: insets.top + 20, paddingHorizontal: spacing.screenPadding, paddingBottom: 16, backgroundColor: '#fff' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace('/(main)/practitioner')} />
