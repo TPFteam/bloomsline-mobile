@@ -441,4 +441,23 @@ export default {
     somatic: 'Somatic',
     other: 'Other',
   },
+
+  // ─── Stories ───
+  stories: {
+    title: 'My Stories',
+    section: 'My Stories',
+    sectionCta: 'Write & share your story →',
+    create: 'Create',
+    createStory: 'Create Story',
+    total: 'Total',
+    published: 'Published',
+    drafts: 'Drafts',
+    draft: 'Draft',
+    all: 'All',
+    noStories: 'No stories yet',
+    noPublished: 'No published stories',
+    noDrafts: 'No drafts',
+    createFirst: 'Tap Create to write your first story.',
+    willAppear: 'Your stories will appear here.',
+  },
 } as const

@@ -535,6 +535,27 @@ export default function PractitionerScreen() {
         </View>
 
         {/* ═══════════════════════════════════════════════ */}
+        {/* MY STORIES */}
+        {/* ═══════════════════════════════════════════════ */}
+        <View style={{ marginBottom: 32 }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push('/(main)/stories')}
+            style={{
+              backgroundColor: '#fff', borderRadius: 22, padding: 24,
+              borderWidth: 1, borderColor: '#EBEBEB',
+            }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 10 }}>
+              {t.stories?.section || 'My Stories'}
+            </Text>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
+              {t.stories?.sectionCta || 'Write & share your story →'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ═══════════════════════════════════════════════ */}
         {/* UPCOMING SESSIONS */}
         {/* ═══════════════════════════════════════════════ */}
         <View style={{ marginBottom: 32 }}>

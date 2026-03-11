@@ -441,4 +441,23 @@ export default {
     somatic: 'Somatique',
     other: 'Autre',
   },
+
+  // ─── Stories ───
+  stories: {
+    title: 'Mes Histoires',
+    section: 'Mes Histoires',
+    sectionCta: 'Écrivez & partagez votre histoire →',
+    create: 'Créer',
+    createStory: 'Créer une histoire',
+    total: 'Total',
+    published: 'Publiées',
+    drafts: 'Brouillons',
+    draft: 'Brouillon',
+    all: 'Tout',
+    noStories: 'Pas encore d\'histoires',
+    noPublished: 'Aucune histoire publiée',
+    noDrafts: 'Aucun brouillon',
+    createFirst: 'Appuyez sur Créer pour écrire votre première histoire.',
+    willAppear: 'Vos histoires apparaîtront ici.',
+  },
 } as const

@@ -10,6 +10,7 @@ export default function MainLayout() {
       <Stack.Screen name="settings" />
       <Stack.Screen name="practitioner-profile" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="booking" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="stories" options={{ animation: 'slide_from_right' }} />
     </Stack>
   )
 }
