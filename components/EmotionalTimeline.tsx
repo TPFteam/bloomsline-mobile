@@ -67,13 +67,16 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress }: Emotional
     const latestColor = MOOD_COLORS[latest.mood] || '#000'
 
     return (
-        <View style={{ backgroundColor: colors.surface3, borderRadius: 24, overflow: 'hidden' }}>
+        <View style={{
+            backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden',
+            borderWidth: 1, borderColor: '#EBEBEB',
+        }}>
             {/* Card header */}
             <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase' }}>
+                <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1, color: '#8A8A8A', textTransform: 'uppercase' }}>
                     {t.timeline.emotionalFlow}
                 </Text>
-                <View style={{ backgroundColor: '#f0f0f0', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
+                <View style={{ backgroundColor: colors.surface1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
                     <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary }}>
                         {sorted.length} {sorted.length === 1 ? t.evolution.moment : t.evolution.moments}
                     </Text>
@@ -94,7 +97,7 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress }: Emotional
                     {[0.25, 0.5, 0.75].map(pct => {
                         const gy = CURVE_TOP + pct * (CURVE_BOT - CURVE_TOP)
                         return (
-                            <Line key={pct} x1={16} y1={gy} x2={CHART_W - 16} y2={gy} stroke="#000" strokeWidth={0.5} opacity={0.04} />
+                            <Line key={pct} x1={16} y1={gy} x2={CHART_W - 16} y2={gy} stroke="#000" strokeWidth={0.5} opacity={0.06} />
                         )
                     })}
 
@@ -147,7 +150,7 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress }: Emotional
                                 cx={pt.x} cy={pt.y}
                                 r={isLatest ? 8 : 5}
                                 fill={color}
-                                stroke={colors.surface3}
+                                stroke="#fff"
                                 strokeWidth={isLatest ? 3 : 2}
                             />
                         )

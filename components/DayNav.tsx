@@ -61,19 +61,37 @@ export function DayNav({ selected, onSelect }: DayNavProps) {
     }
 
     return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <TouchableOpacity onPress={goBack} activeOpacity={0.5} hitSlop={12}>
-                <Text style={{ fontSize: 16, color: colors.textMuted }}>‹</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <TouchableOpacity
+                onPress={goBack}
+                activeOpacity={0.6}
+                hitSlop={12}
+                style={{
+                    width: 34, height: 34, borderRadius: 17,
+                    backgroundColor: colors.surface1, alignItems: 'center', justifyContent: 'center',
+                }}
+            >
+                <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textSecondary, marginTop: -1 }}>‹</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={!isViewingToday ? () => onSelect(today) : undefined} activeOpacity={isViewingToday ? 1 : 0.6}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textTertiary }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primary, letterSpacing: -0.2 }}>
                     {getDateLabel(selected, t.dayNav, locale)}
                 </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={goForward} activeOpacity={isViewingToday ? 1 : 0.5} hitSlop={12}>
-                <Text style={{ fontSize: 16, color: isViewingToday ? colors.divider : colors.textMuted }}>›</Text>
+            <TouchableOpacity
+                onPress={goForward}
+                activeOpacity={isViewingToday ? 1 : 0.6}
+                hitSlop={12}
+                style={{
+                    width: 34, height: 34, borderRadius: 17,
+                    backgroundColor: isViewingToday ? colors.surface2 : colors.surface1,
+                    alignItems: 'center', justifyContent: 'center',
+                    opacity: isViewingToday ? 0.4 : 1,
+                }}
+            >
+                <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textSecondary, marginTop: -1 }}>›</Text>
             </TouchableOpacity>
         </View>
     )
