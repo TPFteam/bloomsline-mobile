@@ -284,7 +284,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await res.json()
 
       if (!res.ok) {
-        return { error: data.error, redirectTo: data.error === 'no_account' ? 'signup' : data.error === 'account_exists' ? 'signin' : undefined }
+        const redirectTo = data.error === 'no_account' ? 'signup' : data.error === 'account_exists' ? 'signin' : undefined
+        return { error: data.message || data.error, redirectTo }
       }
 
       // 2. Send OTP from client (PKCE flow)
