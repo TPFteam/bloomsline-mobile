@@ -150,7 +150,7 @@ export default function SignUp() {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
@@ -160,7 +160,7 @@ export default function SignUp() {
                 keyboardType="email-address"
                 onSubmitEditing={handleMagicLink}
                 style={{
-                  flex: 1, height: 56, backgroundColor: '#f5f5f5', borderRadius: 28,
+                  flex: 1, minWidth: 0, height: 56, backgroundColor: '#f5f5f5', borderRadius: 28,
                   paddingHorizontal: 20, fontSize: 17, color: '#000',
                 }}
                 editable={loading === null}
@@ -169,15 +169,15 @@ export default function SignUp() {
                 onPress={handleMagicLink}
                 disabled={!email.trim() || loading !== null}
                 style={{
-                  width: 56, height: 56, borderRadius: 28, backgroundColor: colors.bloom,
-                  justifyContent: 'center', alignItems: 'center',
+                  width: 48, height: 48, borderRadius: 24, backgroundColor: colors.bloom,
+                  justifyContent: 'center', alignItems: 'center', flexShrink: 0,
                   opacity: !email.trim() || loading !== null ? 0.5 : 1,
                 }}
               >
                 {loading === 'magic' ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <ArrowRight size={22} color="#fff" />
+                  <ArrowRight size={20} color="#fff" />
                 )}
               </TouchableOpacity>
             </View>
