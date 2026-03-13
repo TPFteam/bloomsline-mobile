@@ -304,13 +304,13 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
             if (!val) return null
             return (
               <TouchableOpacity key={prevCol.id} onPress={() => { setReturnToCol(safeCol); setCurrentCol(i) }} style={{
-                flexDirection: 'row', paddingVertical: 5,
+                paddingVertical: 6,
                 borderBottomWidth: i < safeCol - 1 ? 1 : 0, borderBottomColor: '#E8E8E8',
               }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: MUTED, width: '35%' }} numberOfLines={1}>
-                  {prevCol.header}
+                <Text style={{ fontSize: 12, fontWeight: '600', color: MUTED, marginBottom: 2 }}>
+                  {extractLocalized(prevCol.header, locale)}
                 </Text>
-                <Text style={{ fontSize: 12, color: colors.primary, flex: 1 }} numberOfLines={1}>
+                <Text style={{ fontSize: 12, color: colors.primary }} numberOfLines={2}>
                   {val}
                 </Text>
               </TouchableOpacity>
