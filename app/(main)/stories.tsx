@@ -46,8 +46,6 @@ import {
   ChevronDown,
   BookMarked,
   FolderPlus,
-  LayoutGrid,
-  LayoutList,
   Heart,
   Star,
   Sun,
@@ -1101,9 +1099,34 @@ export default function StoriesScreen() {
           ))}
         </View>
 
-        {/* Filter tabs + view toggle */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <View style={{ flexDirection: 'row', gap: 8, flex: 1 }}>
+        {/* Stories / Chapters tabs */}
+        <View style={{ flexDirection: 'row', backgroundColor: colors.surface1, borderRadius: 12, padding: 3, marginBottom: 16 }}>
+          {([
+            { key: 'grid' as const, label: t.stories?.section || 'Stories' },
+            { key: 'list' as const, label: t.chapters?.title || 'Chapters' },
+          ]).map((tab) => {
+            const active = viewMode === tab.key
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                onPress={() => setViewMode(tab.key)}
+                activeOpacity={0.7}
+                style={{
+                  flex: 1, paddingVertical: 10, borderRadius: 10, alignItems: 'center',
+                  backgroundColor: active ? '#fff' : 'transparent',
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: active ? colors.primary : colors.textSecondary }}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+
+        {/* Filter pills (stories view only) */}
+        {viewMode === 'grid' && (
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
             {([
               { key: 'all' as const, label: t.stories?.all || 'All' },
               { key: 'published' as const, label: t.stories?.published || 'Published' },
@@ -1122,31 +1145,7 @@ export default function StoriesScreen() {
               )
             })}
           </View>
-
-          {/* View mode toggle */}
-          <View style={{ flexDirection: 'row', backgroundColor: colors.surface1, borderRadius: 12, padding: 3 }}>
-            <TouchableOpacity
-              onPress={() => setViewMode('list')}
-              activeOpacity={0.7}
-              style={{
-                paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
-                backgroundColor: viewMode === 'list' ? '#fff' : 'transparent',
-              }}
-            >
-              <LayoutList size={16} color={viewMode === 'list' ? colors.primary : colors.textSecondary} strokeWidth={2} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setViewMode('grid')}
-              activeOpacity={0.7}
-              style={{
-                paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
-                backgroundColor: viewMode === 'grid' ? '#fff' : 'transparent',
-              }}
-            >
-              <LayoutGrid size={16} color={viewMode === 'grid' ? colors.primary : colors.textSecondary} strokeWidth={2} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        )}
 
         {viewMode === 'list' ? (
         /* ═══════════════════════════════════════════ */
