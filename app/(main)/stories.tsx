@@ -11,6 +11,7 @@ import {
   Platform,
   Share,
   Image,
+  Pressable,
 } from 'react-native'
 import { Audio } from 'expo-av'
 import * as ImagePicker from 'expo-image-picker'
@@ -190,7 +191,7 @@ function AudioPlayer({ uri }: { uri: string }) {
 
 // ─── Block Renderer (view mode) ─────────────────────
 
-function RenderBlock({ block }: { block: ContentBlock }) {
+function RenderBlock({ block, onImagePress }: { block: ContentBlock; onImagePress?: (url: string) => void }) {
   switch (block.type) {
     case 'heading': {
       const level = block.content?.level || 1
@@ -234,11 +235,13 @@ function RenderBlock({ block }: { block: ContentBlock }) {
           {mediaItems.map((item: any, i: number) => (
             <View key={i}>
               {item.fileType === 'image' ? (
-                <Image
-                  source={{ uri: item.url }}
-                  style={{ width: '100%', height: undefined, aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: colors.surface1 }}
-                  resizeMode="cover"
-                />
+                <TouchableOpacity activeOpacity={0.9} onPress={() => onImagePress?.(item.url)}>
+                  <Image
+                    source={{ uri: item.url }}
+                    style={{ width: '100%', height: undefined, aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: colors.surface1 }}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
               ) : item.fileType === 'audio' ? (
                 <AudioPlayer uri={item.url} />
               ) : null}
@@ -433,6 +436,7 @@ export default function StoriesScreen() {
 
   // View story
   const [viewingStory, setViewingStory] = useState<Story | null>(null)
+  const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
 
   // Editor
   const [editing, setEditing] = useState(false)
@@ -1070,7 +1074,7 @@ export default function StoriesScreen() {
                 {Array.isArray(viewingStory.content) && viewingStory.content.length > 0 ? (
                   viewingStory.content
                     .sort((a, b) => (a.order || 0) - (b.order || 0))
-                    .map((block) => <RenderBlock key={block.id} block={block} />)
+                    .map((block) => <RenderBlock key={block.id} block={block} onImagePress={setFullscreenImage} />)
                 ) : (
                   <Text style={{ fontSize: 14, color: colors.textSecondary, fontStyle: 'italic' }}>
                     This story has no content yet.
@@ -1197,6 +1201,36 @@ export default function StoriesScreen() {
             </>
           )}
         </View>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* FULLSCREEN IMAGE VIEWER */}
+      {/* ═══════════════════════════════════════════ */}
+      <Modal visible={!!fullscreenImage} transparent animationType="fade" onRequestClose={() => setFullscreenImage(null)}>
+        <Pressable
+          onPress={() => setFullscreenImage(null)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' }}
+        >
+          <TouchableOpacity
+            onPress={() => setFullscreenImage(null)}
+            activeOpacity={0.8}
+            style={{
+              position: 'absolute', top: insets.top + 12, right: 16, zIndex: 10,
+              width: 36, height: 36, borderRadius: 18,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              justifyContent: 'center', alignItems: 'center',
+            }}
+          >
+            <X size={20} color="#fff" />
+          </TouchableOpacity>
+          {fullscreenImage && (
+            <Image
+              source={{ uri: fullscreenImage }}
+              style={{ width: '100%', height: '80%' }}
+              resizeMode="contain"
+            />
+          )}
+        </Pressable>
       </Modal>
 
       {/* ═══════════════════════════════════════════ */}
