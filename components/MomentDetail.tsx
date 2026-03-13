@@ -1,14 +1,212 @@
-import { View, Text, TouchableOpacity, ScrollView, Image, Pressable } from 'react-native'
+import { useState, useRef, useCallback } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, Image, Pressable, Modal, Dimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Video, ResizeMode } from 'expo-av'
-import { Mic } from 'lucide-react-native'
+import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'
+import { Mic, Play, Pause, Volume2, VolumeX, Maximize, Minimize, X } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
-import { Moment } from '@/lib/services/moments'
+import { Moment, MomentMediaRow } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 interface MomentDetailProps {
     moment: Moment
     onClose: () => void
+}
+
+function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compact?: boolean }) {
+    const videoRef = useRef<Video>(null)
+    const [isPlaying, setIsPlaying] = useState(false)
+    const [isMuted, setIsMuted] = useState(false)
+    const [position, setPosition] = useState(0)
+    const [duration, setDuration] = useState(0)
+    const [showControls, setShowControls] = useState(true)
+    const [fullscreen, setFullscreen] = useState(false)
+    const hideTimer = useRef<NodeJS.Timeout | null>(null)
+
+    const onPlaybackStatusUpdate = useCallback((status: AVPlaybackStatus) => {
+        if (!status.isLoaded) return
+        setIsPlaying(status.isPlaying)
+        setPosition(status.positionMillis || 0)
+        setDuration(status.durationMillis || 0)
+        if (status.didJustFinish) {
+            videoRef.current?.setPositionAsync(0)
+            setIsPlaying(false)
+        }
+    }, [])
+
+    const togglePlay = async () => {
+        if (!videoRef.current) return
+        if (isPlaying) {
+            await videoRef.current.pauseAsync()
+        } else {
+            await videoRef.current.playAsync()
+        }
+        resetHideTimer()
+    }
+
+    const toggleMute = async () => {
+        if (!videoRef.current) return
+        await videoRef.current.setIsMutedAsync(!isMuted)
+        setIsMuted(!isMuted)
+        resetHideTimer()
+    }
+
+    const toggleFullscreen = () => {
+        setFullscreen(!fullscreen)
+    }
+
+    const resetHideTimer = () => {
+        if (hideTimer.current) clearTimeout(hideTimer.current)
+        setShowControls(true)
+        hideTimer.current = setTimeout(() => {
+            if (isPlaying) setShowControls(false)
+        }, 3000)
+    }
+
+    const seekTo = async (ratio: number) => {
+        if (!videoRef.current || !duration) return
+        await videoRef.current.setPositionAsync(ratio * duration)
+        resetHideTimer()
+    }
+
+    const formatTime = (ms: number) => {
+        const s = Math.floor(ms / 1000)
+        const m = Math.floor(s / 60)
+        return `${m}:${String(s % 60).padStart(2, '0')}`
+    }
+
+    const progress = duration ? position / duration : 0
+
+    const videoContent = (
+        <View style={[{ backgroundColor: '#000', overflow: 'hidden' }, style, fullscreen && { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}>
+            <Video
+                ref={videoRef}
+                source={{ uri }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode={fullscreen ? ResizeMode.CONTAIN : ResizeMode.COVER}
+                shouldPlay={false}
+                isMuted={isMuted}
+                onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+            />
+
+            {/* Tap area to toggle controls */}
+            <Pressable
+                onPress={() => {
+                    if (showControls && isPlaying) {
+                        setShowControls(false)
+                    } else {
+                        resetHideTimer()
+                    }
+                }}
+                style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+            >
+                {/* Controls overlay */}
+                {showControls && (
+                    <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+                        {/* Center play button */}
+                        {!isPlaying && !compact && (
+                            <TouchableOpacity
+                                onPress={togglePlay}
+                                activeOpacity={0.8}
+                                style={{
+                                    position: 'absolute', top: '50%', left: '50%',
+                                    marginTop: -28, marginLeft: -28,
+                                    width: 56, height: 56, borderRadius: 28,
+                                    backgroundColor: 'rgba(0,0,0,0.5)',
+                                    justifyContent: 'center', alignItems: 'center',
+                                }}
+                            >
+                                <Play size={24} color="#fff" fill="#fff" />
+                            </TouchableOpacity>
+                        )}
+
+                        {/* Bottom bar */}
+                        <View style={{
+                            backgroundColor: 'rgba(0,0,0,0.45)',
+                            paddingHorizontal: compact ? 8 : 14,
+                            paddingVertical: compact ? 6 : 10,
+                            flexDirection: 'row', alignItems: 'center', gap: compact ? 8 : 12,
+                        }}>
+                            {/* Play/Pause */}
+                            <TouchableOpacity onPress={togglePlay} hitSlop={8}>
+                                {isPlaying
+                                    ? <Pause size={compact ? 16 : 20} color="#fff" fill="#fff" />
+                                    : <Play size={compact ? 16 : 20} color="#fff" fill="#fff" />
+                                }
+                            </TouchableOpacity>
+
+                            {/* Progress bar */}
+                            {!compact && (
+                                <>
+                                    <Text style={{ fontSize: 11, color: '#ccc', fontVariant: ['tabular-nums'] }}>
+                                        {formatTime(position)}
+                                    </Text>
+                                    <Pressable
+                                        onPress={(e) => {
+                                            const barWidth = e.nativeEvent.locationX
+                                            const totalWidth = (e.nativeEvent as any).target?.offsetWidth || 200
+                                            seekTo(barWidth / totalWidth)
+                                        }}
+                                        style={{ flex: 1, height: 20, justifyContent: 'center' }}
+                                    >
+                                        <View style={{ height: 3, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2 }}>
+                                            <View style={{ height: 3, backgroundColor: '#fff', borderRadius: 2, width: `${progress * 100}%` }} />
+                                        </View>
+                                    </Pressable>
+                                    <Text style={{ fontSize: 11, color: '#ccc', fontVariant: ['tabular-nums'] }}>
+                                        {formatTime(duration)}
+                                    </Text>
+                                </>
+                            )}
+
+                            {/* Mute */}
+                            <TouchableOpacity onPress={toggleMute} hitSlop={8}>
+                                {isMuted
+                                    ? <VolumeX size={compact ? 16 : 20} color="#fff" />
+                                    : <Volume2 size={compact ? 16 : 20} color="#fff" />
+                                }
+                            </TouchableOpacity>
+
+                            {/* Fullscreen */}
+                            {!compact && (
+                                <TouchableOpacity onPress={toggleFullscreen} hitSlop={8}>
+                                    {fullscreen
+                                        ? <Minimize size={20} color="#fff" />
+                                        : <Maximize size={20} color="#fff" />
+                                    }
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    </View>
+                )}
+            </Pressable>
+        </View>
+    )
+
+    if (fullscreen) {
+        return (
+            <Modal visible animationType="fade" supportedOrientations={['portrait', 'landscape']}>
+                <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center' }}>
+                    {/* Close button */}
+                    <TouchableOpacity
+                        onPress={toggleFullscreen}
+                        style={{
+                            position: 'absolute', top: 50, right: 20, zIndex: 10,
+                            width: 36, height: 36, borderRadius: 18,
+                            backgroundColor: 'rgba(0,0,0,0.5)',
+                            justifyContent: 'center', alignItems: 'center',
+                        }}
+                    >
+                        <X size={20} color="#fff" />
+                    </TouchableOpacity>
+                    {videoContent}
+                </View>
+            </Modal>
+        )
+    }
+
+    return videoContent
 }
 
 export function MomentDetail({ moment, onClose }: MomentDetailProps) {
@@ -46,13 +244,7 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
                     {/* Media */}
                     {hasMedia && (
                         isMainVideo ? (
-                            <Video
-                                source={{ uri: moment.media_url! }}
-                                style={{ width: '100%', height: 280 }}
-                                resizeMode={ResizeMode.COVER}
-                                useNativeControls
-                                shouldPlay={false}
-                            />
+                            <VideoPlayer uri={moment.media_url!} style={{ width: '100%', height: 300, borderRadius: 0 }} />
                         ) : (
                             <Image
                                 source={{ uri: moment.media_url! }}
@@ -119,13 +311,11 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
                                 <View style={{ flexDirection: 'row', gap: 8 }}>
                                     {moment.media_items.map((item, i) => (
                                         item.mime_type?.startsWith('video/') ? (
-                                            <Video
+                                            <VideoPlayer
                                                 key={item.id || i}
-                                                source={{ uri: item.media_url }}
-                                                style={{ width: 120, height: 120, borderRadius: 16 }}
-                                                resizeMode={ResizeMode.COVER}
-                                                useNativeControls
-                                                shouldPlay={false}
+                                                uri={item.media_url}
+                                                style={{ width: 140, height: 140, borderRadius: 16 }}
+                                                compact
                                             />
                                         ) : (
                                             <Image
