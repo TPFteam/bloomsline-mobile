@@ -44,6 +44,24 @@ import {
   MicOff,
   ChevronUp,
   ChevronDown,
+  BookMarked,
+  FolderPlus,
+  LayoutGrid,
+  LayoutList,
+  Heart,
+  Star,
+  Sun,
+  Moon,
+  Cloud,
+  Flower2,
+  Leaf,
+  Mountain,
+  Music,
+  Sparkles,
+  Flame,
+  Target,
+  Feather,
+  Compass,
 } from 'lucide-react-native'
 import { BackButton } from '@/components/ui/BackButton'
 import { PageLoader } from '@/components/PageLoader'
@@ -71,8 +89,46 @@ interface Story {
   published: boolean
   unique_slug: string
   secret_code?: string | null
+  chapter_id?: string | null
+  chapter_order?: number
   created_at: string
   updated_at: string
+}
+
+interface Chapter {
+  id: string
+  user_id: string
+  title: string
+  description: string | null
+  cover_icon: string
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+const CHAPTER_ICONS: { name: string; icon: any }[] = [
+  { name: 'BookOpen', icon: BookOpen },
+  { name: 'Heart', icon: Heart },
+  { name: 'Star', icon: Star },
+  { name: 'Sun', icon: Sun },
+  { name: 'Moon', icon: Moon },
+  { name: 'Sparkles', icon: Sparkles },
+  { name: 'Flower2', icon: Flower2 },
+  { name: 'Leaf', icon: Leaf },
+  { name: 'Cloud', icon: Cloud },
+  { name: 'Flame', icon: Flame },
+  { name: 'Mountain', icon: Mountain },
+  { name: 'Music', icon: Music },
+  { name: 'Feather', icon: Feather },
+  { name: 'Compass', icon: Compass },
+  { name: 'Target', icon: Target },
+  { name: 'BookMarked', icon: BookMarked },
+]
+
+function ChapterIcon({ name, size = 22, color = colors.bloom }: { name: string; size?: number; color?: string }) {
+  const entry = CHAPTER_ICONS.find(i => i.name === name)
+  const IconComponent = entry?.icon || BookOpen
+  return <IconComponent size={size} color={color} />
 }
 
 // ─── Helpers ────────────────────────────────────────
@@ -433,6 +489,7 @@ export default function StoriesScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
 
   // View story
   const [viewingStory, setViewingStory] = useState<Story | null>(null)
@@ -464,6 +521,21 @@ export default function StoriesScreen() {
   const [confirmNewCode, setConfirmNewCode] = useState('')
   const [codeSaving, setCodeSaving] = useState(false)
 
+  // Chapters
+  const [chapters, setChapters] = useState<Chapter[]>([])
+  const [expandedChapterId, setExpandedChapterId] = useState<string | null>(null)
+  const [chapterEditorVisible, setChapterEditorVisible] = useState(false)
+  const [editingChapter, setEditingChapter] = useState<Chapter | null>(null)
+  const [chapterTitle, setChapterTitle] = useState('')
+  const [chapterDescription, setChapterDescription] = useState('')
+  const [chapterIcon, setChapterIcon] = useState('BookOpen')
+  const [chapterSaving, setChapterSaving] = useState(false)
+  const [assignSheetVisible, setAssignSheetVisible] = useState(false)
+  const [assigningStory, setAssigningStory] = useState<Story | null>(null)
+  const [chapterReaderVisible, setChapterReaderVisible] = useState(false)
+  const [readingChapter, setReadingChapter] = useState<Chapter | null>(null)
+  const [chapterMenuId, setChapterMenuId] = useState<string | null>(null)
+
   // Recording
   const [recording, setRecording] = useState<Audio.Recording | null>(null)
   const [recordingDuration, setRecordingDuration] = useState(0)
@@ -487,14 +559,29 @@ export default function StoriesScreen() {
     }
   }, [user?.id])
 
+  const fetchChapters = useCallback(async () => {
+    if (!user?.id) return
+    try {
+      const { data, error } = await supabase
+        .from('chapters')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('sort_order', { ascending: true })
+      if (error) throw error
+      setChapters((data || []) as Chapter[])
+    } catch (err) {
+      console.error('Error fetching chapters:', err)
+    }
+  }, [user?.id])
+
   useFocusEffect(useCallback(() => {
     setLoading(true)
-    fetchStories().finally(() => setLoading(false))
-  }, [fetchStories]))
+    Promise.all([fetchStories(), fetchChapters()]).finally(() => setLoading(false))
+  }, [fetchStories, fetchChapters]))
 
   async function onRefresh() {
     setRefreshing(true)
-    await fetchStories()
+    await Promise.all([fetchStories(), fetchChapters()])
     setRefreshing(false)
   }
 
@@ -717,6 +804,107 @@ export default function StoriesScreen() {
     }
   }
 
+  // ─── Chapter CRUD ────────────────────────────────
+
+  function openChapterEditor(chapter?: Chapter) {
+    if (chapter) {
+      setEditingChapter(chapter)
+      setChapterTitle(chapter.title)
+      setChapterDescription(chapter.description || '')
+      setChapterIcon(chapter.cover_icon || 'BookOpen')
+    } else {
+      setEditingChapter(null)
+      setChapterTitle('')
+      setChapterDescription('')
+      setChapterIcon('BookOpen')
+    }
+    setChapterEditorVisible(true)
+  }
+
+  async function saveChapter() {
+    if (!chapterTitle.trim()) {
+      showAlert(t.stories?.title || 'Title required')
+      return
+    }
+    setChapterSaving(true)
+    try {
+      const now = new Date().toISOString()
+      if (editingChapter) {
+        const { error } = await supabase.from('chapters')
+          .update({ title: chapterTitle.trim(), description: chapterDescription.trim() || null, cover_icon: chapterIcon, updated_at: now })
+          .eq('id', editingChapter.id)
+        if (error) throw error
+        setChapters(prev => prev.map(c => c.id === editingChapter.id
+          ? { ...c, title: chapterTitle.trim(), description: chapterDescription.trim() || null, cover_icon: chapterIcon, updated_at: now }
+          : c
+        ))
+      } else {
+        const { data, error } = await supabase.from('chapters')
+          .insert({ user_id: user?.id, title: chapterTitle.trim(), description: chapterDescription.trim() || null, cover_icon: chapterIcon, sort_order: chapters.length })
+          .select().single()
+        if (error) throw error
+        if (data) setChapters(prev => [...prev, data as Chapter])
+      }
+      setChapterEditorVisible(false)
+    } catch (err) {
+      console.error('Error saving chapter:', err)
+      showAlert('Error', 'Failed to save chapter.')
+    } finally {
+      setChapterSaving(false)
+    }
+  }
+
+  function confirmDeleteChapter(chapter: Chapter) {
+    const msg = t.chapters?.deleteConfirm || 'Delete this chapter? Stories will become standalone.'
+    if (Platform.OS === 'web') {
+      if (confirm(msg)) deleteChapter(chapter.id)
+    } else {
+      Alert.alert(t.chapters?.deleteChapter || 'Delete Chapter', msg, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteChapter(chapter.id) },
+      ])
+    }
+  }
+
+  async function deleteChapter(chapterId: string) {
+    try {
+      // Remove chapter_id from stories first
+      await supabase.from('stories').update({ chapter_id: null, chapter_order: 0 }).eq('chapter_id', chapterId)
+      const { error } = await supabase.from('chapters').delete().eq('id', chapterId)
+      if (error) throw error
+      setChapters(prev => prev.filter(c => c.id !== chapterId))
+      setStories(prev => prev.map(s => s.chapter_id === chapterId ? { ...s, chapter_id: null, chapter_order: 0 } : s))
+    } catch (err) {
+      console.error('Error deleting chapter:', err)
+    }
+  }
+
+  function openAssignSheet(story: Story) {
+    setAssigningStory(story)
+    setAssignSheetVisible(true)
+  }
+
+  async function assignStoryToChapter(storyId: string, chapterId: string | null) {
+    try {
+      const chapterOrder = chapterId
+        ? stories.filter(s => s.chapter_id === chapterId).length
+        : 0
+      const { error } = await supabase.from('stories')
+        .update({ chapter_id: chapterId, chapter_order: chapterOrder, updated_at: new Date().toISOString() })
+        .eq('id', storyId)
+      if (error) throw error
+      setStories(prev => prev.map(s => s.id === storyId ? { ...s, chapter_id: chapterId, chapter_order: chapterOrder } : s))
+      setAssignSheetVisible(false)
+    } catch (err) {
+      console.error('Error assigning story:', err)
+    }
+  }
+
+  function openChapterReader(chapter: Chapter) {
+    setReadingChapter(chapter)
+    setChapterReaderVisible(true)
+  }
+
   function confirmDelete(story: Story) {
     setMenuStoryId(null)
     if (Platform.OS === 'web') {
@@ -853,6 +1041,10 @@ export default function StoriesScreen() {
     : filter === 'published' ? stories.filter(s => s.published)
     : stories.filter(s => !s.published)
 
+  const standaloneStories = filtered.filter(s => !s.chapter_id)
+  const storiesByChapter = (chapterId: string) =>
+    filtered.filter(s => s.chapter_id === chapterId).sort((a, b) => (a.chapter_order || 0) - (b.chapter_order || 0))
+
   // ─── Loading ──────────────────────────────────────
 
   if (loading) return <PageLoader />
@@ -909,126 +1101,281 @@ export default function StoriesScreen() {
           ))}
         </View>
 
-        {/* Filter tabs */}
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-          {([
-            { key: 'all' as const, label: t.stories?.all || 'All' },
-            { key: 'published' as const, label: t.stories?.published || 'Published' },
-            { key: 'draft' as const, label: t.stories?.drafts || 'Drafts' },
-          ]).map((tab) => {
-            const active = filter === tab.key
-            return (
-              <TouchableOpacity key={tab.key} onPress={() => setFilter(tab.key)} style={{
-                paddingHorizontal: 16, paddingVertical: 8, borderRadius: radii.pill,
-                backgroundColor: active ? colors.primary : colors.surface1,
-              }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : colors.textSecondary }}>
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            )
-          })}
-        </View>
-
-        {/* Story list */}
-        {filtered.length === 0 ? (
-          <View style={{ alignItems: 'center', paddingVertical: 60 }}>
-            <View style={{
-              width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface1,
-              alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-            }}>
-              <BookOpen size={32} color={colors.bloom} />
-            </View>
-            <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>
-              {filter === 'all' ? (t.stories?.noStories || 'No stories yet')
-                : filter === 'published' ? (t.stories?.noPublished || 'No published stories')
-                : (t.stories?.noDrafts || 'No drafts')}
-            </Text>
-            <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4, textAlign: 'center' }}>
-              {filter === 'all'
-                ? (t.stories?.createFirst || 'Tap Create to write your first story.')
-                : (t.stories?.willAppear || 'Your stories will appear here.')}
-            </Text>
-            {filter === 'all' && (
-              <TouchableOpacity onPress={startCreate} style={{
-                flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16,
-                backgroundColor: colors.bloom, borderRadius: radii.button, paddingHorizontal: 20, paddingVertical: 12,
-              }}>
-                <Plus size={18} color="#fff" />
-                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
-                  {t.stories?.createStory || 'Create Story'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          <View style={{ gap: 10 }}>
-            {filtered.map((story) => {
-              const preview = getPreview(story.content)
+        {/* Filter tabs + view toggle */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', gap: 8, flex: 1 }}>
+            {([
+              { key: 'all' as const, label: t.stories?.all || 'All' },
+              { key: 'published' as const, label: t.stories?.published || 'Published' },
+              { key: 'draft' as const, label: t.stories?.drafts || 'Drafts' },
+            ]).map((tab) => {
+              const active = filter === tab.key
               return (
-                <TouchableOpacity
-                  key={story.id}
-                  activeOpacity={0.7}
-                  onPress={() => setViewingStory(story)}
-                  style={{
-                    backgroundColor: '#fff', borderRadius: radii.card, padding: 16,
-                    borderWidth: 1, borderColor: '#EBEBEB',
-                  }}
-                >
-                  {/* Top row: badges + menu */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <View style={{ flexDirection: 'row', gap: 6 }}>
-                      <View style={{
-                        flexDirection: 'row', alignItems: 'center', gap: 4,
-                        backgroundColor: story.published ? '#ecfdf5' : colors.surface1,
-                        borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-                      }}>
-                        {story.published ? <Globe size={11} color="#059669" /> : <FileText size={11} color={colors.textSecondary} />}
-                        <Text style={{ fontSize: 11, fontWeight: '600', color: story.published ? '#059669' : colors.textSecondary }}>
-                          {story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}
-                        </Text>
-                      </View>
-                      {!!story.secret_code && (
-                        <View style={{
-                          flexDirection: 'row', alignItems: 'center', gap: 3,
-                          backgroundColor: '#f5f3ff', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3,
-                        }}>
-                          <Lock size={10} color="#7c3aed" />
-                          <Text style={{ fontSize: 10, fontWeight: '600', color: '#7c3aed' }}>Code</Text>
-                        </View>
-                      )}
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => setMenuStoryId(menuStoryId === story.id ? null : story.id)}
-                      style={{ padding: 4 }}
-                    >
-                      <MoreVertical size={18} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Title */}
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 4 }} numberOfLines={2}>
-                    {story.title}
+                <TouchableOpacity key={tab.key} onPress={() => setFilter(tab.key)} style={{
+                  paddingHorizontal: 16, paddingVertical: 8, borderRadius: radii.pill,
+                  backgroundColor: active ? colors.primary : colors.surface1,
+                }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : colors.textSecondary }}>
+                    {tab.label}
                   </Text>
-
-                  {/* Preview */}
-                  {preview ? (
-                    <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginBottom: 8 }} numberOfLines={2}>
-                      {preview}
-                    </Text>
-                  ) : null}
-
-                  {/* Date */}
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                    <Clock size={12} color={colors.textMuted} />
-                    <Text style={{ fontSize: 11, color: colors.textSecondary }}>
-                      Updated {formatDate(story.updated_at)}
-                    </Text>
-                  </View>
                 </TouchableOpacity>
               )
             })}
           </View>
+
+          {/* View mode toggle */}
+          <View style={{ flexDirection: 'row', backgroundColor: colors.surface1, borderRadius: 12, padding: 3 }}>
+            <TouchableOpacity
+              onPress={() => setViewMode('list')}
+              activeOpacity={0.7}
+              style={{
+                paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
+                backgroundColor: viewMode === 'list' ? '#fff' : 'transparent',
+              }}
+            >
+              <LayoutList size={16} color={viewMode === 'list' ? colors.primary : colors.textSecondary} strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setViewMode('grid')}
+              activeOpacity={0.7}
+              style={{
+                paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
+                backgroundColor: viewMode === 'grid' ? '#fff' : 'transparent',
+              }}
+            >
+              <LayoutGrid size={16} color={viewMode === 'grid' ? colors.primary : colors.textSecondary} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {viewMode === 'list' ? (
+        /* ═══════════════════════════════════════════ */
+        /* CHAPTERS VIEW                               */
+        /* ═══════════════════════════════════════════ */
+        <>
+          {chapters.length > 0 ? (
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }}>
+                  {t.chapters?.title || 'Chapters'}
+                </Text>
+                <TouchableOpacity onPress={() => openChapterEditor()} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <FolderPlus size={16} color={colors.bloom} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>
+                    {t.chapters?.newChapter || 'New Chapter'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ gap: 10 }}>
+                {chapters.map((chapter) => {
+                  const chapterStories = storiesByChapter(chapter.id)
+                  const isExpanded = expandedChapterId === chapter.id
+                  return (
+                    <View key={chapter.id} style={{
+                      backgroundColor: '#fff', borderRadius: radii.card,
+                      borderWidth: 1, borderColor: '#EBEBEB', overflow: 'hidden',
+                    }}>
+                      {/* Chapter header */}
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => setExpandedChapterId(isExpanded ? null : chapter.id)}
+                        style={{ flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 }}
+                      >
+                        <ChapterIcon name={chapter.cover_icon || 'BookOpen'} size={26} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary }} numberOfLines={1}>
+                            {chapter.title}
+                          </Text>
+                          {chapter.description ? (
+                            <Text style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
+                              {chapter.description}
+                            </Text>
+                          ) : null}
+                          <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 3 }}>
+                            {chapterStories.length} {chapterStories.length === 1
+                              ? (t.chapters?.story || 'story')
+                              : (t.chapters?.stories || 'stories')}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <TouchableOpacity
+                            onPress={(e) => { e.stopPropagation(); setChapterMenuId(chapterMenuId === chapter.id ? null : chapter.id) }}
+                            hitSlop={8}
+                            style={{ padding: 4 }}
+                          >
+                            <MoreVertical size={18} color={colors.textSecondary} />
+                          </TouchableOpacity>
+                          {isExpanded ? <ChevronUp size={18} color={colors.textSecondary} /> : <ChevronDown size={18} color={colors.textSecondary} />}
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* Expanded: story list */}
+                      {isExpanded && (
+                        <View style={{ borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingHorizontal: 12, paddingVertical: 8 }}>
+                          {chapterStories.length === 0 ? (
+                            <Text style={{ fontSize: 13, color: colors.textMuted, textAlign: 'center', paddingVertical: 16 }}>
+                              {t.chapters?.emptyChapter || 'No stories in this chapter yet.'}
+                            </Text>
+                          ) : (
+                            chapterStories.map((story) => (
+                              <TouchableOpacity
+                                key={story.id}
+                                onPress={() => setViewingStory(story)}
+                                activeOpacity={0.7}
+                                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 10, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' }}
+                              >
+                                <View style={{ flex: 1 }}>
+                                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }} numberOfLines={1}>{story.title}</Text>
+                                  <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
+                                    {story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}
+                                    {' · '}{formatDate(story.updated_at)}
+                                  </Text>
+                                </View>
+                                <TouchableOpacity onPress={() => setMenuStoryId(story.id)} style={{ padding: 4 }}>
+                                  <MoreVertical size={16} color={colors.textSecondary} />
+                                </TouchableOpacity>
+                              </TouchableOpacity>
+                            ))
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  )
+                })}
+              </View>
+            </View>
+          ) : (
+            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+              <View style={{
+                width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface1,
+                alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+              }}>
+                <BookMarked size={32} color={colors.bloom} />
+              </View>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>
+                {t.chapters?.noChapters || 'No chapters yet'}
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4, textAlign: 'center' }}>
+                {t.chapters?.createFirst || 'Group your stories into chapters.'}
+              </Text>
+              <TouchableOpacity onPress={() => openChapterEditor()} style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16,
+                backgroundColor: colors.bloom, borderRadius: radii.button, paddingHorizontal: 20, paddingVertical: 12,
+              }}>
+                <FolderPlus size={18} color="#fff" />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                  {t.chapters?.newChapter || 'New Chapter'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </>
+        ) : (
+        /* ═══════════════════════════════════════════ */
+        /* STORIES VIEW                                */
+        /* ═══════════════════════════════════════════ */
+        <>
+          {filtered.length === 0 ? (
+            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+              <View style={{
+                width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface1,
+                alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+              }}>
+                <BookOpen size={32} color={colors.bloom} />
+              </View>
+              <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>
+                {filter === 'all' ? (t.stories?.noStories || 'No stories yet')
+                  : filter === 'published' ? (t.stories?.noPublished || 'No published stories')
+                  : (t.stories?.noDrafts || 'No drafts')}
+              </Text>
+              <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4, textAlign: 'center' }}>
+                {filter === 'all'
+                  ? (t.stories?.createFirst || 'Tap Create to write your first story.')
+                  : (t.stories?.willAppear || 'Your stories will appear here.')}
+              </Text>
+              {filter === 'all' && (
+                <TouchableOpacity onPress={startCreate} style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16,
+                  backgroundColor: colors.bloom, borderRadius: radii.button, paddingHorizontal: 20, paddingVertical: 12,
+                }}>
+                  <Plus size={18} color="#fff" />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                    {t.stories?.createStory || 'Create Story'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {filtered.map((story) => {
+                const preview = getPreview(story.content)
+                return (
+                  <TouchableOpacity
+                    key={story.id}
+                    activeOpacity={0.7}
+                    onPress={() => setViewingStory(story)}
+                    style={{
+                      backgroundColor: '#fff', borderRadius: radii.card, padding: 16,
+                      borderWidth: 1, borderColor: '#EBEBEB',
+                    }}
+                  >
+                    {/* Top row: badges + menu */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        <View style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 4,
+                          backgroundColor: story.published ? '#ecfdf5' : colors.surface1,
+                          borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
+                        }}>
+                          {story.published ? <Globe size={11} color="#059669" /> : <FileText size={11} color={colors.textSecondary} />}
+                          <Text style={{ fontSize: 11, fontWeight: '600', color: story.published ? '#059669' : colors.textSecondary }}>
+                            {story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}
+                          </Text>
+                        </View>
+                        {!!story.secret_code && (
+                          <View style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 3,
+                            backgroundColor: '#f5f3ff', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3,
+                          }}>
+                            <Lock size={10} color="#7c3aed" />
+                            <Text style={{ fontSize: 10, fontWeight: '600', color: '#7c3aed' }}>Code</Text>
+                          </View>
+                        )}
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => setMenuStoryId(menuStoryId === story.id ? null : story.id)}
+                        style={{ padding: 4 }}
+                      >
+                        <MoreVertical size={18} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Title */}
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 4 }} numberOfLines={2}>
+                      {story.title}
+                    </Text>
+
+                    {/* Preview */}
+                    {preview ? (
+                      <Text style={{ fontSize: 13, color: colors.textSecondary, lineHeight: 18, marginBottom: 8 }} numberOfLines={2}>
+                        {preview}
+                      </Text>
+                    ) : null}
+
+                    {/* Date */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                      <Clock size={12} color={colors.textMuted} />
+                      <Text style={{ fontSize: 11, color: colors.textSecondary }}>
+                        Updated {formatDate(story.updated_at)}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          )}
+        </>
         )}
       </ScrollView>
 
@@ -1462,6 +1809,24 @@ export default function StoriesScreen() {
                         </View>
                       </TouchableOpacity>
                     )}
+                    {chapters.length > 0 && (
+                      <TouchableOpacity
+                        onPress={() => { setMenuStoryId(null); openAssignSheet(story) }}
+                        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }}
+                      >
+                        <BookMarked size={20} color={colors.primary} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 16, color: colors.primary }}>
+                            {t.chapters?.assignToChapter || 'Add to Chapter'}
+                          </Text>
+                          {story.chapter_id && (
+                            <Text style={{ fontSize: 12, color: colors.bloom, marginTop: 1 }}>
+                              {chapters.find(c => c.id === story.chapter_id)?.title || ''}
+                            </Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    )}
                     <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 4, marginHorizontal: 12 }} />
                     <TouchableOpacity
                       onPress={() => { setMenuStoryId(null); confirmDelete(story) }}
@@ -1469,6 +1834,57 @@ export default function StoriesScreen() {
                     >
                       <Trash2 size={20} color={colors.error} />
                       <Text style={{ fontSize: 16, color: colors.error }}>Delete</Text>
+                    </TouchableOpacity>
+                  </>
+                )
+              })()}
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* CHAPTER ACTION MENU */}
+      {/* ═══════════════════════════════════════════ */}
+      <Modal visible={!!chapterMenuId} animationType="fade" transparent onRequestClose={() => setChapterMenuId(null)}>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setChapterMenuId(null)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <View style={{
+              backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+              paddingTop: 12, paddingBottom: insets.bottom + 20, paddingHorizontal: 8,
+            }}>
+              <View style={{ width: 36, height: 4, backgroundColor: colors.divider, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+              {(() => {
+                const chapter = chapters.find(c => c.id === chapterMenuId)
+                if (!chapter) return null
+                const chapterStories = storiesByChapter(chapter.id)
+                return (
+                  <>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: colors.primary, paddingHorizontal: 16, marginBottom: 12 }} numberOfLines={1}>
+                      {chapter.title}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => { setChapterMenuId(null); openChapterEditor(chapter) }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }}
+                    >
+                      <Edit3 size={20} color={colors.primary} />
+                      <Text style={{ fontSize: 16, color: colors.primary }}>
+                        {t.chapters?.editChapter || 'Edit Chapter'}
+                      </Text>
+                    </TouchableOpacity>
+                    <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 4, marginHorizontal: 12 }} />
+                    <TouchableOpacity
+                      onPress={() => { setChapterMenuId(null); confirmDeleteChapter(chapter) }}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }}
+                    >
+                      <Trash2 size={20} color={colors.error} />
+                      <Text style={{ fontSize: 16, color: colors.error }}>
+                        {t.chapters?.deleteChapter || 'Delete Chapter'}
+                      </Text>
                     </TouchableOpacity>
                   </>
                 )
@@ -1738,6 +2154,274 @@ export default function StoriesScreen() {
               </View>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* CHAPTER EDITOR MODAL */}
+      {/* ═══════════════════════════════════════════ */}
+      <Modal visible={chapterEditorVisible} animationType="fade" transparent onRequestClose={() => setChapterEditorVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 24, width: '100%', maxWidth: 400 }}>
+            <View style={{
+              flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+              padding: 20, borderBottomWidth: 1, borderBottomColor: '#EBEBEB',
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: colors.primary }}>
+                {editingChapter ? (t.chapters?.editChapter || 'Edit Chapter') : (t.chapters?.newChapter || 'New Chapter')}
+              </Text>
+              <TouchableOpacity onPress={() => setChapterEditorVisible(false)} style={{ padding: 6 }}>
+                <X size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 20, gap: 16 }}>
+              {/* Icon picker */}
+              <View>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 8 }}>
+                  Icon
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {CHAPTER_ICONS.map(({ name, icon: Icon }) => (
+                      <TouchableOpacity
+                        key={name}
+                        onPress={() => setChapterIcon(name)}
+                        style={{
+                          width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+                          backgroundColor: chapterIcon === name ? colors.bloom + '18' : colors.surface1,
+                          borderWidth: chapterIcon === name ? 2 : 0,
+                          borderColor: colors.bloom,
+                        }}
+                      >
+                        <Icon size={22} color={chapterIcon === name ? colors.bloom : colors.textSecondary} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+
+              {/* Title */}
+              <TextInput
+                value={chapterTitle}
+                onChangeText={setChapterTitle}
+                placeholder={t.chapters?.chapterTitle || 'Chapter title'}
+                placeholderTextColor={colors.textFaint}
+                style={{
+                  fontSize: 16, fontWeight: '600', color: colors.primary, padding: 14,
+                  backgroundColor: colors.surface2, borderRadius: 14, borderWidth: 1, borderColor: '#EBEBEB',
+                }}
+              />
+
+              {/* Description */}
+              <TextInput
+                value={chapterDescription}
+                onChangeText={setChapterDescription}
+                placeholder={t.chapters?.chapterDescription || 'Description (optional)'}
+                placeholderTextColor={colors.textFaint}
+                multiline
+                numberOfLines={3}
+                style={{
+                  fontSize: 14, color: colors.primary, padding: 14, minHeight: 72, textAlignVertical: 'top',
+                  backgroundColor: colors.surface2, borderRadius: 14, borderWidth: 1, borderColor: '#EBEBEB',
+                }}
+              />
+
+              {/* Actions */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {editingChapter && (
+                  <TouchableOpacity
+                    onPress={() => { setChapterEditorVisible(false); confirmDeleteChapter(editingChapter) }}
+                    style={{ paddingVertical: 14, paddingHorizontal: 16, borderRadius: radii.button }}
+                  >
+                    <Trash2 size={18} color={colors.error} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={saveChapter}
+                  disabled={chapterSaving || !chapterTitle.trim()}
+                  style={{
+                    flex: 1, paddingVertical: 14, borderRadius: radii.button, alignItems: 'center',
+                    backgroundColor: chapterTitle.trim() ? colors.bloom : colors.disabled,
+                  }}
+                >
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: chapterTitle.trim() ? '#fff' : colors.textSecondary }}>
+                    {chapterSaving ? '...' : editingChapter ? 'Save' : (t.chapters?.newChapter || 'Create')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* ASSIGN TO CHAPTER SHEET */}
+      {/* ═══════════════════════════════════════════ */}
+      <Modal visible={assignSheetVisible} animationType="fade" transparent onRequestClose={() => setAssignSheetVisible(false)}>
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setAssignSheetVisible(false)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}
+        >
+          <TouchableOpacity activeOpacity={1} onPress={() => {}}>
+            <View style={{
+              backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+              paddingTop: 12, paddingBottom: insets.bottom + 20, paddingHorizontal: 16,
+            }}>
+              <View style={{ width: 36, height: 4, backgroundColor: colors.divider, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.primary, marginBottom: 16 }}>
+                {t.chapters?.assignToChapter || 'Add to Chapter'}
+              </Text>
+
+              {/* Remove from chapter */}
+              {assigningStory?.chapter_id && (
+                <TouchableOpacity
+                  onPress={() => assigningStory && assignStoryToChapter(assigningStory.id, null)}
+                  style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14,
+                    borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
+                  }}
+                >
+                  <Minus size={20} color={colors.error} />
+                  <Text style={{ fontSize: 15, color: colors.error }}>
+                    {t.chapters?.removeFromChapter || 'Remove from chapter'}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Chapter list */}
+              {chapters.map(chapter => {
+                const isCurrentChapter = assigningStory?.chapter_id === chapter.id
+                return (
+                  <TouchableOpacity
+                    key={chapter.id}
+                    onPress={() => assigningStory && assignStoryToChapter(assigningStory.id, chapter.id)}
+                    style={{
+                      flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14,
+                      borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
+                      backgroundColor: isCurrentChapter ? colors.bloom + '08' : 'transparent',
+                    }}
+                  >
+                    <ChapterIcon name={chapter.cover_icon || 'BookOpen'} size={22} />
+                    <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.primary }}>{chapter.title}</Text>
+                    {isCurrentChapter && <Check size={18} color={colors.bloom} />}
+                  </TouchableOpacity>
+                )
+              })}
+
+              {/* Create new chapter */}
+              <TouchableOpacity
+                onPress={() => { setAssignSheetVisible(false); openChapterEditor() }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 }}
+              >
+                <FolderPlus size={20} color={colors.bloom} />
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.bloom }}>
+                  {t.chapters?.newChapter || 'New Chapter'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* CHAPTER READER MODAL */}
+      {/* ═══════════════════════════════════════════ */}
+      <Modal visible={chapterReaderVisible} animationType="slide" onRequestClose={() => setChapterReaderVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top }}>
+          {readingChapter && (() => {
+            const chapterStories = stories
+              .filter(s => s.chapter_id === readingChapter.id)
+              .sort((a, b) => (a.chapter_order || 0) - (b.chapter_order || 0))
+            return (
+              <>
+                {/* Header */}
+                <View style={{
+                  flexDirection: 'row', alignItems: 'center', padding: 16,
+                  borderBottomWidth: 1, borderBottomColor: '#EBEBEB',
+                }}>
+                  <TouchableOpacity onPress={() => setChapterReaderVisible(false)} style={{ padding: 4, marginRight: 12 }}>
+                    <ArrowLeft size={24} color={colors.primary} />
+                  </TouchableOpacity>
+                  <View style={{ marginRight: 8 }}><ChapterIcon name={readingChapter.cover_icon || 'BookOpen'} size={22} /></View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primary }} numberOfLines={1}>
+                      {readingChapter.title}
+                    </Text>
+                    {readingChapter.description ? (
+                      <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }} numberOfLines={1}>
+                        {readingChapter.description}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+
+                {/* Stories list */}
+                <ScrollView contentContainerStyle={{ padding: spacing.screenPadding, paddingBottom: 40 }}>
+                  {chapterStories.map((story, idx) => {
+                    const blocks = parseContent(story.content)
+                    return (
+                      <View key={story.id} style={{ marginBottom: 32 }}>
+                        {/* Story divider */}
+                        {idx > 0 && (
+                          <View style={{ alignItems: 'center', marginBottom: 24 }}>
+                            <View style={{ width: 40, height: 2, backgroundColor: colors.divider, borderRadius: 1 }} />
+                          </View>
+                        )}
+                        <TouchableOpacity onPress={() => { setChapterReaderVisible(false); setViewingStory(story) }}>
+                          <Text style={{ fontSize: 22, fontWeight: '700', color: colors.primary, marginBottom: 8 }}>
+                            {story.title}
+                          </Text>
+                        </TouchableOpacity>
+                        <Text style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>
+                          {formatDate(story.updated_at)}
+                        </Text>
+                        {/* Render blocks preview */}
+                        {blocks.slice(0, 5).map(block => {
+                          if (block.type === 'heading') {
+                            return (
+                              <Text key={block.id} style={{ fontSize: 18, fontWeight: '700', color: colors.primary, marginBottom: 8 }}>
+                                {block.content?.text || ''}
+                              </Text>
+                            )
+                          }
+                          if (block.type === 'text') {
+                            return (
+                              <Text key={block.id} style={{ fontSize: 15, color: '#444', lineHeight: 24, marginBottom: 8 }}>
+                                {block.content?.text || ''}
+                              </Text>
+                            )
+                          }
+                          if (block.type === 'media' && block.content?.items?.length > 0) {
+                            const firstMedia = block.content.items[0]
+                            if (firstMedia.fileType === 'image' || firstMedia.url?.match(/\.(jpg|jpeg|png|gif|webp)/i)) {
+                              return (
+                                <Image
+                                  key={block.id}
+                                  source={{ uri: firstMedia.url }}
+                                  style={{ width: '100%', height: 200, borderRadius: 12, marginBottom: 8 }}
+                                  resizeMode="cover"
+                                />
+                              )
+                            }
+                          }
+                          return null
+                        })}
+                        {blocks.length > 5 && (
+                          <TouchableOpacity onPress={() => { setChapterReaderVisible(false); setViewingStory(story) }}>
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.bloom, marginTop: 4 }}>
+                              Continue reading →
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )
+                  })}
+                </ScrollView>
+              </>
+            )
+          })()}
         </View>
       </Modal>
     </View>

@@ -474,4 +474,26 @@ export default {
     createFirst: 'Appuyez sur Créer pour écrire votre première histoire.',
     willAppear: 'Vos histoires apparaîtront ici.',
   },
+
+  // ─── Chapters ───
+  chapters: {
+    title: 'Chapitres',
+    newChapter: 'Nouveau chapitre',
+    editChapter: 'Modifier le chapitre',
+    deleteChapter: 'Supprimer le chapitre',
+    chapterTitle: 'Titre du chapitre',
+    chapterDescription: 'Description (optionnelle)',
+    noChapters: 'Pas encore de chapitres',
+    createFirst: 'Regroupez vos histoires en chapitres.',
+    stories: 'histoires',
+    story: 'histoire',
+    addStories: 'Ajouter des histoires',
+    removeFromChapter: 'Retirer du chapitre',
+    assignToChapter: 'Ajouter au chapitre',
+    standalone: 'Histoires indépendantes',
+    emptyChapter: 'Aucune histoire dans ce chapitre.',
+    deleteConfirm: 'Supprimer ce chapitre ? Les histoires deviendront indépendantes.',
+    readChapter: 'Lire le chapitre',
+    icon: 'Icône',
+  },
 } as const

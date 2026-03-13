@@ -474,4 +474,26 @@ export default {
     createFirst: 'Tap Create to write your first story.',
     willAppear: 'Your stories will appear here.',
   },
+
+  // ─── Chapters ───
+  chapters: {
+    title: 'Chapters',
+    newChapter: 'New Chapter',
+    editChapter: 'Edit Chapter',
+    deleteChapter: 'Delete Chapter',
+    chapterTitle: 'Chapter title',
+    chapterDescription: 'Description (optional)',
+    noChapters: 'No chapters yet',
+    createFirst: 'Group your stories into chapters.',
+    stories: 'stories',
+    story: 'story',
+    addStories: 'Add Stories',
+    removeFromChapter: 'Remove from chapter',
+    assignToChapter: 'Add to Chapter',
+    standalone: 'Standalone Stories',
+    emptyChapter: 'No stories in this chapter yet.',
+    deleteConfirm: 'Delete this chapter? Stories will become standalone.',
+    readChapter: 'Read Chapter',
+    icon: 'Icon',
+  },
 } as const
