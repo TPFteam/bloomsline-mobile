@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, ScrollView, Image, Pressable } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Video, ResizeMode } from 'expo-av'
 import { Mic } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
@@ -13,7 +14,8 @@ interface MomentDetailProps {
 export function MomentDetail({ moment, onClose }: MomentDetailProps) {
     const { t, locale } = useI18n()
     const insets = useSafeAreaInsets()
-    const hasImage = moment.media_url && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
+    const hasMedia = moment.media_url && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
+    const isMainVideo = hasMedia && (moment.mime_type?.startsWith('video/') || moment.type === 'video')
     const isVoice = moment.type === 'voice'
 
     return (
@@ -42,12 +44,22 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
 
                 <ScrollView showsVerticalScrollIndicator={false}>
                     {/* Media */}
-                    {hasImage && (
-                        <Image
-                            source={{ uri: moment.media_url! }}
-                            style={{ width: '100%', height: 280 }}
-                            resizeMode="cover"
-                        />
+                    {hasMedia && (
+                        isMainVideo ? (
+                            <Video
+                                source={{ uri: moment.media_url! }}
+                                style={{ width: '100%', height: 280 }}
+                                resizeMode={ResizeMode.COVER}
+                                useNativeControls
+                                shouldPlay={false}
+                            />
+                        ) : (
+                            <Image
+                                source={{ uri: moment.media_url! }}
+                                style={{ width: '100%', height: 280 }}
+                                resizeMode="cover"
+                            />
+                        )
                     )}
 
                     {/* Voice indicator */}
@@ -106,12 +118,23 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                                 <View style={{ flexDirection: 'row', gap: 8 }}>
                                     {moment.media_items.map((item, i) => (
-                                        <Image
-                                            key={item.id || i}
-                                            source={{ uri: item.media_url }}
-                                            style={{ width: 120, height: 120, borderRadius: 16 }}
-                                            resizeMode="cover"
-                                        />
+                                        item.mime_type?.startsWith('video/') ? (
+                                            <Video
+                                                key={item.id || i}
+                                                source={{ uri: item.media_url }}
+                                                style={{ width: 120, height: 120, borderRadius: 16 }}
+                                                resizeMode={ResizeMode.COVER}
+                                                useNativeControls
+                                                shouldPlay={false}
+                                            />
+                                        ) : (
+                                            <Image
+                                                key={item.id || i}
+                                                source={{ uri: item.media_url }}
+                                                style={{ width: 120, height: 120, borderRadius: 16 }}
+                                                resizeMode="cover"
+                                            />
+                                        )
                                     ))}
                                 </View>
                             </ScrollView>
