@@ -914,7 +914,7 @@ export default function PractitionerScreen() {
                     <View key={block.id || i} style={{ marginBottom: 28 }}>
                       {renderBlock(
                         resInstructions && block.type === 'table_exercise' ? { ...block, instructions: resInstructions } : block,
-                        responses[block.id], (v) => setResponses(prev => ({ ...prev, [block.id]: v })), (inReview) => setTableReviewReady(inReview), activeResourceItem?.status === 'completed', undefined, locale
+                        responses[block.id], (v) => setResponses(prev => ({ ...prev, [block.id]: v })), (inReview) => setTableReviewReady(inReview), activeResourceItem?.status === 'completed', t, locale
                       )}
                     </View>
                   ))

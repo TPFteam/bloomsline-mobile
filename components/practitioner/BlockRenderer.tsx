@@ -40,8 +40,8 @@ function CollapsibleInstructions({ text }: { text: string }) {
 }
 
 const LABEL = { fontSize: 16, fontWeight: '700' as const, color: colors.primary, marginBottom: 10 }
-const INPUT_BG = '#F3F4F6'
-const INPUT_BORDER = '#E0E0E0'
+const INPUT_BG = '#FFFFFF'
+const INPUT_BORDER = '#D1D5DB'
 const SELECTED_BG = colors.surface1
 const SELECTED_BORDER = colors.primary
 const MUTED = '#6B7280'
