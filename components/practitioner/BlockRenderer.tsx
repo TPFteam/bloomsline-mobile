@@ -39,12 +39,13 @@ function CollapsibleInstructions({ text }: { text: string }) {
   )
 }
 
-const LABEL = { fontSize: 15, fontWeight: '600' as const, color: colors.primary, marginBottom: 8 }
-const INPUT_BG = colors.surface2
+const LABEL = { fontSize: 16, fontWeight: '700' as const, color: colors.primary, marginBottom: 10 }
+const INPUT_BG = '#F3F4F6'
+const INPUT_BORDER = '#E0E0E0'
 const SELECTED_BG = colors.surface1
 const SELECTED_BORDER = colors.primary
-const MUTED = '#8A8A8A'
-const PLACEHOLDER = '#CCCCCC'
+const MUTED = '#6B7280'
+const PLACEHOLDER = '#9CA3AF'
 
 function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onReviewStateChange }: {
   block: any; content: string; blockValue: unknown; onBlockChange: (v: unknown) => void; onReviewStateChange?: (inReview: boolean) => void
@@ -143,6 +144,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
                     style={{
                       backgroundColor: INPUT_BG, borderRadius: 12, padding: 12, fontSize: 14,
                       color: colors.primary, minHeight: 60, textAlignVertical: 'top',
+                      borderWidth: 1.5, borderColor: INPUT_BORDER,
                     }}
                   />
                 </View>
@@ -342,6 +344,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
           style={{
             backgroundColor: INPUT_BG, borderRadius: 14, padding: 14, fontSize: 15,
             color: colors.primary, minHeight: 100, textAlignVertical: 'top', flex: 1,
+            borderWidth: 1.5, borderColor: INPUT_BORDER,
           }}
         />
       </View>
@@ -420,21 +423,22 @@ export function renderBlock(
   switch (block.type) {
     case 'heading':
       return (
-        <View style={{ paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: colors.bloom + '30', marginBottom: 4 }}>
+        <View style={{ paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: colors.bloom + '40', marginBottom: 4 }}>
           <Text style={{ fontSize: 22, fontWeight: '800', color: colors.primary, letterSpacing: -0.5, lineHeight: 28 }}>{content}</Text>
         </View>
       )
 
     case 'paragraph':
-      return <Text style={{ fontSize: 16, color: '#4A4A4A', lineHeight: 25 }}>{content}</Text>
+      return <Text style={{ fontSize: 16, color: '#374151', lineHeight: 25 }}>{content}</Text>
 
     case 'quote':
       return (
         <View style={{
           paddingHorizontal: 16, paddingVertical: 14,
-          backgroundColor: '#F5F5F5', borderRadius: 14,
+          backgroundColor: '#F0F4F8', borderRadius: 14,
+          borderLeftWidth: 3, borderLeftColor: colors.bloom,
         }}>
-          <Text style={{ fontSize: 16, color: '#3A3A3A', fontStyle: 'italic', lineHeight: 24 }}>{content}</Text>
+          <Text style={{ fontSize: 16, color: '#1F2937', fontStyle: 'italic', lineHeight: 24, fontWeight: '500' }}>{content}</Text>
         </View>
       )
 
@@ -501,7 +505,7 @@ export function renderBlock(
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
           {readOnly ? (
-            <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 60 }}>
+            <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER }}>
               <Text style={{ fontSize: 15, color: colors.primary, lineHeight: 22 }}>{(blockValue as string) || '—'}</Text>
             </View>
           ) : (
@@ -514,6 +518,7 @@ export function renderBlock(
               style={{
                 backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, fontSize: 15,
                 color: colors.primary, minHeight: 120, textAlignVertical: 'top',
+                borderWidth: 1.5, borderColor: INPUT_BORDER,
               }}
             />
           )}
@@ -794,7 +799,7 @@ export function renderBlock(
               placeholderTextColor={PLACEHOLDER}
               style={{
                 flex: 1, backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 16,
-                color: colors.primary, textAlign: 'center',
+                color: colors.primary, textAlign: 'center', borderWidth: 1.5, borderColor: INPUT_BORDER,
               }}
             />
             {sUnit ? <Text style={{ fontSize: 14, color: MUTED }}>{sUnit}</Text> : null}
@@ -814,7 +819,7 @@ export function renderBlock(
             keyboardType="numeric"
             placeholder={t?.blocks?.enterNumber || "Enter a number..."}
             placeholderTextColor={PLACEHOLDER}
-            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 16, color: colors.primary }}
+            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 16, color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER }}
           />
         </View>
       )
@@ -826,7 +831,7 @@ export function renderBlock(
           <TextInput
             value={(blockValue as string) || ''} editable={!readOnly} onChangeText={(t) => onChange(t)}
             placeholder="YYYY-MM-DD" placeholderTextColor={PLACEHOLDER}
-            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 15, color: colors.primary }}
+            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 15, color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER }}
           />
         </View>
       )
@@ -838,7 +843,7 @@ export function renderBlock(
           <TextInput
             value={(blockValue as string) || ''} editable={!readOnly} onChangeText={(t) => onChange(t)}
             placeholder="HH:MM" placeholderTextColor={PLACEHOLDER}
-            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 15, color: colors.primary }}
+            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 15, color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER }}
           />
         </View>
       )
@@ -859,7 +864,7 @@ export function renderBlock(
                   editable={!readOnly} onChangeText={(t) => { const a = [...listItems]; a[i] = t; onChange(a) }}
                   placeholder={(t?.blocks?.itemPlaceholder || 'Item {n}...').replace('{n}', String(i + 1))}
                   placeholderTextColor={PLACEHOLDER}
-                  style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 14, padding: 12, fontSize: 15, color: colors.primary }}
+                  style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 14, padding: 12, fontSize: 15, color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER }}
                 />
                 {listItems.length > 1 && (
                   <TouchableOpacity onPress={() => !readOnly && onChange(listItems.filter((_: any, idx: number) => idx !== i))} style={{ padding: 6 }}>
