@@ -487,7 +487,7 @@ export default function StoriesScreen() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid')
 
   // View story
   const [viewingStory, setViewingStory] = useState<Story | null>(null)
