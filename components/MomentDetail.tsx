@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'
 import { Mic, Play, Pause, Volume2, VolumeX, Maximize, Minimize, X } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
-import { Moment, MomentMediaRow } from '@/lib/services/moments'
+import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
@@ -215,6 +215,7 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
     const hasMedia = moment.media_url && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
     const isMainVideo = hasMedia && (moment.mime_type?.startsWith('video/') || moment.type === 'video')
     const isVoice = moment.type === 'voice'
+    const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
 
     return (
         <Pressable
@@ -246,11 +247,13 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
                         isMainVideo ? (
                             <VideoPlayer uri={moment.media_url!} style={{ width: '100%', height: 300, borderRadius: 0 }} />
                         ) : (
-                            <Image
-                                source={{ uri: moment.media_url! }}
-                                style={{ width: '100%', height: 280 }}
-                                resizeMode="cover"
-                            />
+                            <TouchableOpacity activeOpacity={0.9} onPress={() => setFullscreenImage(moment.media_url!)}>
+                                <Image
+                                    source={{ uri: moment.media_url! }}
+                                    style={{ width: '100%', height: 280 }}
+                                    resizeMode="cover"
+                                />
+                            </TouchableOpacity>
                         )
                     )}
 
@@ -318,12 +321,13 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
                                                 compact
                                             />
                                         ) : (
-                                            <Image
-                                                key={item.id || i}
-                                                source={{ uri: item.media_url }}
-                                                style={{ width: 120, height: 120, borderRadius: 16 }}
-                                                resizeMode="cover"
-                                            />
+                                            <TouchableOpacity key={item.id || i} activeOpacity={0.9} onPress={() => setFullscreenImage(item.media_url)}>
+                                                <Image
+                                                    source={{ uri: item.media_url }}
+                                                    style={{ width: 120, height: 120, borderRadius: 16 }}
+                                                    resizeMode="cover"
+                                                />
+                                            </TouchableOpacity>
                                         )
                                     ))}
                                 </View>
@@ -340,6 +344,34 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
                     </View>
                 </ScrollView>
             </Pressable>
+
+            {/* Fullscreen image viewer */}
+            <Modal visible={!!fullscreenImage} transparent animationType="fade" onRequestClose={() => setFullscreenImage(null)}>
+                <Pressable
+                    onPress={() => setFullscreenImage(null)}
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' }}
+                >
+                    <TouchableOpacity
+                        onPress={() => setFullscreenImage(null)}
+                        activeOpacity={0.8}
+                        style={{
+                            position: 'absolute', top: insets.top + 12, right: 16, zIndex: 10,
+                            width: 36, height: 36, borderRadius: 18,
+                            backgroundColor: 'rgba(255,255,255,0.15)',
+                            justifyContent: 'center', alignItems: 'center',
+                        }}
+                    >
+                        <X size={20} color="#fff" />
+                    </TouchableOpacity>
+                    {fullscreenImage && (
+                        <Image
+                            source={{ uri: fullscreenImage }}
+                            style={{ width: '100%', height: '80%' }}
+                            resizeMode="contain"
+                        />
+                    )}
+                </Pressable>
+            </Modal>
         </Pressable>
     )
 }
