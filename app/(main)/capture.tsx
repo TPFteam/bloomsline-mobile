@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { View, Text, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image, Animated } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Image, Animated, Alert } from 'react-native'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { createMoment } from '@/lib/services/moments'
@@ -277,13 +277,24 @@ export default function Capture() {
 
   const handleSave = async () => {
     setSaving(true)
-    await createMoment({
-      mediaItems,
-      textContent: note || undefined,
-      moods: selectedMoods,
-    })
-    setSaving(false)
-    router.back()
+    try {
+      const result = await createMoment({
+        mediaItems,
+        textContent: note || undefined,
+        moods: selectedMoods,
+      })
+      if (!result) {
+        Alert.alert('Save failed', 'Could not save your moment. Please try again.')
+        setSaving(false)
+        return
+      }
+      setSaving(false)
+      router.back()
+    } catch (err) {
+      console.error('Save moment error:', err)
+      Alert.alert('Save failed', 'Something went wrong. Please try again.')
+      setSaving(false)
+    }
   }
 
   const canProceedFromCapture = captureType === 'write'

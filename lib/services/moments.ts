@@ -74,7 +74,7 @@ async function uploadMomentMedia(
   const fileName = `media-${index}.${extension}`
   const filePath = `${userId}/${momentId}/${fileName}`
 
-  let fileBody: ArrayBuffer | Blob
+  let fileBody: ArrayBuffer | Blob | FormData
   let fileSize: number | null = null
 
   if (Platform.OS === 'web') {
@@ -84,17 +84,16 @@ async function uploadMomentMedia(
     fileBody = blob
     fileSize = blob.size
   } else {
-    // On native, read the file as base64 and convert to ArrayBuffer
-    const base64 = await FileSystem.readAsStringAsync(uri, {
-      encoding: 'base64' as any,
-    })
-    const binaryString = atob(base64)
-    const bytes = new Uint8Array(binaryString.length)
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i)
+    // On native, get file info for size then read as blob via fetch
+    // This avoids loading entire file into memory as base64
+    const fileInfo = await FileSystem.getInfoAsync(uri)
+    if (fileInfo.exists && 'size' in fileInfo) {
+      fileSize = fileInfo.size
     }
-    fileBody = bytes.buffer as ArrayBuffer
-    fileSize = bytes.length
+    const response = await fetch(uri)
+    const blob = await response.blob()
+    fileBody = blob
+    if (!fileSize) fileSize = blob.size
   }
 
   const { error } = await supabase.storage
