@@ -479,7 +479,7 @@ function EditBlock({
 
 export default function StoriesScreen() {
   const { user } = useAuth()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const router = useRouter()
   const insets = useSafeAreaInsets()
 
@@ -732,13 +732,19 @@ export default function StoriesScreen() {
 
   async function shareStory(story: Story) {
     const url = getShareUrl(story)
+    const shareIntro = locale === 'fr'
+      ? 'J\'ai ecrit quelque chose et je voulais le partager avec toi.'
+      : locale === 'es'
+        ? 'Escribi algo y queria compartirlo contigo.'
+        : 'I wrote something and wanted to share it with you.'
+    const shareCode = locale === 'fr' ? 'Code secret' : locale === 'es' ? 'Codigo secreto' : 'Secret code'
     const message = story.secret_code
-      ? `Check out my story "${story.title}": ${url}\nSecret code: ${story.secret_code}`
-      : `Check out my story "${story.title}": ${url}`
+      ? `${shareIntro}\n\n${url}\n\n${shareCode}: ${story.secret_code}`
+      : `${shareIntro}\n\n${url}`
 
     if (Platform.OS === 'web') {
       if (navigator.share) {
-        try { await navigator.share({ title: story.title, text: message, url }) } catch {}
+        try { await navigator.share({ title: story.title, text: message }) } catch {}
       } else await copyShareLink(story)
     } else {
       try { await Share.share({ message }) } catch {}

@@ -100,7 +100,7 @@ export default {
 
   // ─── Auth ───
   auth: {
-    welcomeHeadline: 'What you carry deserves a place to breathe.',
+    welcomeHeadline: 'Some answers appear when your thoughts have a place to exist.',
     welcomeSubtitle: 'Capture moments. See patterns. Watch yourself evolve.',
     getStarted: 'Get started',
     haveAccount: 'I already have an account',
