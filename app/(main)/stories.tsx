@@ -12,6 +12,7 @@ import {
   Share,
   Image,
   Pressable,
+  Linking,
 } from 'react-native'
 import { Audio } from 'expo-av'
 import * as ImagePicker from 'expo-image-picker'
@@ -60,6 +61,10 @@ import {
   Target,
   Feather,
   Compass,
+  Quote,
+  AlertCircle,
+  Video,
+  Link2,
 } from 'lucide-react-native'
 import { BackButton } from '@/components/ui/BackButton'
 import { PageLoader } from '@/components/PageLoader'
@@ -74,7 +79,7 @@ const SHARE_BASE_URL = 'https://bloomsline.com/stories'
 
 interface ContentBlock {
   id: string
-  type: 'text' | 'heading' | 'list' | 'divider' | 'media'
+  type: 'text' | 'heading' | 'list' | 'divider' | 'media' | 'quote' | 'callout' | 'video' | 'link'
   content: any
   order: number
 }
@@ -309,6 +314,58 @@ function RenderBlock({ block, onImagePress }: { block: ContentBlock; onImagePres
         </View>
       )
     }
+    case 'quote':
+      return (
+        <View style={{ borderLeftWidth: 3, borderLeftColor: colors.bloom, paddingLeft: 12 }}>
+          <Text style={{ fontSize: 15, color: '#444', lineHeight: 24, fontStyle: 'italic' }}>
+            {block.content?.text || ''}
+          </Text>
+          {block.content?.author ? (
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4 }}>
+              — {block.content.author}
+            </Text>
+          ) : null}
+        </View>
+      )
+    case 'callout':
+      return (
+        <View style={{ backgroundColor: '#EFF6FF', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#BFDBFE' }}>
+          <Text style={{ fontSize: 14, color: '#1E40AF', lineHeight: 22 }}>
+            {block.content?.text || ''}
+          </Text>
+        </View>
+      )
+    case 'video':
+      return (
+        <TouchableOpacity
+          onPress={() => { if (block.content?.url) Linking.openURL(block.content.url) }}
+          style={{ backgroundColor: colors.surface2, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+        >
+          <Video size={20} color={colors.bloom} />
+          <Text style={{ fontSize: 14, color: colors.bloom, flex: 1 }} numberOfLines={1}>
+            {block.content?.url || 'Video'}
+          </Text>
+        </TouchableOpacity>
+      )
+    case 'link':
+      return (
+        <TouchableOpacity
+          onPress={() => { if (block.content?.url) Linking.openURL(block.content.url) }}
+          style={{ backgroundColor: colors.surface2, borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 }}
+        >
+          <Link2 size={18} color={colors.bloom} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, color: colors.primary, fontWeight: '600' }} numberOfLines={1}>
+              {block.content?.title || block.content?.url || 'Link'}
+            </Text>
+            {block.content?.url && block.content?.title ? (
+              <Text style={{ fontSize: 12, color: colors.textSecondary }} numberOfLines={1}>
+                {block.content.url}
+              </Text>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+      )
     case 'divider':
       return <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 4 }} />
     default:
@@ -502,6 +559,88 @@ function EditBlock({
         </View>
       )
     }
+    case 'quote':
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+          <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: colors.bloom, paddingLeft: 12 }}>
+            <TextInput
+              value={block.content?.text || ''}
+              onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
+              placeholder="Quote text..."
+              placeholderTextColor={colors.textFaint}
+              multiline
+              scrollEnabled={false}
+              style={{ ...inputStyle, fontStyle: 'italic', minHeight: 60, textAlignVertical: 'top' as const }}
+            />
+            <TextInput
+              value={block.content?.author || ''}
+              onChangeText={(t) => onChange({ ...block, content: { ...block.content, author: t } })}
+              placeholder="Author (optional)"
+              placeholderTextColor={colors.textFaint}
+              style={{ ...inputStyle, fontSize: 13, marginTop: 6 }}
+            />
+          </View>
+          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
+        </View>
+      )
+    case 'callout':
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+          <View style={{ flex: 1, backgroundColor: '#EFF6FF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#BFDBFE' }}>
+            <TextInput
+              value={block.content?.text || ''}
+              onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
+              placeholder="Callout text (tip, info, warning)..."
+              placeholderTextColor={colors.textFaint}
+              multiline
+              scrollEnabled={false}
+              style={{ fontSize: 14, color: '#1E40AF', minHeight: 40, textAlignVertical: 'top' as const }}
+            />
+          </View>
+          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
+        </View>
+      )
+    case 'video':
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+          <View style={{ flex: 1 }}>
+            <TextInput
+              value={block.content?.url || ''}
+              onChangeText={(t) => onChange({ ...block, content: { ...block.content, url: t } })}
+              placeholder="YouTube or Vimeo URL..."
+              placeholderTextColor={colors.textFaint}
+              autoCapitalize="none"
+              keyboardType="url"
+              style={inputStyle}
+            />
+          </View>
+          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
+        </View>
+      )
+    case 'link':
+      return (
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+          <View style={{ flex: 1, gap: 6 }}>
+            <TextInput
+              value={block.content?.title || ''}
+              onChangeText={(t) => onChange({ ...block, content: { ...block.content, title: t } })}
+              placeholder="Link title..."
+              placeholderTextColor={colors.textFaint}
+              style={inputStyle}
+            />
+            <TextInput
+              value={block.content?.url || ''}
+              onChangeText={(t) => onChange({ ...block, content: { ...block.content, url: t } })}
+              placeholder="https://..."
+              placeholderTextColor={colors.textFaint}
+              autoCapitalize="none"
+              keyboardType="url"
+              style={{ ...inputStyle, fontSize: 13 }}
+            />
+          </View>
+          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
+        </View>
+      )
     case 'divider':
       return (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -983,6 +1122,10 @@ export default function StoriesScreen() {
         : type === 'heading' ? { text: '', level: 2 }
         : type === 'list' ? { items: [''], ordered: false }
         : type === 'media' ? { items: [] }
+        : type === 'quote' ? { text: '', author: '' }
+        : type === 'callout' ? { text: '', style: 'info' }
+        : type === 'video' ? { url: '' }
+        : type === 'link' ? { url: '', title: '' }
         : {},
       order: editBlocks.length,
     }
@@ -1750,6 +1893,10 @@ export default function StoriesScreen() {
                 { type: 'text' as const, icon: AlignLeft, label: 'Text', bg: colors.surface1, fg: colors.primary },
                 { type: 'heading' as const, icon: Type, label: 'Heading', bg: colors.surface1, fg: colors.primary },
                 { type: 'list' as const, icon: FileText, label: 'List', bg: colors.surface1, fg: colors.primary },
+                { type: 'quote' as const, icon: Quote, label: 'Quote', bg: colors.surface1, fg: colors.primary },
+                { type: 'callout' as const, icon: AlertCircle, label: 'Callout', bg: colors.surface1, fg: colors.primary },
+                { type: 'video' as const, icon: Video, label: 'Video', bg: colors.surface1, fg: colors.primary },
+                { type: 'link' as const, icon: Link2, label: 'Link', bg: colors.surface1, fg: colors.primary },
               ].map((btn) => (
                 <TouchableOpacity key={btn.type} onPress={() => addBlock(btn.type)} style={{
                   flexDirection: 'row', alignItems: 'center', gap: 6,
