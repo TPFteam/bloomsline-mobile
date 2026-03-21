@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View,
   Text,
@@ -340,6 +340,48 @@ function BlockActions({ onRemove, onMoveUp, onMoveDown, isFirst, isLast }: {
   )
 }
 
+// ─── Auto-growing TextInput ─────────────────────────
+
+function AutoGrowTextInput({ value, onChangeText, placeholder, placeholderTextColor, inputStyle }: {
+  value: string; onChangeText: (t: string) => void; placeholder: string
+  placeholderTextColor: string; inputStyle: Record<string, unknown>
+}) {
+  const inputRef = useRef<TextInput>(null)
+  const [height, setHeight] = useState(80)
+
+  // Web: auto-grow by measuring scrollHeight
+  useEffect(() => {
+    if (Platform.OS === 'web' && inputRef.current) {
+      const el = inputRef.current as unknown as HTMLTextAreaElement
+      if (el && el.style) {
+        el.style.height = 'auto'
+        el.style.overflow = 'hidden'
+        const newHeight = Math.max(80, el.scrollHeight)
+        el.style.height = newHeight + 'px'
+        setHeight(newHeight)
+      }
+    }
+  }, [value])
+
+  return (
+    <TextInput
+      ref={inputRef}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={placeholderTextColor}
+      multiline
+      scrollEnabled={false}
+      onContentSizeChange={(e) => {
+        if (Platform.OS !== 'web') {
+          setHeight(Math.max(80, e.nativeEvent.contentSize.height))
+        }
+      }}
+      style={{ ...inputStyle, lineHeight: 22, minHeight: 80, ...(Platform.OS !== 'web' ? { height } : {}), textAlignVertical: 'top' as const, overflow: 'hidden' as const }}
+    />
+  )
+}
+
 // ─── Edit Block (edit mode) ─────────────────────────
 
 function EditBlock({
@@ -373,13 +415,12 @@ function EditBlock({
       return (
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
           <View style={{ flex: 1 }}>
-            <TextInput
+            <AutoGrowTextInput
               value={block.content?.text || ''}
               onChangeText={(t) => onChange({ ...block, content: { text: t } })}
               placeholder="Write something..."
               placeholderTextColor={colors.textFaint}
-              multiline
-              style={{ ...inputStyle, lineHeight: 22, minHeight: 80, textAlignVertical: 'top' }}
+              inputStyle={inputStyle}
             />
           </View>
           <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
