@@ -630,12 +630,13 @@ function EditBlock({
 
 // ─── Single Draggable Block (smooth animations) ─────
 
-function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDragMove, onDragEnd, blockRef, onChange, onRemove }: {
+function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDragMove, onDragEnd, blockRef, onChange, onRemove, scrollRef }: {
   block: ContentBlock; index: number
   dragIndex: number | null; hoverIndex: number | null
   onDragStart: (i: number) => void; onDragMove: (y: number) => void; onDragEnd: () => void
   blockRef: (r: View | null) => void
   onChange: (u: ContentBlock) => void; onRemove: () => void
+  scrollRef: React.RefObject<ScrollView | null>
 }) {
   const isDragging = dragIndex === index
   const isDropTarget = dragIndex !== null && hoverIndex === index && dragIndex !== index
@@ -647,6 +648,7 @@ function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDr
   const indicatorHeight = useRef(new Animated.Value(0)).current
 
   // PanResponder claims the touch from ScrollView on native
+  // Must disable scroll synchronously via setNativeProps before gesture starts
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -654,15 +656,19 @@ function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDr
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderGrant: () => {
+        // Disable scroll immediately before React re-renders
+        scrollRef.current?.setNativeProps?.({ scrollEnabled: false })
         onDragStart(index)
       },
       onPanResponderMove: (_, gestureState) => {
         onDragMove(gestureState.moveY)
       },
       onPanResponderRelease: () => {
+        scrollRef.current?.setNativeProps?.({ scrollEnabled: true })
         onDragEnd()
       },
       onPanResponderTerminate: () => {
+        scrollRef.current?.setNativeProps?.({ scrollEnabled: true })
         onDragEnd()
       },
     })
@@ -882,6 +888,7 @@ function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, upload
             onRemove={() => {
               if (blocks.length > 1) onReorder(blocks.filter(b => b.id !== block.id))
             }}
+            scrollRef={scrollRef}
           />
         ))}
       </View>
