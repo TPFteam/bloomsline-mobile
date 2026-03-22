@@ -768,9 +768,23 @@ function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, upload
 
   const handleDragMove = useCallback((pageY: number) => {
     if (dragIndexRef.current === null) return
+    // Re-measure positions during drag (handles scroll offset changes)
+    blockRefs.current.forEach((ref, i) => {
+      if (ref) {
+        ref.measure((_x, _y, _w, _h, _px, py) => {
+          blockYPositions.current[i] = py
+        })
+      }
+    })
+    // Find closest block by comparing midpoints
     let target = 0
+    let minDist = Infinity
     for (let i = 0; i < blockYPositions.current.length; i++) {
-      if (pageY > blockYPositions.current[i]) target = i
+      const dist = Math.abs(pageY - blockYPositions.current[i])
+      if (dist < minDist) {
+        minDist = dist
+        target = i
+      }
     }
     if (target !== hoverIndexRef.current) {
       hoverIndexRef.current = target
