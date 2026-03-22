@@ -688,9 +688,8 @@ function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDr
       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
         {/* Left controls: drag handle + delete */}
         <View style={{ alignItems: 'center', gap: 6, paddingTop: 10 }}>
-          <Pressable
-            onLongPress={() => onDragStart(index)}
-            delayLongPress={200}
+          <View
+            onTouchStart={() => onDragStart(index)}
             // @ts-ignore — web mouse events
             onMouseDown={() => onDragStart(index)}
             style={{
@@ -702,7 +701,7 @@ function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDr
             }}
           >
             <DragHandle />
-          </Pressable>
+          </View>
           <TouchableOpacity onPress={onRemove} style={{ padding: 4 }}>
             <X size={13} color={colors.textTertiary} />
           </TouchableOpacity>
@@ -820,18 +819,12 @@ function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, upload
   }, [dragIndex, handleDragMove, handleDragEnd])
 
   return (
-    <View style={{ flex: 1 }}>
-    {/* Full-screen touch overlay during drag (mobile) */}
-    {dragIndex !== null && Platform.OS !== 'web' && (
-      <View
-        style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 100,
-        }}
-        onTouchMove={(e) => handleDragMove(e.nativeEvent.pageY)}
-        onTouchEnd={handleDragEnd}
-        onTouchCancel={handleDragEnd}
-      />
-    )}
+    <View
+      style={{ flex: 1 }}
+      onTouchMove={dragIndex !== null ? (e) => handleDragMove(e.nativeEvent.pageY) : undefined}
+      onTouchEnd={dragIndex !== null ? handleDragEnd : undefined}
+      onTouchCancel={dragIndex !== null ? handleDragEnd : undefined}
+    >
     <ScrollView
       ref={scrollRef}
       contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
