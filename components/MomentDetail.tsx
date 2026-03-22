@@ -2,7 +2,7 @@ import { useState, useRef, useCallback } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, Image, Pressable, Modal, Dimensions } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'
-import { Mic, Play, Pause, Volume2, VolumeX, Maximize, Minimize, X } from 'lucide-react-native'
+import { Mic, Play, Pause, Volume2, VolumeX, Maximize, Minimize, X, BookOpen } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
@@ -12,6 +12,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
 interface MomentDetailProps {
     moment: Moment
     onClose: () => void
+    onOpenStory?: (storyId: string) => void
 }
 
 function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compact?: boolean }) {
@@ -209,7 +210,7 @@ function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compac
     return videoContent
 }
 
-export function MomentDetail({ moment, onClose }: MomentDetailProps) {
+export function MomentDetail({ moment, onClose, onOpenStory }: MomentDetailProps) {
     const { t, locale } = useI18n()
     const insets = useSafeAreaInsets()
     const hasMedia = moment.media_url && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
@@ -341,6 +342,24 @@ export function MomentDetail({ moment, onClose }: MomentDetailProps) {
                             {new Date(moment.created_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { month: 'short', day: 'numeric' })}
                             {moment.type !== 'write' ? ` · ${moment.type}` : ''}
                         </Text>
+
+                        {/* Read Story button */}
+                        {moment.story_id && onOpenStory && (
+                            <TouchableOpacity
+                                onPress={() => { onClose(); onOpenStory(moment.story_id!) }}
+                                style={{
+                                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                                    gap: 8, marginTop: 16, paddingVertical: 14,
+                                    backgroundColor: colors.surface1, borderRadius: 16,
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <BookOpen size={18} color={colors.bloom} />
+                                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.bloom }}>
+                                    {locale === 'fr' ? 'Lire l\'histoire' : 'Read Story'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </ScrollView>
             </Pressable>

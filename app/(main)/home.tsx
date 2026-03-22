@@ -224,7 +224,11 @@ export default function Home() {
 
       {/* Moment detail sheet */}
       {viewingMoment && (
-        <MomentDetail moment={viewingMoment} onClose={() => setViewingMoment(null)} />
+        <MomentDetail
+          moment={viewingMoment}
+          onClose={() => setViewingMoment(null)}
+          onOpenStory={(storyId) => router.push({ pathname: '/(main)/stories', params: { openStoryId: storyId } })}
+        />
       )}
 
       {/* Capture overlay */}

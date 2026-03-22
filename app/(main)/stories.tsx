@@ -20,7 +20,7 @@ import { Audio } from 'expo-av'
 import * as ImagePicker from 'expo-image-picker'
 import * as Clipboard from 'expo-clipboard'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useFocusEffect, useRouter } from 'expo-router'
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router'
 import {
   ArrowLeft,
   Plus,
@@ -936,6 +936,7 @@ export default function StoriesScreen() {
   const { user } = useAuth()
   const { t, locale } = useI18n()
   const router = useRouter()
+  const { openStoryId } = useLocalSearchParams<{ openStoryId?: string }>()
   const insets = useSafeAreaInsets()
 
   const [stories, setStories] = useState<Story[]>([])
@@ -1033,6 +1034,14 @@ export default function StoriesScreen() {
     setLoading(true)
     Promise.all([fetchStories(), fetchChapters()]).finally(() => setLoading(false))
   }, [fetchStories, fetchChapters]))
+
+  // Auto-open story when navigated with openStoryId param
+  useEffect(() => {
+    if (openStoryId && stories.length > 0 && !loading) {
+      const story = stories.find(s => s.id === openStoryId)
+      if (story) setViewingStory(story)
+    }
+  }, [openStoryId, stories, loading])
 
   async function onRefresh() {
     setRefreshing(true)
