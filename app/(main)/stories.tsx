@@ -1100,6 +1100,7 @@ export default function StoriesScreen() {
         if (newStory) {
           setStories(prev => [{ ...newStory, content: orderedBlocks }, ...prev])
         }
+        setEditing(false)
         return newStory?.id
       }
       setEditing(false)
