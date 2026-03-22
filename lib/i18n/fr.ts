@@ -101,7 +101,7 @@ export default {
   // ─── Auth ───
   auth: {
     welcomeHeadline: 'Certaines réponses apparaissent quand vos pensées ont une place pour exister.',
-    welcomeSubtitle: 'Capturez des moments. Voyez des tendances. Observez votre évolution.',
+    welcomeSubtitle: 'Votre espace pour observer, réfléchir et grandir.',
     getStarted: 'Commencer',
     haveAccount: 'J\'ai déjà un compte',
     signInTitle: 'Bon retour.',

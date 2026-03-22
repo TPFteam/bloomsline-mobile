@@ -101,7 +101,7 @@ export default {
   // ─── Auth ───
   auth: {
     welcomeHeadline: 'Some answers appear when your thoughts have a place to exist.',
-    welcomeSubtitle: 'Capture moments. See patterns. Watch yourself evolve.',
+    welcomeSubtitle: 'Your space to notice, reflect, and grow.',
     getStarted: 'Get started',
     haveAccount: 'I already have an account',
     signInTitle: 'Welcome back.',

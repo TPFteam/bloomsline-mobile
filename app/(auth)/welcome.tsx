@@ -1,19 +1,18 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { View, Text, TouchableOpacity, Animated, Easing } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 import { useAuth } from '@/lib/auth-context'
 
 // Emotion states the dots cycle through
 const EMOTIONS = [
-  { name: 'calm',    color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1,    word: { en: 'calm', fr: 'calme' }       },
-  { name: 'joy',     color: '#5BBE6E', glowColor: '#5BBE6E25', spread: 10, scale: 1.2,  rotation: 15,  glowScale: 1.3,  word: { en: 'joy', fr: 'joie' }          },
-  { name: 'wonder',  color: '#5A9ECF', glowColor: '#5A9ECF20', spread: 7,  scale: 1.08, rotation: -10, glowScale: 1.15, word: { en: 'wonder', fr: 'émerveillement' } },
-  { name: 'warmth',  color: '#E8956A', glowColor: '#E8956A25', spread: 5,  scale: 1.15, rotation: 8,   glowScale: 1.25, word: { en: 'warmth', fr: 'chaleur' }    },
-  { name: 'tender',  color: '#C47DB5', glowColor: '#C47DB520', spread: 3,  scale: 0.95, rotation: -5,  glowScale: 1.1,  word: { en: 'tenderness', fr: 'tendresse' } },
-  { name: 'peace',   color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1,    word: { en: 'peace', fr: 'paix' }        },
+  { name: 'calm',    color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1    },
+  { name: 'joy',     color: '#5BBE6E', glowColor: '#5BBE6E25', spread: 10, scale: 1.2,  rotation: 15,  glowScale: 1.3  },
+  { name: 'wonder',  color: '#5A9ECF', glowColor: '#5A9ECF20', spread: 7,  scale: 1.08, rotation: -10, glowScale: 1.15 },
+  { name: 'warmth',  color: '#E8956A', glowColor: '#E8956A25', spread: 5,  scale: 1.15, rotation: 8,   glowScale: 1.25 },
+  { name: 'tender',  color: '#C47DB5', glowColor: '#C47DB520', spread: 3,  scale: 0.95, rotation: -5,  glowScale: 1.1  },
+  { name: 'peace',   color: '#4A9A86', glowColor: '#4A9A8620', spread: 0,  scale: 1,    rotation: 0,   glowScale: 1    },
 ]
 
 const CYCLE_DURATION = 2800
@@ -27,10 +26,15 @@ export default function Welcome() {
   const { t, locale } = useI18n()
   const { notEligible, clearNotEligible } = useAuth()
 
-  // Entrance animations
-  const fadeIn = useRef(new Animated.Value(0)).current
-  const slideUp = useRef(new Animated.Value(30)).current
+  // Entrance cascade
+  const logoFade = useRef(new Animated.Value(0)).current
   const logoScale = useRef(new Animated.Value(0.6)).current
+  const headlineFade = useRef(new Animated.Value(0)).current
+  const headlineSlide = useRef(new Animated.Value(16)).current
+  const subtitleFade = useRef(new Animated.Value(0)).current
+  const subtitleSlide = useRef(new Animated.Value(12)).current
+  const ctaFade = useRef(new Animated.Value(0)).current
+  const ctaSlide = useRef(new Animated.Value(10)).current
 
   // Dot animations
   const dotAnims = useRef(
@@ -48,33 +52,28 @@ export default function Welcome() {
   // Overall rotation
   const rotation = useRef(new Animated.Value(0)).current
 
-  // Emotion word fade
-  const wordOpacity = useRef(new Animated.Value(0.8)).current
-  const wordSlide = useRef(new Animated.Value(0)).current
-
-  // Color + word state
-  const [dotColor, setDotColor] = useState(EMOTIONS[0].color)
-  const [glowColor, setGlowColor] = useState(EMOTIONS[0].glowColor)
-  const [emotionWord, setEmotionWord] = useState(EMOTIONS[0].word)
+  // Color + glow state
+  const dotColor = useRef(EMOTIONS[0].color)
+  const glowColor = useRef(EMOTIONS[0].glowColor)
   const emotionIndex = useRef(0)
+  const forceUpdate = useRef(new Animated.Value(0)).current
 
-  // Base positions (cross pattern, wider spacing)
+  // Base positions (cross pattern)
   const dotPositions = [
-    { x: 0, y: -DOT_GAP },   // top
-    { x: -DOT_GAP, y: 0 },   // left
-    { x: DOT_GAP, y: 0 },    // right
-    { x: 0, y: DOT_GAP },    // bottom
+    { x: 0, y: -DOT_GAP },
+    { x: -DOT_GAP, y: 0 },
+    { x: DOT_GAP, y: 0 },
+    { x: 0, y: DOT_GAP },
   ]
 
   useEffect(() => {
-    // Entrance — logo blooms in from small
+    // 1. Logo blooms in
     Animated.parallel([
-      Animated.timing(fadeIn, { toValue: 1, duration: 900, useNativeDriver: true }),
-      Animated.spring(slideUp, { toValue: 0, friction: 8, tension: 40, useNativeDriver: true }),
+      Animated.timing(logoFade, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 30, useNativeDriver: true }),
     ]).start()
 
-    // Gentle breathing glow from the start
+    // 2. Breathing glow
     Animated.loop(
       Animated.sequence([
         Animated.timing(glowOpacity, { toValue: 0.3, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
@@ -82,7 +81,29 @@ export default function Welcome() {
       ])
     ).start()
 
-    // Start emotion cycle after entrance
+    // 3. Cascading text reveal
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(headlineFade, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(headlineSlide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      ]).start()
+    }, 600)
+
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(subtitleFade, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(subtitleSlide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      ]).start()
+    }, 900)
+
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(ctaFade, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(ctaSlide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      ]).start()
+    }, 1100)
+
+    // 4. Start emotion cycle
     const timeout = setTimeout(() => runEmotionCycle(), 1400)
     return () => clearTimeout(timeout)
   }, [])
@@ -92,20 +113,11 @@ export default function Welcome() {
     emotionIndex.current = nextIdx
     const emotion = EMOTIONS[nextIdx]
 
-    setDotColor(emotion.color)
-    setGlowColor(emotion.glowColor)
+    dotColor.current = emotion.color
+    glowColor.current = emotion.glowColor
+    // Trigger re-render for color change
+    Animated.timing(forceUpdate, { toValue: nextIdx, duration: 0, useNativeDriver: true }).start()
 
-    // Fade out old word, swap, fade in new word
-    Animated.timing(wordOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
-      setEmotionWord(emotion.word)
-      wordSlide.setValue(6)
-      Animated.parallel([
-        Animated.timing(wordOpacity, { toValue: 0.8, duration: 400, useNativeDriver: true }),
-        Animated.spring(wordSlide, { toValue: 0, friction: 8, tension: 50, useNativeDriver: true }),
-      ]).start()
-    })
-
-    // Animate each dot with stagger
     const dotAnimations = dotAnims.map((anim, i) => {
       const basePos = dotPositions[i]
       const spreadX = basePos.x !== 0 ? (basePos.x > 0 ? emotion.spread : -emotion.spread) : 0
@@ -127,7 +139,6 @@ export default function Welcome() {
       ])
     })
 
-    // Rotation + glow scale
     const rotationAnim = Animated.timing(rotation, {
       toValue: emotion.rotation,
       duration: CYCLE_DURATION * 0.7,
@@ -155,28 +166,23 @@ export default function Welcome() {
   return (
     <View style={{ flex: 1, backgroundColor: '#FAFAF8', paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Main content */}
-      <Animated.View style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 40,
-        opacity: fadeIn,
-        transform: [{ translateY: slideUp }],
-      }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
+
         {/* Emotional blooming logo */}
         <Animated.View style={{
-          marginBottom: 48,
+          marginBottom: 56,
+          opacity: logoFade,
           transform: [{ scale: logoScale }],
           alignItems: 'center',
           justifyContent: 'center',
         }}>
-          {/* Ambient glow behind dots */}
+          {/* Ambient glow */}
           <Animated.View style={{
             position: 'absolute',
             width: 120,
             height: 120,
             borderRadius: 60,
-            backgroundColor: glowColor,
+            backgroundColor: glowColor.current,
             opacity: glowOpacity,
             transform: [{ scale: glowScale }],
           }} />
@@ -196,8 +202,8 @@ export default function Welcome() {
                   width: DOT_SIZE,
                   height: DOT_SIZE,
                   borderRadius: DOT_RADIUS,
-                  backgroundColor: dotColor,
-                  shadowColor: dotColor,
+                  backgroundColor: dotColor.current,
+                  shadowColor: dotColor.current,
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.4,
                   shadowRadius: 8,
@@ -213,49 +219,41 @@ export default function Welcome() {
           </Animated.View>
         </Animated.View>
 
-        {/* Emotion word — cycles with the dots */}
+        {/* Headline */}
         <Animated.View style={{
-          marginBottom: 24,
-          opacity: wordOpacity,
-          transform: [{ translateY: wordSlide }],
+          opacity: headlineFade,
+          transform: [{ translateY: headlineSlide }],
         }}>
           <Text style={{
-            fontSize: 14,
-            fontWeight: '600',
-            color: dotColor,
+            fontSize: 28,
+            fontWeight: '700',
+            color: '#1A1A1A',
             textAlign: 'center',
-            letterSpacing: 2,
-            textTransform: 'uppercase',
+            letterSpacing: -0.6,
+            lineHeight: 36,
+            paddingHorizontal: 4,
           }}>
-            {emotionWord[locale] || emotionWord.en}
+            {t.auth.welcomeHeadline}
           </Text>
         </Animated.View>
 
-        {/* Headline */}
-        <Text style={{
-          fontSize: 30,
-          fontWeight: '700',
-          color: colors.primary,
-          textAlign: 'center',
-          letterSpacing: -0.6,
-          lineHeight: 38,
-          paddingHorizontal: 8,
-        }}>
-          {t.auth.welcomeHeadline}
-        </Text>
-
         {/* Subtitle */}
-        <Text style={{
-          fontSize: 15,
-          color: '#AAAAAA',
-          textAlign: 'center',
+        <Animated.View style={{
+          opacity: subtitleFade,
+          transform: [{ translateY: subtitleSlide }],
           marginTop: 16,
-          lineHeight: 22,
-          letterSpacing: 0.3,
         }}>
-          {t.auth.welcomeSubtitle}
-        </Text>
-      </Animated.View>
+          <Text style={{
+            fontSize: 16,
+            color: '#999',
+            textAlign: 'center',
+            lineHeight: 24,
+            letterSpacing: 0.1,
+          }}>
+            {t.auth.welcomeSubtitle}
+          </Text>
+        </Animated.View>
+      </View>
 
       {/* Not eligible banner */}
       {notEligible && (
@@ -284,42 +282,54 @@ export default function Welcome() {
       {/* Bottom CTAs */}
       <Animated.View style={{
         paddingHorizontal: 24,
-        gap: 12,
         paddingBottom: 16,
-        opacity: fadeIn,
+        opacity: ctaFade,
+        transform: [{ translateY: ctaSlide }],
       }}>
         <TouchableOpacity
           onPress={() => router.push('/(auth)/sign-up')}
           activeOpacity={0.85}
           style={{
-            backgroundColor: colors.primary,
-            height: 58,
-            borderRadius: 29,
+            backgroundColor: '#1A1A1A',
+            height: 56,
+            borderRadius: 28,
             justifyContent: 'center',
             alignItems: 'center',
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.12,
-            shadowRadius: 16,
-            elevation: 8,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            elevation: 4,
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>{t.auth.getStarted}</Text>
+          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>
+            {t.auth.getStarted}
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           onPress={() => router.push('/(auth)/sign-in')}
           activeOpacity={0.7}
           style={{
-            backgroundColor: '#EFEFED',
-            height: 58,
-            borderRadius: 29,
+            height: 48,
             justifyContent: 'center',
             alignItems: 'center',
+            marginTop: 4,
           }}
         >
-          <Text style={{ color: '#666', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>{t.auth.haveAccount}</Text>
+          <Text style={{ color: '#999', fontSize: 15, fontWeight: '500' }}>
+            {t.auth.haveAccount}
+          </Text>
         </TouchableOpacity>
+
+        <Text style={{
+          color: '#CCC',
+          fontSize: 12,
+          textAlign: 'center',
+          marginTop: 4,
+        }}>
+          {locale === 'fr' ? 'Privé et sécurisé' : 'Private and secure'}
+        </Text>
       </Animated.View>
     </View>
   )
