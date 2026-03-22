@@ -647,8 +647,19 @@ function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDr
   const scale = useRef(new Animated.Value(1)).current
   const indicatorHeight = useRef(new Animated.Value(0)).current
 
+  // Use refs to avoid stale closures in PanResponder
+  const indexRef = useRef(index)
+  const onDragStartRef = useRef(onDragStart)
+  const onDragMoveRef = useRef(onDragMove)
+  const onDragEndRef = useRef(onDragEnd)
+  const scrollRefLocal = useRef(scrollRef)
+  indexRef.current = index
+  onDragStartRef.current = onDragStart
+  onDragMoveRef.current = onDragMove
+  onDragEndRef.current = onDragEnd
+  scrollRefLocal.current = scrollRef
+
   // PanResponder claims the touch from ScrollView on native
-  // Must disable scroll synchronously via setNativeProps before gesture starts
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -656,20 +667,19 @@ function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDr
       onStartShouldSetPanResponderCapture: () => true,
       onMoveShouldSetPanResponderCapture: () => true,
       onPanResponderGrant: () => {
-        // Disable scroll immediately before React re-renders
-        scrollRef.current?.setNativeProps?.({ scrollEnabled: false })
-        onDragStart(index)
+        scrollRefLocal.current.current?.setNativeProps?.({ scrollEnabled: false })
+        onDragStartRef.current(indexRef.current)
       },
       onPanResponderMove: (_, gestureState) => {
-        onDragMove(gestureState.moveY)
+        onDragMoveRef.current(gestureState.moveY)
       },
       onPanResponderRelease: () => {
-        scrollRef.current?.setNativeProps?.({ scrollEnabled: true })
-        onDragEnd()
+        scrollRefLocal.current.current?.setNativeProps?.({ scrollEnabled: true })
+        onDragEndRef.current()
       },
       onPanResponderTerminate: () => {
-        scrollRef.current?.setNativeProps?.({ scrollEnabled: true })
-        onDragEnd()
+        scrollRefLocal.current.current?.setNativeProps?.({ scrollEnabled: true })
+        onDragEndRef.current()
       },
     })
   ).current
