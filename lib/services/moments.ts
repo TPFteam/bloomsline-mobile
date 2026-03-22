@@ -37,6 +37,7 @@ export interface Moment {
   duration_seconds: number | null
   file_size_bytes: number | null
   mime_type: string | null
+  story_id: string | null
   created_at: string
   updated_at: string
   // Multi-media items (populated from moment_media table)
@@ -48,6 +49,7 @@ export interface CreateMomentInput {
   textContent?: string
   caption?: string
   moods: string[]
+  storyId?: string
 }
 
 // ============================================
@@ -176,6 +178,7 @@ export async function createMoment(input: CreateMomentInput): Promise<Moment | n
       duration_seconds: firstItem?.durationSeconds || null,
       file_size_bytes: firstUpload?.fileSize || null,
       mime_type: firstItem?.mimeType || null,
+      story_id: input.storyId || null,
     })
     .select()
     .single()

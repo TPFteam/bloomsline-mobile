@@ -74,6 +74,8 @@ import { useAuth } from '@/lib/auth-context'
 import { colors, radii, spacing } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
+import { createMoment } from '@/lib/services/moments'
+import { MOODS } from '@/lib/theme'
 
 const SHARE_BASE_URL = 'https://bloomsline.com/stories'
 
@@ -958,11 +960,13 @@ export default function StoriesScreen() {
 
   // Publish modal
   const [publishModalVisible, setPublishModalVisible] = useState(false)
-  const [publishStep, setPublishStep] = useState<'choose' | 'enter-code'>('choose')
+  const [publishStep, setPublishStep] = useState<'choose' | 'enter-code' | 'mood'>('choose')
   const [secretCode, setSecretCode] = useState('')
   const [confirmCode, setConfirmCode] = useState('')
   const [publishTarget, setPublishTarget] = useState<'editor' | 'story'>('editor')
   const [publishingStory, setPublishingStory] = useState<Story | null>(null)
+  const [publishMoods, setPublishMoods] = useState<string[]>([])
+  const [pendingSecretCode, setPendingSecretCode] = useState<string | null | undefined>(undefined)
   const [linkCopied, setLinkCopied] = useState(false)
 
   // Code modal
@@ -1052,10 +1056,10 @@ export default function StoriesScreen() {
     setEditing(true)
   }
 
-  async function saveStory(publish: boolean, storySecretCode?: string | null) {
+  async function saveStory(publish: boolean, storySecretCode?: string | null): Promise<string | undefined> {
     if (!editTitle.trim()) {
       showAlert('Title required', 'Please add a title for your story.')
-      return
+      return undefined
     }
     setEditSaving(true)
     try {
@@ -1096,11 +1100,14 @@ export default function StoriesScreen() {
         if (newStory) {
           setStories(prev => [{ ...newStory, content: orderedBlocks }, ...prev])
         }
+        return newStory?.id
       }
       setEditing(false)
+      return editStory?.id
     } catch (err) {
       console.error('Error saving story:', err)
       showAlert('Error', 'Failed to save story.')
+      return undefined
     } finally {
       setEditSaving(false)
     }
@@ -1144,6 +1151,8 @@ export default function StoriesScreen() {
     setPublishStep('choose')
     setSecretCode('')
     setConfirmCode('')
+    setPublishMoods([])
+    setPendingSecretCode(undefined)
     setPublishTarget(target)
     setPublishingStory(story || null)
     setPublishModalVisible(true)
@@ -1153,19 +1162,41 @@ export default function StoriesScreen() {
     setPublishModalVisible(false)
     setSecretCode('')
     setConfirmCode('')
+    setPublishMoods([])
+    setPendingSecretCode(undefined)
   }
 
-  async function handlePublicPublish() {
-    closePublishModal()
-    if (publishTarget === 'editor') await saveStory(true, null)
-    else if (publishingStory) await publishStory(publishingStory, null)
+  function handlePublicPublish() {
+    setPendingSecretCode(null)
+    setPublishStep('mood')
   }
 
-  async function handlePrivatePublish() {
+  function handlePrivatePublish() {
     if (secretCode.trim().length < 4 || secretCode !== confirmCode) return
+    setPendingSecretCode(secretCode.trim())
+    setPublishStep('mood')
+  }
+
+  async function handleFinalPublish() {
     closePublishModal()
-    if (publishTarget === 'editor') await saveStory(true, secretCode.trim())
-    else if (publishingStory) await publishStory(publishingStory, secretCode.trim())
+    // Publish the story
+    let storyId: string | undefined
+    if (publishTarget === 'editor') {
+      storyId = await saveStory(true, pendingSecretCode)
+    } else if (publishingStory) {
+      await publishStory(publishingStory, pendingSecretCode)
+      storyId = publishingStory.id
+    }
+    // Create a moment on the timeline if moods were selected
+    if (storyId && publishMoods.length > 0) {
+      const title = publishTarget === 'editor' ? editTitle : publishingStory?.title
+      await createMoment({
+        mediaItems: [],
+        caption: title || 'Story',
+        moods: publishMoods,
+        storyId,
+      })
+    }
   }
 
   function getShareUrl(story: Story): string {
@@ -2352,7 +2383,7 @@ export default function StoriesScreen() {
               <View>
                 <Text style={{ fontSize: 20, fontWeight: '800', color: colors.primary }}>Publish Your Story</Text>
                 <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
-                  {publishStep === 'choose' ? 'Choose how you want to share' : 'Create your secret code'}
+                  {publishStep === 'choose' ? 'Choose how you want to share' : publishStep === 'mood' ? 'How does this story make you feel?' : 'Create your secret code'}
                 </Text>
               </View>
               <TouchableOpacity onPress={closePublishModal} style={{ padding: 6 }}>
@@ -2361,7 +2392,67 @@ export default function StoriesScreen() {
             </View>
 
             <View style={{ padding: 20 }}>
-              {publishStep === 'choose' ? (
+              {publishStep === 'mood' ? (
+                <View style={{ gap: 16 }}>
+                  <Text style={{ fontSize: 14, color: colors.textSecondary, textAlign: 'center' }}>
+                    This will add your story to your emotional timeline.
+                  </Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                    {MOODS.map((mood) => {
+                      const selected = publishMoods.includes(mood.key)
+                      return (
+                        <TouchableOpacity
+                          key={mood.key}
+                          onPress={() => {
+                            setPublishMoods(prev =>
+                              selected ? prev.filter(m => m !== mood.key) : [...prev, mood.key]
+                            )
+                          }}
+                          style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 6,
+                            paddingHorizontal: 14, paddingVertical: 10,
+                            borderRadius: 20, borderWidth: 1.5,
+                            borderColor: selected ? mood.color : '#EBEBEB',
+                            backgroundColor: selected ? `${mood.color}10` : '#fff',
+                          }}
+                        >
+                          <Text style={{ fontSize: 16 }}>{mood.emoji}</Text>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? mood.color : colors.textSecondary }}>
+                            {mood.label}
+                          </Text>
+                        </TouchableOpacity>
+                      )
+                    })}
+                  </View>
+                  <TouchableOpacity
+                    onPress={handleFinalPublish}
+                    disabled={publishMoods.length === 0}
+                    style={{
+                      paddingVertical: 14, borderRadius: radii.button, alignItems: 'center',
+                      backgroundColor: publishMoods.length > 0 ? colors.primary : colors.disabled,
+                      marginTop: 4,
+                    }}
+                  >
+                    <Text style={{
+                      fontSize: 15, fontWeight: '600',
+                      color: publishMoods.length > 0 ? '#fff' : colors.textSecondary,
+                    }}>
+                      Publish
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={async () => {
+                      // Skip mood — publish without creating a moment
+                      closePublishModal()
+                      if (publishTarget === 'editor') await saveStory(true, pendingSecretCode)
+                      else if (publishingStory) await publishStory(publishingStory, pendingSecretCode)
+                    }}
+                    style={{ alignItems: 'center', paddingVertical: 8 }}
+                  >
+                    <Text style={{ fontSize: 13, color: colors.textTertiary }}>Skip</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : publishStep === 'choose' ? (
                 <View style={{ gap: 12 }}>
                   <TouchableOpacity
                     onPress={handlePublicPublish}
