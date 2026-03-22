@@ -1408,6 +1408,8 @@ export default function StoriesScreen() {
 
   async function deleteStory(id: string) {
     try {
+      // Delete linked moments first
+      await supabase.from('moments').delete().eq('story_id', id)
       const { error } = await supabase.from('stories').delete().eq('id', id)
       if (error) throw error
       setStories(prev => prev.filter(s => s.id !== id))
