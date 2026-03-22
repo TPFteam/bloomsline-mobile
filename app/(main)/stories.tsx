@@ -14,6 +14,7 @@ import {
   Pressable,
   Linking,
   Animated,
+  PanResponder,
 } from 'react-native'
 import { Audio } from 'expo-av'
 import * as ImagePicker from 'expo-image-picker'
@@ -645,6 +646,28 @@ function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDr
   const scale = useRef(new Animated.Value(1)).current
   const indicatorHeight = useRef(new Animated.Value(0)).current
 
+  // PanResponder claims the touch from ScrollView on native
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      onPanResponderGrant: () => {
+        onDragStart(index)
+      },
+      onPanResponderMove: (_, gestureState) => {
+        onDragMove(gestureState.moveY)
+      },
+      onPanResponderRelease: () => {
+        onDragEnd()
+      },
+      onPanResponderTerminate: () => {
+        onDragEnd()
+      },
+    })
+  ).current
+
   useEffect(() => {
     Animated.timing(opacity, {
       toValue: isDragging ? 0.4 : 1,
@@ -689,7 +712,7 @@ function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDr
         {/* Left controls: drag handle + delete */}
         <View style={{ alignItems: 'center', gap: 6, paddingTop: 10 }}>
           <View
-            onTouchStart={() => onDragStart(index)}
+            {...panResponder.panHandlers}
             // @ts-ignore — web mouse events
             onMouseDown={() => onDragStart(index)}
             style={{
@@ -819,12 +842,7 @@ function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, upload
   }, [dragIndex, handleDragMove, handleDragEnd])
 
   return (
-    <View
-      style={{ flex: 1 }}
-      onTouchMove={dragIndex !== null ? (e) => handleDragMove(e.nativeEvent.pageY) : undefined}
-      onTouchEnd={dragIndex !== null ? handleDragEnd : undefined}
-      onTouchCancel={dragIndex !== null ? handleDragEnd : undefined}
-    >
+    <View style={{ flex: 1 }}>
     <ScrollView
       ref={scrollRef}
       contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
