@@ -243,6 +243,19 @@ export default function PractitionerScreen() {
     }
   }
 
+  function confirmAndSubmit() {
+    const title = t.practitioner.confirmSubmitTitle || 'Submit'
+    const message = t.practitioner.confirmSubmitMessage || 'Are you sure you want to submit? You won\'t be able to edit after submitting.'
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n${message}`)) handleSubmit()
+    } else {
+      Alert.alert(title, message, [
+        { text: t.common.cancel || 'Cancel', style: 'cancel' },
+        { text: t.practitioner.submit || 'Submit', style: 'default', onPress: () => handleSubmit() },
+      ])
+    }
+  }
+
   async function handleSubmit() {
     if (!activeResourceItem) return
     setSubmitting(true)
@@ -948,17 +961,17 @@ export default function PractitionerScreen() {
                     {draftResponseId && (
                       <TouchableOpacity
                         onPress={handleSaveDraft} disabled={saving}
-                        style={{ flex: 1, backgroundColor: colors.surface1, borderRadius: 28, paddingVertical: 16, alignItems: 'center' }}
+                        style={{ flex: 1, borderWidth: 1.5, borderColor: '#E5E5E5', borderRadius: 28, paddingVertical: 14, alignItems: 'center' }}
                       >
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>{saving ? t.common.saving : t.practitioner.saveDraft}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{saving ? t.common.saving : t.practitioner.saveDraft}</Text>
                       </TouchableOpacity>
                     )}
                     <TouchableOpacity
-                      onPress={draftResponseId ? handleSubmit : handleMarkComplete} disabled={submitting}
-                      style={{ flex: 1, backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 16, alignItems: 'center' }}
+                      onPress={draftResponseId ? confirmAndSubmit : handleMarkComplete} disabled={submitting}
+                      style={{ flex: 1.5, backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 14, alignItems: 'center' }}
                     >
                       {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.practitioner.submit}</Text>
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t.practitioner.submit}</Text>
                       )}
                     </TouchableOpacity>
                   </>

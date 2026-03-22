@@ -5,11 +5,11 @@ import {
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Mail, ArrowRight } from 'lucide-react-native'
+import { Mail, ArrowRight, ChevronLeft } from 'lucide-react-native'
 import { useAuth } from '@/lib/auth-context'
-import { BackButton } from '@/components/ui/BackButton'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
+import Svg, { Path } from 'react-native-svg'
 
 export default function SignUp() {
   const router = useRouter()
@@ -63,17 +63,28 @@ export default function SignUp() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom }}>
-        <View style={{ paddingHorizontal: 24, paddingVertical: 16 }}>
-          <BackButton />
+        {/* Header: back + title */}
+        <View style={{ paddingHorizontal: 24, paddingTop: 32, paddingBottom: 8 }}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{
+              width: 44, height: 44, borderRadius: 22,
+              backgroundColor: colors.bloom,
+              justifyContent: 'center', alignItems: 'center',
+              marginBottom: 32,
+            }}
+          >
+            <ChevronLeft size={22} color="#fff" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 32, fontWeight: '700', color: '#1A1A1A', marginBottom: 8 }}>
+            {t.auth.signUpTitle}
+          </Text>
+          <Text style={{ fontSize: 17, color: '#999' }}>
+            {t.auth.signUpSubtitle}
+          </Text>
         </View>
 
         <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
-          <Text style={{ fontSize: 32, fontWeight: '700', color: '#000', marginBottom: 8 }}>
-            {t.auth.signUpTitle}
-          </Text>
-          <Text style={{ fontSize: 17, color: '#999', marginBottom: 40 }}>
-            {t.auth.signUpSubtitle}
-          </Text>
 
           {error ? (
             <View style={{ backgroundColor: colors.errorBg, padding: 12, borderRadius: 12, marginBottom: 16 }}>
@@ -88,7 +99,7 @@ export default function SignUp() {
             style={{
               backgroundColor: '#000', height: 56, borderRadius: 28,
               flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
-              marginBottom: 12, opacity: loading && loading !== 'google' ? 0.5 : 1,
+              opacity: loading && loading !== 'google' ? 0.5 : 1,
             }}
           >
             {loading === 'google' ? (
@@ -96,15 +107,17 @@ export default function SignUp() {
             ) : (
               <>
                 <GoogleIcon />
-                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>{t.auth.continueWithGoogle}</Text>
+                <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>
+                  {t.auth.continueWithGoogle}
+                </Text>
               </>
             )}
           </TouchableOpacity>
 
           {/* Divider */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 16 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: '#eee' }} />
-            <Text style={{ marginHorizontal: 16, color: '#bbb', fontSize: 13 }}>{t.auth.or}</Text>
+            <Text style={{ marginHorizontal: 16, color: '#ccc', fontSize: 13 }}>{t.auth.or}</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: '#eee' }} />
           </View>
 
@@ -115,7 +128,7 @@ export default function SignUp() {
             style={{
               backgroundColor: '#f5f5f5', height: 56, borderRadius: 28,
               flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10,
-              marginBottom: 12, opacity: loading && loading !== 'azure' ? 0.5 : 1,
+              opacity: loading && loading !== 'azure' ? 0.5 : 1,
             }}
           >
             {loading === 'azure' ? (
@@ -123,15 +136,17 @@ export default function SignUp() {
             ) : (
               <>
                 <MicrosoftIcon />
-                <Text style={{ color: '#000', fontSize: 17, fontWeight: '600' }}>{t.auth.continueWithOutlook}</Text>
+                <Text style={{ color: '#1A1A1A', fontSize: 17, fontWeight: '600' }}>
+                  {t.auth.continueWithOutlook}
+                </Text>
               </>
             )}
           </TouchableOpacity>
 
           {/* Divider */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 16 }}>
             <View style={{ flex: 1, height: 1, backgroundColor: '#eee' }} />
-            <Text style={{ marginHorizontal: 16, color: '#bbb', fontSize: 13 }}>{t.auth.or}</Text>
+            <Text style={{ marginHorizontal: 16, color: '#ccc', fontSize: 13 }}>{t.auth.or}</Text>
             <View style={{ flex: 1, height: 1, backgroundColor: '#eee' }} />
           </View>
 
@@ -160,8 +175,9 @@ export default function SignUp() {
                 keyboardType="email-address"
                 onSubmitEditing={handleMagicLink}
                 style={{
-                  flex: 1, minWidth: 0, height: 56, backgroundColor: '#f5f5f5', borderRadius: 28,
-                  paddingHorizontal: 20, fontSize: 17, color: '#000',
+                  flex: 1, minWidth: 0, height: 56, borderRadius: 28,
+                  paddingHorizontal: 20, fontSize: 16, color: '#000',
+                  borderWidth: 1, borderColor: '#E5E5E5', backgroundColor: '#fff',
                 }}
                 editable={loading === null}
               />
@@ -169,25 +185,26 @@ export default function SignUp() {
                 onPress={handleMagicLink}
                 disabled={!email.trim() || loading !== null}
                 style={{
-                  width: 48, height: 48, borderRadius: 24, backgroundColor: colors.bloom,
+                  width: 48, height: 48, borderRadius: 24,
+                  borderWidth: 1, borderColor: '#E5E5E5',
                   justifyContent: 'center', alignItems: 'center', flexShrink: 0,
-                  opacity: !email.trim() || loading !== null ? 0.5 : 1,
+                  opacity: !email.trim() || loading !== null ? 0.4 : 1,
                 }}
               >
                 {loading === 'magic' ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={colors.bloom} />
                 ) : (
-                  <ArrowRight size={20} color="#fff" />
+                  <ArrowRight size={20} color={colors.bloom} />
                 )}
               </TouchableOpacity>
             </View>
           )}
 
           {/* Sign in link */}
-          <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 32, gap: 4 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 40, gap: 4 }}>
             <Text style={{ fontSize: 15, color: '#999' }}>{t.auth.alreadyHaveAccount}</Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/sign-in')}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.bloom }}>{t.auth.signIn}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.bloom, textDecorationLine: 'underline' }}>{t.auth.signIn}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -198,11 +215,9 @@ export default function SignUp() {
 
 // ─── Inline SVG Icons ───────────────────────────────
 
-import Svg, { Path } from 'react-native-svg'
-
 function GoogleIcon() {
   return (
-    <Svg width={20} height={20} viewBox="0 0 48 48">
+    <Svg width={18} height={18} viewBox="0 0 48 48">
       <Path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
       <Path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
       <Path fill="#FBBC05" d="M10.53 28.59a14.5 14.5 0 0 1 0-9.18l-7.98-6.19a24.0 24.0 0 0 0 0 21.56l7.98-6.19z" />
@@ -213,11 +228,11 @@ function GoogleIcon() {
 
 function MicrosoftIcon() {
   return (
-    <View style={{ width: 18, height: 18, flexDirection: 'row', flexWrap: 'wrap', gap: 1 }}>
-      <View style={{ width: 8, height: 8, backgroundColor: '#f35325' }} />
-      <View style={{ width: 8, height: 8, backgroundColor: '#81bc06' }} />
-      <View style={{ width: 8, height: 8, backgroundColor: '#05a6f0' }} />
-      <View style={{ width: 8, height: 8, backgroundColor: '#ffba08' }} />
+    <View style={{ width: 16, height: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 1 }}>
+      <View style={{ width: 7, height: 7, backgroundColor: '#f35325' }} />
+      <View style={{ width: 7, height: 7, backgroundColor: '#81bc06' }} />
+      <View style={{ width: 7, height: 7, backgroundColor: '#05a6f0' }} />
+      <View style={{ width: 7, height: 7, backgroundColor: '#ffba08' }} />
     </View>
   )
 }

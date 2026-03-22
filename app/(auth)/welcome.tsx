@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { View, Text, TouchableOpacity, Animated, Easing } from 'react-native'
+import { View, Text, TouchableOpacity, Animated, Easing, Linking } from 'react-native'
+import { Lock } from 'lucide-react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useI18n } from '@/lib/i18n'
@@ -29,12 +30,16 @@ export default function Welcome() {
   // Entrance cascade
   const logoFade = useRef(new Animated.Value(0)).current
   const logoScale = useRef(new Animated.Value(0.6)).current
-  const headlineFade = useRef(new Animated.Value(0)).current
-  const headlineSlide = useRef(new Animated.Value(16)).current
+  const line1Fade = useRef(new Animated.Value(0)).current
+  const line1Slide = useRef(new Animated.Value(12)).current
+  const line2Fade = useRef(new Animated.Value(0)).current
+  const line2Slide = useRef(new Animated.Value(12)).current
+  const line3Fade = useRef(new Animated.Value(0)).current
+  const line3Slide = useRef(new Animated.Value(12)).current
   const subtitleFade = useRef(new Animated.Value(0)).current
-  const subtitleSlide = useRef(new Animated.Value(12)).current
-  const ctaFade = useRef(new Animated.Value(0)).current
-  const ctaSlide = useRef(new Animated.Value(10)).current
+  const subtitleSlide = useRef(new Animated.Value(14)).current
+  const bottomFade = useRef(new Animated.Value(0)).current
+  const bottomSlide = useRef(new Animated.Value(10)).current
 
   // Dot animations
   const dotAnims = useRef(
@@ -52,9 +57,9 @@ export default function Welcome() {
   // Overall rotation
   const rotation = useRef(new Animated.Value(0)).current
 
-  // Color + glow state
-  const dotColor = useRef(EMOTIONS[0].color)
-  const glowColor = useRef(EMOTIONS[0].glowColor)
+  // Color state
+  const dotColorRef = useRef(EMOTIONS[0].color)
+  const glowColorRef = useRef(EMOTIONS[0].glowColor)
   const emotionIndex = useRef(0)
   const forceUpdate = useRef(new Animated.Value(0)).current
 
@@ -65,6 +70,41 @@ export default function Welcome() {
     { x: DOT_GAP, y: 0 },
     { x: 0, y: DOT_GAP },
   ]
+
+  function runEmotionCycle() {
+    const nextIdx = (emotionIndex.current + 1) % EMOTIONS.length
+    emotionIndex.current = nextIdx
+    const emotion = EMOTIONS[nextIdx]
+
+    dotColorRef.current = emotion.color
+    glowColorRef.current = emotion.glowColor
+    Animated.timing(forceUpdate, { toValue: nextIdx, duration: 0, useNativeDriver: true }).start()
+
+    const dotAnimations = dotAnims.map((anim, i) => {
+      const basePos = dotPositions[i]
+      const spreadX = basePos.x !== 0 ? (basePos.x > 0 ? emotion.spread : -emotion.spread) : 0
+      const spreadY = basePos.y !== 0 ? (basePos.y > 0 ? emotion.spread : -emotion.spread) : 0
+      return Animated.sequence([
+        Animated.delay(i * 100),
+        Animated.parallel([
+          Animated.spring(anim.translateX, { toValue: spreadX, friction: 6, tension: 30, useNativeDriver: true }),
+          Animated.spring(anim.translateY, { toValue: spreadY, friction: 6, tension: 30, useNativeDriver: true }),
+          Animated.spring(anim.scale, {
+            toValue: emotion.scale + (i % 2 === 0 ? 0.08 : -0.04),
+            friction: 5, tension: 35, useNativeDriver: true,
+          }),
+        ]),
+      ])
+    })
+
+    Animated.parallel([
+      ...dotAnimations,
+      Animated.timing(rotation, { toValue: emotion.rotation, duration: CYCLE_DURATION * 0.7, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.spring(glowScale, { toValue: emotion.glowScale, friction: 6, tension: 25, useNativeDriver: true }),
+    ]).start()
+
+    setTimeout(() => runEmotionCycle(), CYCLE_DURATION)
+  }
 
   useEffect(() => {
     // 1. Logo blooms in
@@ -81,82 +121,48 @@ export default function Welcome() {
       ])
     ).start()
 
-    // 3. Cascading text reveal
+    // 3. Line-by-line headline reveal
     setTimeout(() => {
       Animated.parallel([
-        Animated.timing(headlineFade, { toValue: 1, duration: 500, useNativeDriver: true }),
-        Animated.timing(headlineSlide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(line1Fade, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(line1Slide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
       ]).start()
-    }, 600)
+    }, 500)
 
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(line2Fade, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(line2Slide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      ]).start()
+    }, 800)
+
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(line3Fade, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(line3Slide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+      ]).start()
+    }, 1100)
+
+    // 4. Subtitle
     setTimeout(() => {
       Animated.parallel([
         Animated.timing(subtitleFade, { toValue: 1, duration: 500, useNativeDriver: true }),
         Animated.timing(subtitleSlide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
       ]).start()
-    }, 900)
+    }, 1500)
 
+    // 5. Bottom
     setTimeout(() => {
       Animated.parallel([
-        Animated.timing(ctaFade, { toValue: 1, duration: 500, useNativeDriver: true }),
-        Animated.timing(ctaSlide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(bottomFade, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(bottomSlide, { toValue: 0, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
       ]).start()
-    }, 1100)
+    }, 1700)
 
     // 4. Start emotion cycle
     const timeout = setTimeout(() => runEmotionCycle(), 1400)
     return () => clearTimeout(timeout)
   }, [])
-
-  function runEmotionCycle() {
-    const nextIdx = (emotionIndex.current + 1) % EMOTIONS.length
-    emotionIndex.current = nextIdx
-    const emotion = EMOTIONS[nextIdx]
-
-    dotColor.current = emotion.color
-    glowColor.current = emotion.glowColor
-    // Trigger re-render for color change
-    Animated.timing(forceUpdate, { toValue: nextIdx, duration: 0, useNativeDriver: true }).start()
-
-    const dotAnimations = dotAnims.map((anim, i) => {
-      const basePos = dotPositions[i]
-      const spreadX = basePos.x !== 0 ? (basePos.x > 0 ? emotion.spread : -emotion.spread) : 0
-      const spreadY = basePos.y !== 0 ? (basePos.y > 0 ? emotion.spread : -emotion.spread) : 0
-      const staggerDelay = i * 100
-
-      return Animated.sequence([
-        Animated.delay(staggerDelay),
-        Animated.parallel([
-          Animated.spring(anim.translateX, { toValue: spreadX, friction: 6, tension: 30, useNativeDriver: true }),
-          Animated.spring(anim.translateY, { toValue: spreadY, friction: 6, tension: 30, useNativeDriver: true }),
-          Animated.spring(anim.scale, {
-            toValue: emotion.scale + (i % 2 === 0 ? 0.08 : -0.04),
-            friction: 5,
-            tension: 35,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    })
-
-    const rotationAnim = Animated.timing(rotation, {
-      toValue: emotion.rotation,
-      duration: CYCLE_DURATION * 0.7,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: true,
-    })
-
-    const glowAnim = Animated.spring(glowScale, {
-      toValue: emotion.glowScale,
-      friction: 6,
-      tension: 25,
-      useNativeDriver: true,
-    })
-
-    Animated.parallel([...dotAnimations, rotationAnim, glowAnim]).start()
-
-    setTimeout(() => runEmotionCycle(), CYCLE_DURATION)
-  }
 
   const rotateInterpolation = rotation.interpolate({
     inputRange: [-15, 0, 15],
@@ -164,13 +170,13 @@ export default function Welcome() {
   })
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#FAFAF8', paddingTop: insets.top, paddingBottom: insets.bottom }}>
-      {/* Main content */}
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40 }}>
+    <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top, paddingBottom: insets.bottom }}>
+      {/* Main content — centered */}
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 36 }}>
 
         {/* Emotional blooming logo */}
         <Animated.View style={{
-          marginBottom: 56,
+          marginBottom: 64,
           opacity: logoFade,
           transform: [{ scale: logoScale }],
           alignItems: 'center',
@@ -182,7 +188,7 @@ export default function Welcome() {
             width: 120,
             height: 120,
             borderRadius: 60,
-            backgroundColor: glowColor.current,
+            backgroundColor: glowColorRef.current,
             opacity: glowOpacity,
             transform: [{ scale: glowScale }],
           }} />
@@ -202,8 +208,8 @@ export default function Welcome() {
                   width: DOT_SIZE,
                   height: DOT_SIZE,
                   borderRadius: DOT_RADIUS,
-                  backgroundColor: dotColor.current,
-                  shadowColor: dotColor.current,
+                  backgroundColor: dotColorRef.current,
+                  shadowColor: dotColorRef.current,
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.4,
                   shadowRadius: 8,
@@ -219,36 +225,60 @@ export default function Welcome() {
           </Animated.View>
         </Animated.View>
 
-        {/* Headline */}
-        <Animated.View style={{
-          opacity: headlineFade,
-          transform: [{ translateY: headlineSlide }],
-        }}>
-          <Text style={{
-            fontSize: 28,
-            fontWeight: '700',
+        {/* Headline — line by line */}
+        <View style={{ alignItems: 'center' }}>
+          <Animated.Text style={{
+            fontSize: 32,
+            fontWeight: '300',
+            fontStyle: 'italic',
             color: '#1A1A1A',
             textAlign: 'center',
-            letterSpacing: -0.6,
-            lineHeight: 36,
-            paddingHorizontal: 4,
+            letterSpacing: -0.5,
+            lineHeight: 42,
+            opacity: line1Fade,
+            transform: [{ translateY: line1Slide }],
           }}>
-            {t.auth.welcomeHeadline}
-          </Text>
-        </Animated.View>
+            {locale === 'fr' ? 'Certaines réponses apparaissent' : 'Some answers appear'}
+          </Animated.Text>
+          <Animated.Text style={{
+            fontSize: 32,
+            fontWeight: '300',
+            fontStyle: 'italic',
+            color: '#1A1A1A',
+            textAlign: 'center',
+            letterSpacing: -0.5,
+            lineHeight: 42,
+            opacity: line2Fade,
+            transform: [{ translateY: line2Slide }],
+          }}>
+            {locale === 'fr' ? 'quand vos pensées' : 'when your thoughts'}
+          </Animated.Text>
+          <Animated.Text style={{
+            fontSize: 32,
+            fontWeight: '700',
+            fontStyle: 'italic',
+            color: '#4A9A86',
+            textAlign: 'center',
+            letterSpacing: -0.5,
+            lineHeight: 42,
+            opacity: line3Fade,
+            transform: [{ translateY: line3Slide }],
+          }}>
+            {locale === 'fr' ? 'ont une place pour exister.' : 'have a place to exist.'}
+          </Animated.Text>
+        </View>
 
         {/* Subtitle */}
         <Animated.View style={{
           opacity: subtitleFade,
           transform: [{ translateY: subtitleSlide }],
-          marginTop: 16,
+          marginTop: 20,
         }}>
           <Text style={{
             fontSize: 16,
-            color: '#999',
+            color: '#AAAAAA',
             textAlign: 'center',
             lineHeight: 24,
-            letterSpacing: 0.1,
           }}>
             {t.auth.welcomeSubtitle}
           </Text>
@@ -279,13 +309,14 @@ export default function Welcome() {
         </TouchableOpacity>
       )}
 
-      {/* Bottom CTAs */}
+      {/* Bottom section */}
       <Animated.View style={{
         paddingHorizontal: 24,
-        paddingBottom: 16,
-        opacity: ctaFade,
-        transform: [{ translateY: ctaSlide }],
+        paddingBottom: 12,
+        opacity: bottomFade,
+        transform: [{ translateY: bottomSlide }],
       }}>
+        {/* Primary CTA */}
         <TouchableOpacity
           onPress={() => router.push('/(auth)/sign-up')}
           activeOpacity={0.85}
@@ -295,18 +326,14 @@ export default function Welcome() {
             borderRadius: 28,
             justifyContent: 'center',
             alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.08,
-            shadowRadius: 12,
-            elevation: 4,
           }}
         >
-          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 }}>
+          <Text style={{ color: '#fff', fontSize: 17, fontWeight: '600' }}>
             {t.auth.getStarted}
           </Text>
         </TouchableOpacity>
 
+        {/* Secondary — text link */}
         <TouchableOpacity
           onPress={() => router.push('/(auth)/sign-in')}
           activeOpacity={0.7}
@@ -314,22 +341,35 @@ export default function Welcome() {
             height: 48,
             justifyContent: 'center',
             alignItems: 'center',
-            marginTop: 4,
+            marginTop: 8,
           }}
         >
-          <Text style={{ color: '#999', fontSize: 15, fontWeight: '500' }}>
+          <Text style={{ color: '#888', fontSize: 15, fontWeight: '500' }}>
             {t.auth.haveAccount}
           </Text>
         </TouchableOpacity>
 
-        <Text style={{
-          color: '#CCC',
-          fontSize: 12,
-          textAlign: 'center',
-          marginTop: 4,
-        }}>
-          {locale === 'fr' ? 'Privé et sécurisé' : 'Private and secure'}
-        </Text>
+        {/* Private and secure */}
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 16 }}>
+          <Lock size={12} color="#BBB" />
+          <Text style={{ fontSize: 10, fontWeight: '600', color: '#BBB', letterSpacing: 1.5, textTransform: 'uppercase' }}>
+            {locale === 'fr' ? 'Privé et sécurisé' : 'Private and secure'}
+          </Text>
+        </View>
+
+        {/* Footer links */}
+        <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 32, marginTop: 16, paddingBottom: 4 }}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://bloomsline.com/privacy')} activeOpacity={0.6}>
+            <Text style={{ fontSize: 10, fontWeight: '500', color: '#CCC', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              {locale === 'fr' ? 'Confidentialité' : 'Privacy'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => Linking.openURL('https://bloomsline.com/terms')} activeOpacity={0.6}>
+            <Text style={{ fontSize: 10, fontWeight: '500', color: '#CCC', letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              {locale === 'fr' ? 'Conditions' : 'Terms'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </Animated.View>
     </View>
   )

@@ -138,7 +138,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
                   <TextInput
                     value={r[c.id] || ''}
                     onChangeText={(t) => updateCell(ri, c.id, t)}
-                    placeholder={t.blocks.typeHere}
+                    placeholder={c.placeholder || t.blocks.typeHere}
                     placeholderTextColor={PLACEHOLDER}
                     multiline
                     style={{
@@ -338,7 +338,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
         <TextInput
           value={row[col.id] || ''}
           onChangeText={(t) => updateCell(safeEntry, col.id, t)}
-          placeholder={t.blocks.typeHere}
+          placeholder={col.placeholder || t.blocks.typeHere}
           placeholderTextColor={PLACEHOLDER}
           multiline
           style={{
@@ -512,7 +512,7 @@ export function renderBlock(
             <TextInput
               value={(blockValue as string) || ''}
               editable={!readOnly} onChangeText={(t) => onChange(t)}
-              placeholder={t?.blocks?.shareThoughts || "Share your thoughts..."}
+              placeholder={block.placeholder || t?.blocks?.shareThoughts || "Share your thoughts..."}
               placeholderTextColor={PLACEHOLDER}
               multiline
               style={{
@@ -817,7 +817,7 @@ export function renderBlock(
             value={blockValue !== undefined && blockValue !== null ? String(blockValue) : ''}
             editable={!readOnly} onChangeText={(v) => { if (v === '') onChange(undefined); else { const n = Number(v); if (!isNaN(n)) onChange(n) } }}
             keyboardType="numeric"
-            placeholder={t?.blocks?.enterNumber || "Enter a number..."}
+            placeholder={block.placeholder || t?.blocks?.enterNumber || "Enter a number..."}
             placeholderTextColor={PLACEHOLDER}
             style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 16, color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER }}
           />
@@ -862,7 +862,7 @@ export function renderBlock(
                 <TextInput
                   value={item}
                   editable={!readOnly} onChangeText={(t) => { const a = [...listItems]; a[i] = t; onChange(a) }}
-                  placeholder={(t?.blocks?.itemPlaceholder || 'Item {n}...').replace('{n}', String(i + 1))}
+                  placeholder={block.placeholder || (t?.blocks?.itemPlaceholder || 'Item {n}...').replace('{n}', String(i + 1))}
                   placeholderTextColor={PLACEHOLDER}
                   style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 14, padding: 12, fontSize: 15, color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER }}
                 />

@@ -543,7 +543,7 @@ export async function markResourceComplete(
       .eq('id', item.id)
 
     // Save responses if there's a response record (interactive shared resources)
-    if (responseId && Object.keys(responses).length > 0) {
+    if (responseId) {
       await supabase
         .from('resource_responses')
         .update({ responses, status: 'submitted', submitted_at: now, updated_at: now })

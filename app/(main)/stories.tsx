@@ -13,6 +13,7 @@ import {
   Image,
   Pressable,
   Linking,
+  Animated,
 } from 'react-native'
 import { Audio } from 'expo-av'
 import * as ImagePicker from 'expo-image-picker'
@@ -375,24 +376,31 @@ function RenderBlock({ block, onImagePress }: { block: ContentBlock; onImagePres
 
 // ─── Block Actions (edit mode) ──────────────────────
 
-function BlockActions({ onRemove, onMoveUp, onMoveDown, isFirst, isLast }: {
-  onRemove: () => void; onMoveUp?: () => void; onMoveDown?: () => void; isFirst?: boolean; isLast?: boolean
-}) {
+function BlockActions({ onRemove }: { onRemove: () => void }) {
   return (
-    <View style={{ gap: 2, alignItems: 'center' }}>
-      {onMoveUp && !isFirst && (
-        <TouchableOpacity onPress={onMoveUp} style={{ padding: 4 }}>
-          <ChevronUp size={14} color={colors.textSecondary} />
-        </TouchableOpacity>
-      )}
-      <TouchableOpacity onPress={onRemove} style={{ padding: 4 }}>
-        <X size={14} color={colors.error} />
-      </TouchableOpacity>
-      {onMoveDown && !isLast && (
-        <TouchableOpacity onPress={onMoveDown} style={{ padding: 4 }}>
-          <ChevronDown size={14} color={colors.textSecondary} />
-        </TouchableOpacity>
-      )}
+    <TouchableOpacity onPress={onRemove} style={{ padding: 4 }}>
+      <X size={14} color={colors.error} />
+    </TouchableOpacity>
+  )
+}
+
+function DragHandle() {
+  return (
+    <View style={{ width: 14, height: 14, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ gap: 2.5 }}>
+        <View style={{ flexDirection: 'row', gap: 2.5 }}>
+          <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textMuted }} />
+          <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textMuted }} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 2.5 }}>
+          <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textMuted }} />
+          <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textMuted }} />
+        </View>
+        <View style={{ flexDirection: 'row', gap: 2.5 }}>
+          <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textMuted }} />
+          <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: colors.textMuted }} />
+        </View>
+      </View>
     </View>
   )
 }
@@ -442,10 +450,9 @@ function AutoGrowTextInput({ value, onChangeText, placeholder, placeholderTextCo
 // ─── Edit Block (edit mode) ─────────────────────────
 
 function EditBlock({
-  block, onChange, onRemove, onMoveUp, onMoveDown, isFirst, isLast,
+  block, onChange, onRemove,
 }: {
   block: ContentBlock; onChange: (u: ContentBlock) => void; onRemove: () => void
-  onMoveUp: () => void; onMoveDown: () => void; isFirst: boolean; isLast: boolean
 }) {
   const inputStyle = {
     fontSize: 15, color: colors.primary, padding: 14,
@@ -455,202 +462,402 @@ function EditBlock({
   switch (block.type) {
     case 'heading':
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <TextInput
-              value={block.content?.text || ''}
-              onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
-              placeholder="Heading..."
-              placeholderTextColor={colors.textFaint}
-              style={{ ...inputStyle, fontSize: 18, fontWeight: '700' }}
-            />
-          </View>
-          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
-        </View>
+        <TextInput
+          value={block.content?.text || ''}
+          onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
+          placeholder="Heading..."
+          placeholderTextColor={colors.textFaint}
+          style={{ ...inputStyle, fontSize: 18, fontWeight: '700' }}
+        />
       )
     case 'text':
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <AutoGrowTextInput
-              value={block.content?.text || ''}
-              onChangeText={(t) => onChange({ ...block, content: { text: t } })}
-              placeholder="Write something..."
-              placeholderTextColor={colors.textFaint}
-              inputStyle={inputStyle}
-            />
-          </View>
-          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
-        </View>
+        <AutoGrowTextInput
+          value={block.content?.text || ''}
+          onChangeText={(t) => onChange({ ...block, content: { text: t } })}
+          placeholder="Write something..."
+          placeholderTextColor={colors.textFaint}
+          inputStyle={inputStyle}
+        />
       )
     case 'list': {
       const items: string[] = block.content?.items || ['']
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-          <View style={{ flex: 1, gap: 6 }}>
-            {items.map((item, i) => (
-              <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={{ fontSize: 14, color: colors.textSecondary, width: 18 }}>
-                  {block.content?.ordered ? `${i + 1}.` : '•'}
-                </Text>
-                <TextInput
-                  value={item}
-                  onChangeText={(t) => {
-                    const newItems = [...items]; newItems[i] = t
-                    onChange({ ...block, content: { ...block.content, items: newItems } })
-                  }}
-                  placeholder={`Item ${i + 1}...`}
-                  placeholderTextColor={colors.textFaint}
-                  style={{
-                    flex: 1, fontSize: 14, color: colors.primary, padding: 10,
-                    backgroundColor: colors.surface2, borderRadius: 10, borderWidth: 1, borderColor: '#EBEBEB',
-                  }}
-                />
-                {items.length > 1 && (
-                  <TouchableOpacity onPress={() => {
-                    onChange({ ...block, content: { ...block.content, items: items.filter((_, idx) => idx !== i) } })
-                  }} style={{ padding: 4 }}>
-                    <Minus size={14} color={colors.error} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
-            <TouchableOpacity
-              onPress={() => onChange({ ...block, content: { ...block.content, items: [...items, ''] } })}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 }}
-            >
-              <Plus size={14} color={colors.bloom} />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>Add item</Text>
-            </TouchableOpacity>
-          </View>
-          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
+        <View style={{ gap: 6 }}>
+          {items.map((item, i) => (
+            <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={{ fontSize: 14, color: colors.textSecondary, width: 18 }}>
+                {block.content?.ordered ? `${i + 1}.` : '•'}
+              </Text>
+              <TextInput
+                value={item}
+                onChangeText={(t) => {
+                  const newItems = [...items]; newItems[i] = t
+                  onChange({ ...block, content: { ...block.content, items: newItems } })
+                }}
+                placeholder={`Item ${i + 1}...`}
+                placeholderTextColor={colors.textFaint}
+                style={{
+                  flex: 1, fontSize: 14, color: colors.primary, padding: 10,
+                  backgroundColor: colors.surface2, borderRadius: 10, borderWidth: 1, borderColor: '#EBEBEB',
+                }}
+              />
+              {items.length > 1 && (
+                <TouchableOpacity onPress={() => {
+                  onChange({ ...block, content: { ...block.content, items: items.filter((_, idx) => idx !== i) } })
+                }} style={{ padding: 4 }}>
+                  <Minus size={14} color={colors.error} />
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+          <TouchableOpacity
+            onPress={() => onChange({ ...block, content: { ...block.content, items: [...items, ''] } })}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 }}
+          >
+            <Plus size={14} color={colors.bloom} />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>Add item</Text>
+          </TouchableOpacity>
         </View>
       )
     }
     case 'media': {
       const mediaItems = block.content?.items || []
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-          <View style={{ flex: 1, gap: 8 }}>
-            {mediaItems.map((item: any, i: number) => (
-              <View key={i}>
-                {item.fileType === 'image' ? (
-                  <Image source={{ uri: item.url }}
-                    style={{ width: '100%', height: undefined, aspectRatio: 4 / 3, borderRadius: 14, backgroundColor: colors.surface1 }}
-                    resizeMode="cover"
-                  />
-                ) : item.fileType === 'audio' ? (
-                  <AudioPlayer uri={item.url} />
-                ) : null}
-              </View>
-            ))}
-            <TextInput
-              value={block.content?.caption || ''}
-              onChangeText={(t) => onChange({ ...block, content: { ...block.content, caption: t } })}
-              placeholder="Add a caption..."
-              placeholderTextColor={colors.textFaint}
-              style={{
-                fontSize: 13, color: colors.textSecondary, fontStyle: 'italic', padding: 10,
-                backgroundColor: colors.surface2, borderRadius: 10, borderWidth: 1, borderColor: '#EBEBEB',
-              }}
-            />
-          </View>
-          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
+        <View style={{ gap: 8 }}>
+          {mediaItems.map((item: any, i: number) => (
+            <View key={i}>
+              {item.fileType === 'image' ? (
+                <Image source={{ uri: item.url }}
+                  style={{ width: '100%', height: undefined, aspectRatio: 4 / 3, borderRadius: 14, backgroundColor: colors.surface1 }}
+                  resizeMode="cover"
+                />
+              ) : item.fileType === 'audio' ? (
+                <AudioPlayer uri={item.url} />
+              ) : null}
+            </View>
+          ))}
+          <TextInput
+            value={block.content?.caption || ''}
+            onChangeText={(t) => onChange({ ...block, content: { ...block.content, caption: t } })}
+            placeholder="Add a caption..."
+            placeholderTextColor={colors.textFaint}
+            style={{
+              fontSize: 13, color: colors.textSecondary, fontStyle: 'italic', padding: 10,
+              backgroundColor: colors.surface2, borderRadius: 10, borderWidth: 1, borderColor: '#EBEBEB',
+            }}
+          />
         </View>
       )
     }
     case 'quote':
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-          <View style={{ flex: 1, borderLeftWidth: 3, borderLeftColor: colors.bloom, paddingLeft: 12 }}>
-            <TextInput
-              value={block.content?.text || ''}
-              onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
-              placeholder="Quote text..."
-              placeholderTextColor={colors.textFaint}
-              multiline
-              scrollEnabled={false}
-              style={{ ...inputStyle, fontStyle: 'italic', minHeight: 60, textAlignVertical: 'top' as const }}
-            />
-            <TextInput
-              value={block.content?.author || ''}
-              onChangeText={(t) => onChange({ ...block, content: { ...block.content, author: t } })}
-              placeholder="Author (optional)"
-              placeholderTextColor={colors.textFaint}
-              style={{ ...inputStyle, fontSize: 13, marginTop: 6 }}
-            />
-          </View>
-          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
+        <View style={{ borderLeftWidth: 3, borderLeftColor: colors.bloom, paddingLeft: 12 }}>
+          <TextInput
+            value={block.content?.text || ''}
+            onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
+            placeholder="Quote text..."
+            placeholderTextColor={colors.textFaint}
+            multiline
+            scrollEnabled={false}
+            style={{ ...inputStyle, fontStyle: 'italic', minHeight: 60, textAlignVertical: 'top' as const }}
+          />
+          <TextInput
+            value={block.content?.author || ''}
+            onChangeText={(t) => onChange({ ...block, content: { ...block.content, author: t } })}
+            placeholder="Author (optional)"
+            placeholderTextColor={colors.textFaint}
+            style={{ ...inputStyle, fontSize: 13, marginTop: 6 }}
+          />
         </View>
       )
     case 'callout':
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-          <View style={{ flex: 1, backgroundColor: '#EFF6FF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#BFDBFE' }}>
-            <TextInput
-              value={block.content?.text || ''}
-              onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
-              placeholder="Callout text (tip, info, warning)..."
-              placeholderTextColor={colors.textFaint}
-              multiline
-              scrollEnabled={false}
-              style={{ fontSize: 14, color: '#1E40AF', minHeight: 40, textAlignVertical: 'top' as const }}
-            />
-          </View>
-          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
+        <View style={{ backgroundColor: '#EFF6FF', borderRadius: 12, padding: 12, borderWidth: 1, borderColor: '#BFDBFE' }}>
+          <TextInput
+            value={block.content?.text || ''}
+            onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
+            placeholder="Callout text (tip, info, warning)..."
+            placeholderTextColor={colors.textFaint}
+            multiline
+            scrollEnabled={false}
+            style={{ fontSize: 14, color: '#1E40AF', minHeight: 40, textAlignVertical: 'top' as const }}
+          />
         </View>
       )
     case 'video':
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-          <View style={{ flex: 1 }}>
-            <TextInput
-              value={block.content?.url || ''}
-              onChangeText={(t) => onChange({ ...block, content: { ...block.content, url: t } })}
-              placeholder="YouTube or Vimeo URL..."
-              placeholderTextColor={colors.textFaint}
-              autoCapitalize="none"
-              keyboardType="url"
-              style={inputStyle}
-            />
-          </View>
-          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
-        </View>
+        <TextInput
+          value={block.content?.url || ''}
+          onChangeText={(t) => onChange({ ...block, content: { ...block.content, url: t } })}
+          placeholder="YouTube or Vimeo URL..."
+          placeholderTextColor={colors.textFaint}
+          autoCapitalize="none"
+          keyboardType="url"
+          style={inputStyle}
+        />
       )
     case 'link':
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-          <View style={{ flex: 1, gap: 6 }}>
-            <TextInput
-              value={block.content?.title || ''}
-              onChangeText={(t) => onChange({ ...block, content: { ...block.content, title: t } })}
-              placeholder="Link title..."
-              placeholderTextColor={colors.textFaint}
-              style={inputStyle}
-            />
-            <TextInput
-              value={block.content?.url || ''}
-              onChangeText={(t) => onChange({ ...block, content: { ...block.content, url: t } })}
-              placeholder="https://..."
-              placeholderTextColor={colors.textFaint}
-              autoCapitalize="none"
-              keyboardType="url"
-              style={{ ...inputStyle, fontSize: 13 }}
-            />
-          </View>
-          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
+        <View style={{ gap: 6 }}>
+          <TextInput
+            value={block.content?.title || ''}
+            onChangeText={(t) => onChange({ ...block, content: { ...block.content, title: t } })}
+            placeholder="Link title..."
+            placeholderTextColor={colors.textFaint}
+            style={inputStyle}
+          />
+          <TextInput
+            value={block.content?.url || ''}
+            onChangeText={(t) => onChange({ ...block, content: { ...block.content, url: t } })}
+            placeholder="https://..."
+            placeholderTextColor={colors.textFaint}
+            autoCapitalize="none"
+            keyboardType="url"
+            style={{ ...inputStyle, fontSize: 13 }}
+          />
         </View>
       )
     case 'divider':
       return (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <View style={{ flex: 1, height: 1, backgroundColor: colors.divider }} />
-          <BlockActions onRemove={onRemove} onMoveUp={onMoveUp} onMoveDown={onMoveDown} isFirst={isFirst} isLast={isLast} />
-        </View>
+        <View style={{ height: 1, backgroundColor: colors.divider }} />
       )
     default:
       return null
   }
+}
+
+// ─── Single Draggable Block (smooth animations) ─────
+
+function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDragMove, onDragEnd, blockRef, onChange, onRemove }: {
+  block: ContentBlock; index: number
+  dragIndex: number | null; hoverIndex: number | null
+  onDragStart: (i: number) => void; onDragMove: (y: number) => void; onDragEnd: () => void
+  blockRef: (r: View | null) => void
+  onChange: (u: ContentBlock) => void; onRemove: () => void
+}) {
+  const isDragging = dragIndex === index
+  const isDropTarget = dragIndex !== null && hoverIndex === index && dragIndex !== index
+  const showTopIndicator = isDropTarget && dragIndex !== null && dragIndex > index
+  const showBottomIndicator = isDropTarget && dragIndex !== null && dragIndex < index
+
+  const opacity = useRef(new Animated.Value(1)).current
+  const scale = useRef(new Animated.Value(1)).current
+  const indicatorHeight = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    Animated.timing(opacity, {
+      toValue: isDragging ? 0.4 : 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start()
+    Animated.spring(scale, {
+      toValue: isDragging ? 0.97 : 1,
+      friction: 8,
+      tension: 100,
+      useNativeDriver: true,
+    }).start()
+  }, [isDragging])
+
+  useEffect(() => {
+    Animated.spring(indicatorHeight, {
+      toValue: showTopIndicator || showBottomIndicator ? 3 : 0,
+      friction: 8,
+      tension: 120,
+      useNativeDriver: false,
+    }).start()
+  }, [showTopIndicator, showBottomIndicator])
+
+  return (
+    <Animated.View
+      ref={blockRef}
+      style={{
+        opacity,
+        transform: [{ scale }],
+      }}
+    >
+      {/* Top drop indicator */}
+      <Animated.View style={{
+        height: indicatorHeight,
+        backgroundColor: colors.bloom,
+        borderRadius: 2,
+        marginBottom: showTopIndicator ? 8 : 0,
+        opacity: showTopIndicator ? 1 : 0,
+      }} />
+
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+        {/* Left controls: drag handle + delete */}
+        <View style={{ alignItems: 'center', gap: 6, paddingTop: 10 }}>
+          <View
+            onTouchStart={() => onDragStart(index)}
+            onTouchMove={(e) => onDragMove(e.nativeEvent.pageY)}
+            onTouchEnd={onDragEnd}
+            // @ts-ignore — web mouse events
+            onMouseDown={() => onDragStart(index)}
+            style={{
+              justifyContent: 'center',
+              alignItems: 'center',
+              width: 28,
+              padding: 4,
+              cursor: isDragging ? 'grabbing' as any : 'grab' as any,
+            }}
+          >
+            <DragHandle />
+          </View>
+          <TouchableOpacity onPress={onRemove} style={{ padding: 4 }}>
+            <X size={13} color={colors.textTertiary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Block content */}
+        <View style={{ flex: 1, marginLeft: 4 }}>
+          <EditBlock block={block} onChange={onChange} onRemove={() => {}} />
+        </View>
+      </View>
+
+      {/* Bottom drop indicator */}
+      <Animated.View style={{
+        height: indicatorHeight,
+        backgroundColor: colors.bloom,
+        borderRadius: 2,
+        marginTop: showBottomIndicator ? 8 : 0,
+        opacity: showBottomIndicator ? 1 : 0,
+      }} />
+    </Animated.View>
+  )
+}
+
+// ─── Draggable Block List (web-compatible) ──────────
+
+function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, uploading }: {
+  blocks: ContentBlock[]
+  onReorder: (blocks: ContentBlock[]) => void
+  editTitle: string
+  setEditTitle: (t: string) => void
+  uploading: boolean
+}) {
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null)
+  const blockRefs = useRef<(View | null)[]>([])
+  const blockYPositions = useRef<number[]>([])
+  const scrollRef = useRef<ScrollView>(null)
+  const containerRef = useRef<View>(null)
+  const containerY = useRef(0)
+
+  // Measure block positions (page Y) when drag starts
+  const measureBlocks = useCallback(() => {
+    blockRefs.current.forEach((ref, i) => {
+      if (ref) {
+        ref.measure((_x, _y, _w, _h, _px, pageY) => {
+          blockYPositions.current[i] = pageY
+        })
+      }
+    })
+  }, [blocks.length])
+
+  const dragIndexRef = useRef<number | null>(null)
+  const hoverIndexRef = useRef<number | null>(null)
+
+  const handleDragStart = (index: number) => {
+    measureBlocks()
+    setDragIndex(index)
+    setHoverIndex(index)
+    dragIndexRef.current = index
+    hoverIndexRef.current = index
+  }
+
+  const handleDragMove = useCallback((pageY: number) => {
+    if (dragIndexRef.current === null) return
+    let target = 0
+    for (let i = 0; i < blockYPositions.current.length; i++) {
+      if (pageY > blockYPositions.current[i]) target = i
+    }
+    if (target !== hoverIndexRef.current) {
+      hoverIndexRef.current = target
+      setHoverIndex(target)
+    }
+  }, [])
+
+  const handleDragEnd = useCallback(() => {
+    const di = dragIndexRef.current
+    const hi = hoverIndexRef.current
+    if (di !== null && hi !== null && di !== hi) {
+      const newBlocks = [...blocks]
+      const [moved] = newBlocks.splice(di, 1)
+      newBlocks.splice(hi, 0, moved)
+      onReorder(newBlocks)
+    }
+    dragIndexRef.current = null
+    hoverIndexRef.current = null
+    setDragIndex(null)
+    setHoverIndex(null)
+  }, [blocks, onReorder])
+
+  // Web: listen for mousemove/mouseup on document when dragging
+  useEffect(() => {
+    if (Platform.OS !== 'web' || dragIndex === null) return
+    const onMove = (e: MouseEvent) => handleDragMove(e.pageY)
+    const onUp = () => handleDragEnd()
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+    return () => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+  }, [dragIndex, handleDragMove, handleDragEnd])
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+      scrollEnabled={dragIndex === null}
+    >
+      {/* Title */}
+      <TextInput
+        value={editTitle}
+        onChangeText={setEditTitle}
+        placeholder="Story title..."
+        placeholderTextColor={colors.textFaint}
+        style={{
+          fontSize: 24, fontWeight: '800', color: colors.primary, marginBottom: 20, padding: 0,
+        }}
+      />
+
+      {/* Blocks */}
+      <View
+        ref={containerRef}
+        onLayout={(e) => { containerY.current = e.nativeEvent.layout.y }}
+        style={{ gap: 12 }}
+      >
+        {blocks.map((block, i) => (
+          <DraggableBlock
+            key={block.id}
+            block={block}
+            index={i}
+            dragIndex={dragIndex}
+            hoverIndex={hoverIndex}
+            onDragStart={handleDragStart}
+            onDragMove={handleDragMove}
+            onDragEnd={handleDragEnd}
+            blockRef={(r) => { blockRefs.current[i] = r }}
+            onChange={(updated) => {
+              onReorder(blocks.map(b => b.id === updated.id ? updated : b))
+            }}
+            onRemove={() => {
+              if (blocks.length > 1) onReorder(blocks.filter(b => b.id !== block.id))
+            }}
+          />
+        ))}
+      </View>
+
+      {uploading && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: colors.surface2, borderRadius: 12, marginTop: 12 }}>
+          <ActivityIndicator size="small" color={colors.bloom} />
+          <Text style={{ fontSize: 13, color: colors.textSecondary }}>Uploading...</Text>
+        </View>
+      )}
+    </ScrollView>
+  )
 }
 
 // ═══════════════════════════════════════════════════
@@ -1814,55 +2021,31 @@ export default function StoriesScreen() {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => openPublishModal('editor')}
+                onPress={() => {
+                  // If already published, just save — no need to re-ask about code
+                  if (editStory?.published) {
+                    saveStory(true, editStory.secret_code ?? undefined)
+                  } else {
+                    openPublishModal('editor')
+                  }
+                }}
                 disabled={editSaving}
                 style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.bloom }}
               >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>Publish</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>
+                  {editStory?.published ? (editSaving ? 'Saving...' : 'Save') : 'Publish'}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
-            {/* Title */}
-            <TextInput
-              value={editTitle}
-              onChangeText={setEditTitle}
-              placeholder="Story title..."
-              placeholderTextColor={colors.textFaint}
-              style={{
-                fontSize: 24, fontWeight: '800', color: colors.primary, marginBottom: 20, padding: 0,
-              }}
-            />
-
-            {/* Blocks */}
-            <View style={{ gap: 12 }}>
-              {editBlocks.map((block, i) => (
-                <EditBlock
-                  key={block.id}
-                  block={block}
-                  isFirst={i === 0}
-                  isLast={i === editBlocks.length - 1}
-                  onChange={(updated) => {
-                    const newBlocks = [...editBlocks]; newBlocks[i] = updated
-                    setEditBlocks(newBlocks)
-                  }}
-                  onRemove={() => {
-                    if (editBlocks.length > 1) setEditBlocks(editBlocks.filter((_, idx) => idx !== i))
-                  }}
-                  onMoveUp={() => moveBlock(i, 'up')}
-                  onMoveDown={() => moveBlock(i, 'down')}
-                />
-              ))}
-            </View>
-
-            {uploading && (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, backgroundColor: colors.surface2, borderRadius: 12, marginTop: 12 }}>
-                <ActivityIndicator size="small" color={colors.bloom} />
-                <Text style={{ fontSize: 13, color: colors.textSecondary }}>Uploading...</Text>
-              </View>
-            )}
-          </ScrollView>
+          <DraggableBlockList
+            blocks={editBlocks}
+            onReorder={setEditBlocks}
+            editTitle={editTitle}
+            setEditTitle={setEditTitle}
+            uploading={uploading}
+          />
 
           {/* Add block toolbar */}
           <View style={{
