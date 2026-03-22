@@ -741,8 +741,20 @@ function DraggableBlock({ block, index, dragIndex, hoverIndex, onDragStart, onDr
           >
             <DragHandle />
           </View>
-          <TouchableOpacity onPress={onRemove} style={{ padding: 4 }}>
-            <X size={13} color={colors.textTertiary} />
+          <TouchableOpacity
+            onPress={() => {
+              if (Platform.OS === 'web') {
+                if (window.confirm('Remove this block?')) onRemove()
+              } else {
+                Alert.alert('', 'Remove this block?', [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Remove', style: 'destructive', onPress: onRemove },
+                ])
+              }
+            }}
+            style={{ padding: 4 }}
+          >
+            <X size={13} color={colors.textMuted} />
           </TouchableOpacity>
         </View>
 
