@@ -297,9 +297,9 @@ export default function Home() {
           activeOpacity={0.85}
           style={{
             position: 'absolute',
-            right: 20,
-            bottom: insets.bottom + 100,
-            width: 52, height: 52, borderRadius: 26,
+            right: 24,
+            bottom: insets.bottom + 130,
+            width: 48, height: 48, borderRadius: 24,
             backgroundColor: colors.primary,
             justifyContent: 'center', alignItems: 'center',
             shadowColor: '#000',
@@ -310,50 +310,84 @@ export default function Home() {
             zIndex: 11,
           }}
         >
-          <Mic size={20} color="#fff" strokeWidth={2} />
+          <Mic size={18} color="#fff" strokeWidth={2} />
         </TouchableOpacity>
       )}
 
-      {/* Bottom tab bar */}
-      {!viewingMoment && !bloomOpen && (
+      {/* Bottom floating bar */}
+      {!viewingMoment && !bloomOpen ? (
         <View style={{
           position: 'absolute',
-          bottom: 0, left: 0, right: 0,
-          backgroundColor: '#fff',
-          borderTopWidth: 1,
-          borderTopColor: '#F0F0F0',
-          paddingBottom: insets.bottom,
-          paddingTop: 8,
+          bottom: insets.bottom + 20,
+          left: 0, right: 0,
+          alignItems: 'center',
           zIndex: 10,
         }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 16,
+            backgroundColor: '#fff',
+            paddingHorizontal: 20, paddingVertical: 12,
+            borderRadius: 40,
+            borderWidth: 1,
+            borderColor: '#EBEBEB',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.1,
+            shadowRadius: 20,
+            elevation: 8,
+          }}>
             {/* Moments (active) */}
-            <TouchableOpacity style={{ alignItems: 'center', gap: 4, flex: 1 }} activeOpacity={0.7}>
-              <Heart size={22} color={colors.bloom} strokeWidth={2} fill={colors.bloom} />
+            <TouchableOpacity activeOpacity={0.8} style={{ alignItems: 'center', gap: 4 }}>
+              <View style={{
+                width: 48, height: 48, borderRadius: 24,
+                backgroundColor: `${colors.bloom}15`,
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                <Heart size={20} color={colors.bloom} strokeWidth={2} />
+              </View>
               <Text style={{ fontSize: 10, color: colors.bloom, fontWeight: '600' }}>{t.home?.moments || 'Moments'}</Text>
             </TouchableOpacity>
 
             {/* Capture */}
-            <TouchableOpacity onPress={toggleCapture} style={{ alignItems: 'center', gap: 4, flex: 1 }} activeOpacity={0.7}>
+            <TouchableOpacity onPress={toggleCapture} activeOpacity={0.8} style={{ alignItems: 'center', gap: 4 }}>
               <View style={{
-                width: 40, height: 40, borderRadius: 20,
-                backgroundColor: colors.primary,
+                width: 48, height: 48, borderRadius: 24,
+                backgroundColor: '#fff',
+                borderWidth: 1, borderColor: '#E5E5E3',
                 justifyContent: 'center', alignItems: 'center',
               }}>
-                <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300', marginTop: -1 }}>+</Text>
+                <Animated.Text style={{
+                  color: colors.primary, fontSize: 24, fontWeight: '300',
+                  transform: [{ rotate: fabRotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] }) }],
+                }}>+</Animated.Text>
               </View>
+              <Text style={{ fontSize: 10, color: '#8A8A8A', fontWeight: '500' }}>{t.home.capture}</Text>
             </TouchableOpacity>
 
             {/* Stories */}
-            <TouchableOpacity onPress={() => router.push('/(main)/stories')} style={{ alignItems: 'center', gap: 4, flex: 1 }} activeOpacity={0.7}>
-              <PenLine size={22} color="#999" strokeWidth={1.8} />
-              <Text style={{ fontSize: 10, color: '#999', fontWeight: '500' }}>{t.stories?.section || 'Stories'}</Text>
+            <TouchableOpacity onPress={() => router.push('/(main)/stories')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 4 }}>
+              <View style={{
+                width: 48, height: 48, borderRadius: 24,
+                backgroundColor: '#fff',
+                borderWidth: 1, borderColor: '#E5E5E3',
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                <PenLine size={20} color={colors.primary} strokeWidth={1.8} />
+              </View>
+              <Text style={{ fontSize: 10, color: '#8A8A8A', fontWeight: '500' }}>{t.stories?.section || 'Stories'}</Text>
             </TouchableOpacity>
 
-            {/* Practitioner */}
-            <TouchableOpacity onPress={() => router.push('/(main)/practitioner')} style={{ alignItems: 'center', gap: 4, flex: 1 }} activeOpacity={0.7}>
-              <User size={22} color="#999" strokeWidth={1.8} />
-              <Text style={{ fontSize: 10, color: '#999', fontWeight: '500' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
+            {/* My Care */}
+            <TouchableOpacity onPress={() => router.push('/(main)/practitioner')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 4 }}>
+              <View style={{
+                width: 48, height: 48, borderRadius: 24,
+                backgroundColor: '#fff',
+                borderWidth: 1, borderColor: '#E5E5E3',
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                <User size={20} color={colors.primary} strokeWidth={1.8} />
+              </View>
+              <Text style={{ fontSize: 10, color: '#8A8A8A', fontWeight: '500' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
             </TouchableOpacity>
           </View>
         </View>
