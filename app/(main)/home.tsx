@@ -198,81 +198,84 @@ export default function Home() {
 
         {/* Quick actions */}
         <View style={{ gap: 14 }}>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {/* My Evolution */}
-            <TouchableOpacity
-              onPress={() => router.push('/(main)/evolution')}
-              activeOpacity={0.85}
-              style={{
-                flex: 1,
-                backgroundColor: colors.bloom,
-                borderRadius: 24,
-                padding: 20,
-                minHeight: 180,
-                justifyContent: 'space-between',
-              }}
-            >
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
-                <Heart size={18} color="#fff" strokeWidth={2} />
-              </View>
-              <View>
-                <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 26 }}>
-                  {locale === 'fr' ? 'Mon parcours' : 'My Journey'}
-                </Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
-                  {locale === 'fr' ? 'Tendances et progression' : 'Patterns and progress'}
-                </Text>
-              </View>
-            </TouchableOpacity>
+          <View style={{ position: 'relative' }}>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {/* My Evolution */}
+              <TouchableOpacity
+                onPress={() => router.push('/(main)/evolution')}
+                activeOpacity={0.85}
+                style={{
+                  flex: 1,
+                  backgroundColor: colors.bloom,
+                  borderRadius: 24,
+                  padding: 20,
+                  minHeight: 160,
+                  justifyContent: 'space-between',
+                }}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Heart size={18} color="#fff" strokeWidth={2} />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 24 }}>
+                    {locale === 'fr' ? 'Mon parcours' : 'My Journey'}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+                    {locale === 'fr' ? 'Tendances et progression' : 'Patterns and progress'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
-            {/* Capture */}
+              {/* Bloom */}
+              <TouchableOpacity
+                onPress={() => setBloomOpen(true)}
+                activeOpacity={0.85}
+                style={{
+                  flex: 1,
+                  backgroundColor: '#1A1A1A',
+                  borderRadius: 24,
+                  padding: 20,
+                  minHeight: 160,
+                  justifyContent: 'space-between',
+                }}
+              >
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Mic size={18} color="#fff" strokeWidth={2} />
+                </View>
+                <View>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 24 }}>
+                    {locale === 'fr' ? 'Parler à Bloom' : 'Talk to Bloom'}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                    {locale === 'fr' ? 'Réfléchir et grandir' : 'Reflect and grow'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            {/* Capture + overlapping center */}
             <TouchableOpacity
               onPress={toggleCapture}
               activeOpacity={0.85}
               style={{
-                width: 56,
-                backgroundColor: '#fff',
-                borderRadius: 24,
-                borderWidth: 1,
-                borderColor: '#EBEBEB',
-                minHeight: 180,
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                paddingVertical: 20,
+                position: 'absolute',
+                top: -24,
+                left: '50%',
+                marginLeft: -28,
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: colors.primary,
+                justifyContent: 'center', alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 10,
+                elevation: 8,
+                borderWidth: 3,
+                borderColor: '#FAFAF8',
+                zIndex: 5,
               }}
             >
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ color: '#fff', fontSize: 20, fontWeight: '300', marginTop: -1 }}>+</Text>
-              </View>
-              <Text style={{ fontSize: 9, color: '#999', fontWeight: '600', writingDirection: 'ltr' }}>
-                {t.home.capture}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Bloom */}
-            <TouchableOpacity
-              onPress={() => setBloomOpen(true)}
-              activeOpacity={0.85}
-              style={{
-                flex: 1,
-                backgroundColor: '#1A1A1A',
-                borderRadius: 24,
-                padding: 20,
-                minHeight: 180,
-                justifyContent: 'space-between',
-              }}
-            >
-              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-                <Mic size={18} color="#fff" strokeWidth={2} />
-              </View>
-              <View>
-                <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 26 }}>
-                  {locale === 'fr' ? 'Parler à Bloom' : 'Talk to Bloom'}
-                </Text>
-                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
-                  {locale === 'fr' ? 'Réfléchir et grandir' : 'Reflect and grow'}
-                </Text>
-              </View>
+              <Text style={{ color: '#fff', fontSize: 24, fontWeight: '300', marginTop: -1 }}>+</Text>
             </TouchableOpacity>
           </View>
 
