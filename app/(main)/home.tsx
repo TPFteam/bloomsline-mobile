@@ -196,6 +196,33 @@ export default function Home() {
           )}
         </View>
 
+        {/* Capture prompt */}
+        <TouchableOpacity
+          onPress={toggleCapture}
+          activeOpacity={0.8}
+          style={{
+            flexDirection: 'row', alignItems: 'center', gap: 14,
+            backgroundColor: '#fff', borderRadius: 18, padding: 16,
+            borderWidth: 1, borderColor: '#EBEBEB', marginBottom: 14,
+          }}
+        >
+          <View style={{
+            width: 44, height: 44, borderRadius: 22,
+            backgroundColor: colors.primary,
+            justifyContent: 'center', alignItems: 'center',
+          }}>
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300', marginTop: -1 }}>+</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>
+              {locale === 'fr' ? 'Capturer un moment' : 'Capture a moment'}
+            </Text>
+            <Text style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
+              {locale === 'fr' ? 'Photo, vidéo, voix ou écriture' : 'Photo, video, voice, or write'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Quick actions */}
         <View style={{ gap: 14 }}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -273,8 +300,9 @@ export default function Home() {
             top: 0, left: 0, right: 0, bottom: 0,
             backgroundColor: 'rgba(255,255,255,0.95)',
             zIndex: 20,
-            justifyContent: 'center',
+            justifyContent: 'flex-end',
             alignItems: 'center',
+            paddingBottom: insets.bottom + 120,
           }}
         >
           {/* Capture grid */}
@@ -315,33 +343,6 @@ export default function Home() {
         <BloomFullScreen onClose={() => setBloomOpen(false)} firstName={firstName} />
       )}
 
-
-      {/* Floating capture button */}
-      {!viewingMoment && !bloomOpen && !captureOpen && (
-        <TouchableOpacity
-          onPress={toggleCapture}
-          activeOpacity={0.85}
-          style={{
-            position: 'absolute',
-            right: 24,
-            bottom: insets.bottom + 110,
-            width: 56, height: 56, borderRadius: 28,
-            backgroundColor: colors.primary,
-            justifyContent: 'center', alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
-            elevation: 6,
-            zIndex: 11,
-          }}
-        >
-          <Animated.Text style={{
-            color: '#fff', fontSize: 28, fontWeight: '300',
-            transform: [{ rotate: fabRotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] }) }],
-          }}>+</Animated.Text>
-        </TouchableOpacity>
-      )}
 
       {/* Bottom floating bar */}
       {!viewingMoment && !bloomOpen && (
@@ -394,6 +395,7 @@ export default function Home() {
                 </TouchableOpacity>
               )
             })}
+
           </View>
         </View>
       )}
