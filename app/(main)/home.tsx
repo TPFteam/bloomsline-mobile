@@ -336,58 +336,45 @@ export default function Home() {
             shadowRadius: 20,
             elevation: 8,
           }}>
-            {/* Moments (active) */}
-            <TouchableOpacity activeOpacity={0.8} style={{ alignItems: 'center', gap: 4 }}>
+            {/* Moments (active on home) */}
+            <TouchableOpacity activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
               <View style={{
-                width: 48, height: 48, borderRadius: 24,
+                width: 52, height: 52, borderRadius: 26,
                 backgroundColor: `${colors.bloom}15`,
                 justifyContent: 'center', alignItems: 'center',
               }}>
-                <Heart size={20} color={colors.bloom} strokeWidth={2} />
+                <Heart size={22} color={colors.bloom} strokeWidth={2} />
               </View>
-              <Text style={{ fontSize: 10, color: colors.bloom, fontWeight: '600' }}>{t.home?.moments || 'Moments'}</Text>
+              <Text style={{ fontSize: 11, color: colors.bloom, fontWeight: '600' }}>{t.home?.moments || 'Moments'}</Text>
             </TouchableOpacity>
 
             {/* Capture */}
-            <TouchableOpacity onPress={toggleCapture} activeOpacity={0.8} style={{ alignItems: 'center', gap: 4 }}>
+            <TouchableOpacity onPress={toggleCapture} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
               <View style={{
-                width: 48, height: 48, borderRadius: 24,
+                width: 52, height: 52, borderRadius: 26,
                 backgroundColor: '#fff',
                 borderWidth: 1, borderColor: '#E5E5E3',
                 justifyContent: 'center', alignItems: 'center',
               }}>
                 <Animated.Text style={{
-                  color: colors.primary, fontSize: 24, fontWeight: '300',
+                  color: colors.primary, fontSize: 26, fontWeight: '300',
                   transform: [{ rotate: fabRotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] }) }],
                 }}>+</Animated.Text>
               </View>
-              <Text style={{ fontSize: 10, color: '#8A8A8A', fontWeight: '500' }}>{t.home.capture}</Text>
+              <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.home.capture}</Text>
             </TouchableOpacity>
 
-            {/* Stories */}
-            <TouchableOpacity onPress={() => router.push('/(main)/stories')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 4 }}>
+            {/* My Stories */}
+            <TouchableOpacity onPress={() => router.push('/(main)/stories')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
               <View style={{
-                width: 48, height: 48, borderRadius: 24,
+                width: 52, height: 52, borderRadius: 26,
                 backgroundColor: '#fff',
                 borderWidth: 1, borderColor: '#E5E5E3',
                 justifyContent: 'center', alignItems: 'center',
               }}>
-                <PenLine size={20} color={colors.primary} strokeWidth={1.8} />
+                <PenLine size={22} color={colors.primary} strokeWidth={1.8} />
               </View>
-              <Text style={{ fontSize: 10, color: '#8A8A8A', fontWeight: '500' }}>{t.stories?.section || 'Stories'}</Text>
-            </TouchableOpacity>
-
-            {/* My Care */}
-            <TouchableOpacity onPress={() => router.push('/(main)/practitioner')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 4 }}>
-              <View style={{
-                width: 48, height: 48, borderRadius: 24,
-                backgroundColor: '#fff',
-                borderWidth: 1, borderColor: '#E5E5E3',
-                justifyContent: 'center', alignItems: 'center',
-              }}>
-                <User size={20} color={colors.primary} strokeWidth={1.8} />
-              </View>
-              <Text style={{ fontSize: 10, color: '#8A8A8A', fontWeight: '500' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
+              <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.stories?.section || 'My Stories'}</Text>
             </TouchableOpacity>
           </View>
         </View>
