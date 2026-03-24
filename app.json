@@ -27,7 +27,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "static",
+      "name": "Bloomsline",
+      "shortName": "Bloomsline",
+      "themeColor": "#4A9A86",
+      "backgroundColor": "#ffffff"
     },
     "plugins": [
       "expo-router",
