@@ -1,14 +1,28 @@
+import { useState } from 'react'
 import { View, Text, TouchableOpacity, Alert, Platform } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Heart, User, PenLine } from 'lucide-react-native'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
+import { supabase } from '@/lib/supabase'
+import { colors } from '@/lib/theme'
+
+const NAV_OPTIONS = [
+  { key: 'moments', icon: Heart, label: { en: 'Moments', fr: 'Moments' } },
+  { key: 'practitioner', icon: User, label: { en: 'My Care', fr: 'Mon Suivi' } },
+  { key: 'stories', icon: PenLine, label: { en: 'My Stories', fr: 'Mes Histoires' } },
+] as const
 
 export default function Settings() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { user, member, signOut } = useAuth()
   const { t, locale, setLocale } = useI18n()
+
+  const currentFirst = (member as any)?.nav_order?.[0] || (member?.practitioner_id ? 'practitioner' : 'moments')
+  const [selectedFirst, setSelectedFirst] = useState(currentFirst)
+  const [saving, setSaving] = useState(false)
 
   const doSignOut = async () => {
     await signOut()
@@ -17,15 +31,30 @@ export default function Settings() {
 
   const handleSignOut = () => {
     if (Platform.OS === 'web') {
-      if (window.confirm(t.settings.signOutConfirm)) {
-        doSignOut()
-      }
+      if (window.confirm(t.settings.signOutConfirm)) doSignOut()
     } else {
       Alert.alert(t.settings.signOut, t.settings.signOutConfirm, [
         { text: t.common.cancel, style: 'cancel' },
         { text: t.settings.signOut, style: 'destructive', onPress: doSignOut },
       ])
     }
+  }
+
+  const handleChangeFirst = async (key: string) => {
+    setSelectedFirst(key)
+    setSaving(true)
+    // Build order: selected first, then the other two in default order
+    const others = ['moments', 'practitioner', 'stories'].filter(k => k !== key)
+    const newOrder = [key, ...others]
+    try {
+      await supabase
+        .from('members')
+        .update({ nav_order: newOrder })
+        .eq('id', member?.id)
+    } catch (e) {
+      console.error('Failed to save nav order:', e)
+    }
+    setSaving(false)
   }
 
   const displayName = member?.first_name
@@ -57,6 +86,43 @@ export default function Settings() {
         <View>
           <Text style={{ fontSize: 17, fontWeight: '600', color: '#000' }}>{displayName}</Text>
           <Text style={{ fontSize: 13, color: '#999' }}>{user?.email}</Text>
+        </View>
+      </View>
+
+      {/* Home screen picker */}
+      <View style={{ marginBottom: 24 }}>
+        <Text style={{ fontSize: 13, fontWeight: '600', color: '#999', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 12 }}>
+          {locale === 'fr' ? 'Écran d\'accueil' : 'Home screen'}
+        </Text>
+        <View style={{ gap: 8 }}>
+          {NAV_OPTIONS.map((opt) => {
+            const Icon = opt.icon
+            const isSelected = selectedFirst === opt.key
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                onPress={() => handleChangeFirst(opt.key)}
+                activeOpacity={0.7}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', gap: 14,
+                  padding: 16, borderRadius: 16,
+                  backgroundColor: isSelected ? `${colors.bloom}10` : '#f8f8f8',
+                  borderWidth: 1.5,
+                  borderColor: isSelected ? colors.bloom : 'transparent',
+                }}
+              >
+                <Icon size={20} color={isSelected ? colors.bloom : '#999'} strokeWidth={isSelected ? 2 : 1.5} />
+                <Text style={{ fontSize: 16, fontWeight: isSelected ? '600' : '400', color: isSelected ? colors.bloom : '#333', flex: 1 }}>
+                  {opt.label[locale as 'en' | 'fr'] || opt.label.en}
+                </Text>
+                {isSelected && (
+                  <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: colors.bloom, justifyContent: 'center', alignItems: 'center' }}>
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>✓</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )
+          })}
         </View>
       </View>
 

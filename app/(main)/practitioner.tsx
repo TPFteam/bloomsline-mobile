@@ -23,6 +23,7 @@ import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { BackButton } from '@/components/ui/BackButton'
 import { BloomLogo } from '@/components/BloomLogo'
 import { BloomFullScreen } from '@/components/BloomFullScreen'
+import { getNavOrder } from '@/lib/nav-order'
 import { PageLoader } from '@/components/PageLoader'
 import { useAuth } from '@/lib/auth-context'
 import { colors } from '@/lib/theme'
@@ -1226,52 +1227,35 @@ export default function PractitionerScreen() {
             shadowRadius: 20,
             elevation: 8,
           }}>
-            {/* First item: My Care (active) if practitioner-invited, else Moments */}
-            {member?.practitioner_id ? (
-              <TouchableOpacity activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
-                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: `${colors.bloom}15`, justifyContent: 'center', alignItems: 'center' }}>
-                  <User size={22} color={colors.bloom} strokeWidth={2} />
-                </View>
-                <Text style={{ fontSize: 11, color: colors.bloom, fontWeight: '600' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity onPress={() => router.push('/(main)/home')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
-                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E5E3', justifyContent: 'center', alignItems: 'center' }}>
-                  <Heart size={22} color={colors.primary} strokeWidth={1.8} />
-                </View>
-                <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.home?.moments || 'Moments'}</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Second item: Moments if practitioner-invited, else My Care (active) */}
-            {member?.practitioner_id ? (
-              <TouchableOpacity onPress={() => router.push('/(main)/home')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
-                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E5E3', justifyContent: 'center', alignItems: 'center' }}>
-                  <Heart size={22} color={colors.primary} strokeWidth={1.8} />
-                </View>
-                <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.home?.moments || 'Moments'}</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
-                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: `${colors.bloom}15`, justifyContent: 'center', alignItems: 'center' }}>
-                  <User size={22} color={colors.bloom} strokeWidth={2} />
-                </View>
-                <Text style={{ fontSize: 11, color: colors.bloom, fontWeight: '600' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
-              </TouchableOpacity>
-            )}
-
-            {/* My Stories */}
-            <TouchableOpacity onPress={() => router.push('/(main)/stories')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
-              <View style={{
-                width: 52, height: 52, borderRadius: 26,
-                backgroundColor: '#fff',
-                borderWidth: 1, borderColor: '#E5E5E3',
-                justifyContent: 'center', alignItems: 'center',
-              }}>
-                <PenLine size={22} color={colors.primary} strokeWidth={1.8} />
-              </View>
-              <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.stories?.section || 'My Stories'}</Text>
-            </TouchableOpacity>
+            {getNavOrder(member as any).map((key) => {
+              const isActive = key === 'practitioner'
+              const config = {
+                moments: { icon: Heart, label: t.home?.moments || 'Moments', route: '/(main)/home' },
+                practitioner: { icon: User, label: t.practitioner?.tabLabel || 'My Care', route: null },
+                stories: { icon: PenLine, label: t.stories?.section || 'My Stories', route: '/(main)/stories' },
+              }[key] as { icon: any; label: string; route: string | null }
+              if (!config) return null
+              const Icon = config.icon
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={config.route ? () => router.push(config.route as any) : undefined}
+                  activeOpacity={0.8}
+                  style={{ alignItems: 'center', gap: 6 }}
+                >
+                  <View style={{
+                    width: 52, height: 52, borderRadius: 26,
+                    backgroundColor: isActive ? `${colors.bloom}15` : '#fff',
+                    borderWidth: isActive ? 0 : 1,
+                    borderColor: '#E5E5E3',
+                    justifyContent: 'center', alignItems: 'center',
+                  }}>
+                    <Icon size={22} color={isActive ? colors.bloom : colors.primary} strokeWidth={isActive ? 2 : 1.8} />
+                  </View>
+                  <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '600' : '500' }}>{config.label}</Text>
+                </TouchableOpacity>
+              )
+            })}
           </View>
         </View>
       )}

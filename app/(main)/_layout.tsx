@@ -1,6 +1,7 @@
 import { Stack, useRouter } from 'expo-router'
 import { useEffect, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
+import { getHomeScreen } from '@/lib/nav-order'
 
 export default function MainLayout() {
   const { session, member, loading } = useAuth()
@@ -14,10 +15,16 @@ export default function MainLayout() {
       router.replace('/(auth)/welcome')
       return
     }
-    // Practitioner-invited members land on practitioner screen by default (once)
-    if (!hasRedirected.current && member.practitioner_id) {
+    // Redirect to preferred home screen (once)
+    if (!hasRedirected.current) {
+      const home = getHomeScreen(member as any)
       hasRedirected.current = true
-      router.replace('/(main)/practitioner')
+      if (home === 'practitioner') {
+        router.replace('/(main)/practitioner')
+      } else if (home === 'stories') {
+        router.replace('/(main)/stories')
+      }
+      // 'moments' is the default (home.tsx), no redirect needed
     }
   }, [session, member, loading])
 
