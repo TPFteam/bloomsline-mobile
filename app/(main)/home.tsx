@@ -276,7 +276,7 @@ export default function Home() {
           }}
         >
           {/* Floating cards */}
-          <View style={{ position: 'absolute', bottom: insets.bottom + 180, left: 0, right: 0, alignItems: 'center' }}>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
             {CAPTURE_TYPES.map((type) => {
               const scale = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] })
               const translateX = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0, type.offsetX] })
