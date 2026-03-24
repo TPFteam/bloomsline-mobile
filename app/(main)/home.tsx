@@ -348,20 +348,17 @@ export default function Home() {
               <Text style={{ fontSize: 11, color: colors.bloom, fontWeight: '600' }}>{t.home?.moments || 'Moments'}</Text>
             </TouchableOpacity>
 
-            {/* Capture */}
-            <TouchableOpacity onPress={toggleCapture} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
+            {/* My Care */}
+            <TouchableOpacity onPress={() => router.push('/(main)/practitioner')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
               <View style={{
                 width: 52, height: 52, borderRadius: 26,
                 backgroundColor: '#fff',
                 borderWidth: 1, borderColor: '#E5E5E3',
                 justifyContent: 'center', alignItems: 'center',
               }}>
-                <Animated.Text style={{
-                  color: colors.primary, fontSize: 26, fontWeight: '300',
-                  transform: [{ rotate: fabRotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] }) }],
-                }}>+</Animated.Text>
+                <User size={22} color={colors.primary} strokeWidth={1.8} />
               </View>
-              <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.home.capture}</Text>
+              <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
             </TouchableOpacity>
 
             {/* My Stories */}
