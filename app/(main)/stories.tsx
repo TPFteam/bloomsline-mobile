@@ -67,6 +67,7 @@ import {
   AlertCircle,
   Video,
   Link2,
+  User,
 } from 'lucide-react-native'
 import { BackButton } from '@/components/ui/BackButton'
 import { PageLoader } from '@/components/PageLoader'
@@ -1883,6 +1884,69 @@ export default function StoriesScreen() {
         </>
         )}
       </ScrollView>
+
+      {/* Bottom floating nav bar */}
+      {!editing && !viewingStory && (
+        <View style={{
+          position: 'absolute',
+          bottom: insets.bottom + 20,
+          left: 0, right: 0,
+          alignItems: 'center',
+          zIndex: 10,
+        }}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 16,
+            backgroundColor: '#fff',
+            paddingHorizontal: 20, paddingVertical: 12,
+            borderRadius: 40,
+            borderWidth: 1,
+            borderColor: '#EBEBEB',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.1,
+            shadowRadius: 20,
+            elevation: 8,
+          }}>
+            {/* Moments */}
+            <TouchableOpacity onPress={() => router.push('/(main)/home')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
+              <View style={{
+                width: 52, height: 52, borderRadius: 26,
+                backgroundColor: '#fff',
+                borderWidth: 1, borderColor: '#E5E5E3',
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                <Heart size={22} color={colors.primary} strokeWidth={1.8} />
+              </View>
+              <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.home?.moments || 'Moments'}</Text>
+            </TouchableOpacity>
+
+            {/* My Care */}
+            <TouchableOpacity onPress={() => router.push('/(main)/practitioner')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
+              <View style={{
+                width: 52, height: 52, borderRadius: 26,
+                backgroundColor: '#fff',
+                borderWidth: 1, borderColor: '#E5E5E3',
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                <User size={22} color={colors.primary} strokeWidth={1.8} />
+              </View>
+              <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
+            </TouchableOpacity>
+
+            {/* My Stories (active) */}
+            <TouchableOpacity activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
+              <View style={{
+                width: 52, height: 52, borderRadius: 26,
+                backgroundColor: `${colors.bloom}15`,
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                <PenLine size={22} color={colors.bloom} strokeWidth={2} />
+              </View>
+              <Text style={{ fontSize: 11, color: colors.bloom, fontWeight: '600' }}>{t.stories?.section || 'My Stories'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* ═══════════════════════════════════════════ */}
       {/* VIEW STORY MODAL */}
