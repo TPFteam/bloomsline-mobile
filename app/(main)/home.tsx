@@ -315,7 +315,7 @@ export default function Home() {
       )}
 
       {/* Bottom floating bar */}
-      {!viewingMoment && !bloomOpen ? (
+      {!viewingMoment && !bloomOpen && (
         <View style={{
           position: 'absolute',
           bottom: insets.bottom + 20,
