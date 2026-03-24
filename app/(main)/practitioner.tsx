@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { FileText, Table2, BookOpen, Dumbbell, FileQuestion, Frown, Meh, Smile, CheckCircle } from 'lucide-react-native'
+import { FileText, Table2, BookOpen, Dumbbell, FileQuestion, Frown, Meh, Smile, CheckCircle, Settings, Mic, PenLine } from 'lucide-react-native'
 import {
   View,
   Text,
@@ -21,6 +21,8 @@ import { useFocusEffect, useRouter } from 'expo-router'
 import * as Clipboard from 'expo-clipboard'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { BackButton } from '@/components/ui/BackButton'
+import { BloomLogo } from '@/components/BloomLogo'
+import { BloomFullScreen } from '@/components/BloomFullScreen'
 import { PageLoader } from '@/components/PageLoader'
 import { useAuth } from '@/lib/auth-context'
 import { colors } from '@/lib/theme'
@@ -90,6 +92,10 @@ export default function PractitionerScreen() {
   const router = useRouter()
   const { member } = useAuth()
   const { t, locale } = useI18n()
+
+  const isHome = !!member?.practitioner_id
+  const [bloomOpen, setBloomOpen] = useState(false)
+  const firstName = member?.first_name || ''
 
   const [loading, setLoading] = useState(true)
   const [practitioner, setPractitioner] = useState<PractitionerProfile | null>(null)
@@ -344,13 +350,30 @@ export default function PractitionerScreen() {
       <PullToRefreshScrollView
         onRefresh={onRefresh}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 40, paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: isHome ? 180 : 40, paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={{ marginBottom: 28 }}>
-          <BackButton />
-        </View>
+        {isHome ? (
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+            <BloomLogo size={36} />
+            <TouchableOpacity
+              onPress={() => router.push('/(main)/settings')}
+              activeOpacity={0.7}
+              style={{
+                width: 36, height: 36, borderRadius: 18,
+                backgroundColor: '#f5f5f5',
+                justifyContent: 'center', alignItems: 'center',
+              }}
+            >
+              <Settings size={18} color="#666" strokeWidth={1.8} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ marginBottom: 28 }}>
+            <BackButton />
+          </View>
+        )}
 
         <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38, marginBottom: 28 }}>
           {t.practitioner.title}
@@ -1175,6 +1198,91 @@ export default function PractitionerScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Bottom action bar (only when this is the home screen) */}
+      {isHome && !bloomOpen && (
+        <View style={{
+          position: 'absolute',
+          bottom: insets.bottom + 20,
+          left: 0, right: 0,
+          alignItems: 'center',
+          zIndex: 10,
+        }}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 24,
+            backgroundColor: '#fff',
+            paddingHorizontal: 28, paddingVertical: 14,
+            borderRadius: 40,
+            borderWidth: 1,
+            borderColor: '#EBEBEB',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.1,
+            shadowRadius: 20,
+            elevation: 8,
+          }}>
+            {/* Bloom */}
+            <TouchableOpacity
+              onPress={() => setBloomOpen(true)}
+              activeOpacity={0.8}
+              style={{ alignItems: 'center', gap: 8 }}
+            >
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: colors.primary,
+                justifyContent: 'center', alignItems: 'center',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.2,
+                shadowRadius: 16,
+                elevation: 8,
+              }}>
+                <Mic size={22} color="#fff" strokeWidth={2} />
+              </View>
+              <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>{t.home?.bloom || 'Bloom'}</Text>
+            </TouchableOpacity>
+
+            {/* Capture */}
+            <TouchableOpacity
+              onPress={() => router.push('/(main)/capture')}
+              activeOpacity={0.8}
+              style={{ alignItems: 'center', gap: 8 }}
+            >
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: '#fff',
+                borderWidth: 1, borderColor: '#E5E5E3',
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                <Text style={{ color: colors.primary, fontSize: 26, fontWeight: '300' }}>+</Text>
+              </View>
+              <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>{t.home?.capture || 'Capture'}</Text>
+            </TouchableOpacity>
+
+            {/* Stories */}
+            <TouchableOpacity
+              onPress={() => router.push('/(main)/stories')}
+              activeOpacity={0.8}
+              style={{ alignItems: 'center', gap: 8 }}
+            >
+              <View style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: '#fff',
+                borderWidth: 1, borderColor: '#E5E5E3',
+                justifyContent: 'center', alignItems: 'center',
+              }}>
+                <PenLine size={22} color={colors.primary} strokeWidth={1.8} />
+              </View>
+              <Text style={{ fontSize: 12, color: '#8A8A8A', fontWeight: '600', marginTop: 2 }}>{t.stories?.section || 'Stories'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* Bloom full screen */}
+      {isHome && bloomOpen && (
+        <BloomFullScreen onClose={() => setBloomOpen(false)} firstName={firstName} />
+      )}
     </View>
   )
 }

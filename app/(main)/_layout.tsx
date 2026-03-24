@@ -1,16 +1,23 @@
 import { Stack, useRouter } from 'expo-router'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
 
 export default function MainLayout() {
   const { session, member, loading } = useAuth()
   const router = useRouter()
+  const hasRedirected = useRef(false)
 
   // Bounce users back to welcome if they have no session or no member
   useEffect(() => {
     if (loading) return
     if (!session || !member) {
       router.replace('/(auth)/welcome')
+      return
+    }
+    // Practitioner-invited members land on practitioner screen by default (once)
+    if (!hasRedirected.current && member.practitioner_id) {
+      hasRedirected.current = true
+      router.replace('/(main)/practitioner')
     }
   }, [session, member, loading])
 
