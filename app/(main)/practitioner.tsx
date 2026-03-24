@@ -18,12 +18,13 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import RenderHtml from 'react-native-render-html'
 import { useFocusEffect, useRouter } from 'expo-router'
+import { getGreetingKey } from '@/components/DayNav'
 import * as Clipboard from 'expo-clipboard'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { BackButton } from '@/components/ui/BackButton'
 import { BloomLogo } from '@/components/BloomLogo'
 import { BloomFullScreen } from '@/components/BloomFullScreen'
-import { getNavOrder } from '@/lib/nav-order'
+import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
 import { PageLoader } from '@/components/PageLoader'
 import { useAuth } from '@/lib/auth-context'
 import { colors } from '@/lib/theme'
@@ -94,7 +95,7 @@ export default function PractitionerScreen() {
   const { member } = useAuth()
   const { t, locale } = useI18n()
 
-  const isHome = !!member?.practitioner_id
+  const isHome = getHomeScreen(member as any) === 'practitioner'
   const [bloomOpen, setBloomOpen] = useState(false)
   const firstName = member?.first_name || ''
 
@@ -351,7 +352,7 @@ export default function PractitionerScreen() {
       <PullToRefreshScrollView
         onRefresh={onRefresh}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: isHome ? 180 : 40, paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 180, paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -376,9 +377,18 @@ export default function PractitionerScreen() {
           </View>
         )}
 
-        <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38, marginBottom: 28 }}>
-          {t.practitioner.title}
-        </Text>
+        {isHome ? (
+          <View style={{ marginBottom: 20 }}>
+            <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>
+              {t.home[getGreetingKey() as keyof typeof t.home]}{firstName ? `,\n` : '.'}
+              {firstName ? <Text style={{ color: '#8A8A8A' }}>{firstName}.</Text> : null}
+            </Text>
+          </View>
+        ) : (
+          <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38, marginBottom: 28 }}>
+            {t.practitioner.title}
+          </Text>
+        )}
 
         {/* ═══════════════════════════════════════════════ */}
         {/* PRACTITIONER CARD */}
@@ -584,7 +594,7 @@ export default function PractitionerScreen() {
             }}
           >
             <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 10 }}>
-              {t.stories?.section || 'My Stories'}
+              {t.stories?.section || 'Stories'}
             </Text>
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
               {t.stories?.sectionCta || 'Write & share your story →'}
@@ -1201,12 +1211,12 @@ export default function PractitionerScreen() {
       </Modal>
 
       {/* Bloom full screen */}
-      {isHome && bloomOpen && (
+      {bloomOpen && (
         <BloomFullScreen onClose={() => setBloomOpen(false)} firstName={firstName} />
       )}
 
       {/* Floating bottom bar */}
-      {isHome && !bloomOpen && (
+      {!bloomOpen && (
         <View style={{
           position: 'absolute',
           bottom: insets.bottom + 20,
@@ -1232,7 +1242,7 @@ export default function PractitionerScreen() {
               const config = {
                 moments: { icon: Heart, label: t.home?.moments || 'Moments', route: '/(main)/home' },
                 practitioner: { icon: User, label: t.practitioner?.tabLabel || 'My Care', route: null },
-                stories: { icon: PenLine, label: t.stories?.section || 'My Stories', route: '/(main)/stories' },
+                stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: '/(main)/stories' },
               }[key] as { icon: any; label: string; route: string | null }
               if (!config) return null
               const Icon = config.icon

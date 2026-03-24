@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
 import { Camera, Video, Mic, PenLine, Settings, Heart, User } from 'lucide-react-native'
-import { getNavOrder } from '@/lib/nav-order'
+import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
 import { colors, CAPTURE_TYPE_COLORS } from '@/lib/theme'
 
 // Extracted components
@@ -33,6 +33,7 @@ export default function Home() {
   const insets = useSafeAreaInsets()
   const { user, member } = useAuth()
   const { t, locale } = useI18n()
+  const isHome = getHomeScreen(member as any) === 'moments'
   const [moments, setMoments] = useState<Moment[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<Date>(getToday)
@@ -112,28 +113,45 @@ export default function Home() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-          <BloomLogo size={36} />
-          <TouchableOpacity
-            onPress={() => router.push('/(main)/settings')}
-            activeOpacity={0.7}
-            style={{
-              width: 36, height: 36, borderRadius: 18,
-              backgroundColor: '#f5f5f5',
-              justifyContent: 'center', alignItems: 'center',
-            }}
-          >
-            <Settings size={18} color="#666" strokeWidth={1.8} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Greeting */}
-        <View style={{ marginBottom: 20 }}>
-          <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>
-            {t.home[getGreetingKey()]}{firstName ? `,\n` : '.'}
-            {firstName ? <Text style={{ color: '#8A8A8A' }}>{firstName}.</Text> : null}
-          </Text>
-        </View>
+        {isHome ? (
+          <>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+              <BloomLogo size={36} />
+              <TouchableOpacity
+                onPress={() => router.push('/(main)/settings')}
+                activeOpacity={0.7}
+                style={{
+                  width: 36, height: 36, borderRadius: 18,
+                  backgroundColor: '#f5f5f5',
+                  justifyContent: 'center', alignItems: 'center',
+                }}
+              >
+                <Settings size={18} color="#666" strokeWidth={1.8} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ marginBottom: 20 }}>
+              <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>
+                {t.home[getGreetingKey()]}{firstName ? `,\n` : '.'}
+                {firstName ? <Text style={{ color: '#8A8A8A' }}>{firstName}.</Text> : null}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <>
+            <View style={{ marginBottom: 28 }}>
+              <TouchableOpacity
+                onPress={() => router.canGoBack() ? router.back() : router.push('/(main)/practitioner')}
+                activeOpacity={0.7}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}
+              >
+                <Text style={{ fontSize: 18, color: '#000', marginTop: -1 }}>‹</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38, marginBottom: 20 }}>
+              {locale === 'fr' ? 'Mes Moments' : 'My Moments'}
+            </Text>
+          </>
+        )}
 
         {/* Date strip + Timeline */}
         <View style={{ marginBottom: 32 }}>
@@ -190,16 +208,21 @@ export default function Home() {
                 backgroundColor: colors.bloom,
                 borderRadius: 24,
                 padding: 20,
-                minHeight: 140,
-                justifyContent: 'flex-end',
+                minHeight: 180,
+                justifyContent: 'space-between',
               }}
             >
-              <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 26 }}>
-                {locale === 'fr' ? 'Mon parcours' : 'My Journey'}
-              </Text>
-              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
-                {locale === 'fr' ? 'Tendances et progression' : 'Patterns and progress'}
-              </Text>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                <Heart size={18} color="#fff" strokeWidth={2} />
+              </View>
+              <View>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 26 }}>
+                  {locale === 'fr' ? 'Mon parcours' : 'My Journey'}
+                </Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+                  {locale === 'fr' ? 'Tendances et progression' : 'Patterns and progress'}
+                </Text>
+              </View>
             </TouchableOpacity>
 
             {/* Bloom */}
@@ -208,21 +231,24 @@ export default function Home() {
               activeOpacity={0.85}
               style={{
                 flex: 1,
-                backgroundColor: '#fff',
+                backgroundColor: '#1A1A1A',
                 borderRadius: 24,
                 padding: 20,
-                minHeight: 140,
-                justifyContent: 'flex-end',
-                borderWidth: 1,
-                borderColor: '#EBEBEB',
+                minHeight: 180,
+                justifyContent: 'space-between',
               }}
             >
-              <Text style={{ fontSize: 20, fontWeight: '800', color: colors.primary, letterSpacing: -0.5, lineHeight: 26 }}>
-                {locale === 'fr' ? 'Parler à Bloom' : 'Talk to Bloom'}
-              </Text>
-              <Text style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
-                {locale === 'fr' ? 'Réfléchir et grandir' : 'Reflect and grow'}
-              </Text>
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                <Mic size={18} color="#fff" strokeWidth={2} />
+              </View>
+              <View>
+                <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 26 }}>
+                  {locale === 'fr' ? 'Parler à Bloom' : 'Talk to Bloom'}
+                </Text>
+                <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                  {locale === 'fr' ? 'Réfléchir et grandir' : 'Reflect and grow'}
+                </Text>
+              </View>
             </TouchableOpacity>
           </View>
 
@@ -325,7 +351,7 @@ export default function Home() {
               const config = {
                 moments: { icon: Heart, label: t.home?.moments || 'Moments', route: null },
                 practitioner: { icon: User, label: t.practitioner?.tabLabel || 'My Care', route: '/(main)/practitioner' },
-                stories: { icon: PenLine, label: t.stories?.section || 'My Stories', route: '/(main)/stories' },
+                stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: '/(main)/stories' },
               }[key] as { icon: any; label: string; route: string | null }
               if (!config) return null
               const Icon = config.icon

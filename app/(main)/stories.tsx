@@ -1572,7 +1572,7 @@ export default function StoriesScreen() {
         {/* Title + Create */}
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
           <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>
-            {t.stories?.title || 'My Stories'}
+            {t.stories?.title || 'Stories'}
           </Text>
           <TouchableOpacity
             onPress={startCreate}
@@ -1914,7 +1914,7 @@ export default function StoriesScreen() {
               const config = {
                 moments: { icon: Heart, label: t.home?.moments || 'Moments', route: '/(main)/home' },
                 practitioner: { icon: User, label: t.practitioner?.tabLabel || 'My Care', route: '/(main)/practitioner' },
-                stories: { icon: PenLine, label: t.stories?.section || 'My Stories', route: null },
+                stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: null },
               }[key] as { icon: any; label: string; route: string | null }
               if (!config) return null
               const Icon = config.icon
