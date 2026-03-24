@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native'
+import { Video, Mic, FileUp } from 'lucide-react-native'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 
@@ -976,18 +977,18 @@ export function renderBlock(
             <TouchableOpacity
               onPress={async () => {
                 const ImagePicker = require('expo-image-picker')
-                const result = await ImagePicker.launchCameraAsync({ mediaTypes: 'videos', videoMaxDuration: 120, quality: 0.7 })
+                const result = await ImagePicker.launchCameraAsync({ mediaTypes: 'videos', videoMaxDuration: 420, quality: 0.7 })
                 if (!result.canceled && result.assets?.[0]?.uri) {
                   onChange(result.assets[0].uri)
                 }
               }}
               style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 100, borderWidth: 1.5, borderColor: INPUT_BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
             >
-              <Text style={{ fontSize: 28, marginBottom: 8 }}>🎬</Text>
+              <Video size={28} color={colors.bloom} strokeWidth={1.8} style={{ marginBottom: 8 }} />
               <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
                 {blockValue ? (t?.blocks?.rerecord || 'Record again') : (t?.blocks?.recordVideo || 'Record video')}
               </Text>
-              <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{t?.blocks?.maxDuration || 'Max 2 minutes'}</Text>
+              <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{t?.blocks?.maxDuration || 'Max 7 minutes'}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -998,8 +999,9 @@ export function renderBlock(
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
-          <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, color: MUTED }}>{t?.blocks?.audioComingSoon || 'Audio recording coming soon'}</Text>
+          <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 20, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+            <Mic size={22} color={MUTED} strokeWidth={1.8} />
+            <Text style={{ fontSize: 13, color: MUTED }}>{t?.blocks?.audioComingSoon || 'Audio recording coming soon'}</Text>
           </View>
         </View>
       )
@@ -1009,8 +1011,9 @@ export function renderBlock(
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
-          <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
-            <Text style={{ fontSize: 14, color: MUTED }}>{t?.blocks?.fileComingSoon || 'File upload coming soon'}</Text>
+          <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 20, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center', gap: 8 }}>
+            <FileUp size={22} color={MUTED} strokeWidth={1.8} />
+            <Text style={{ fontSize: 13, color: MUTED }}>{t?.blocks?.fileComingSoon || 'File upload coming soon'}</Text>
           </View>
         </View>
       )
