@@ -935,7 +935,7 @@ function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, upload
 // ═══════════════════════════════════════════════════
 
 export default function StoriesScreen() {
-  const { user } = useAuth()
+  const { user, member } = useAuth()
   const { t, locale } = useI18n()
   const router = useRouter()
   const { openStoryId } = useLocalSearchParams<{ openStoryId?: string }>()
@@ -1908,31 +1908,39 @@ export default function StoriesScreen() {
             shadowRadius: 20,
             elevation: 8,
           }}>
-            {/* Moments */}
-            <TouchableOpacity onPress={() => router.push('/(main)/home')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
-              <View style={{
-                width: 52, height: 52, borderRadius: 26,
-                backgroundColor: '#fff',
-                borderWidth: 1, borderColor: '#E5E5E3',
-                justifyContent: 'center', alignItems: 'center',
-              }}>
-                <Heart size={22} color={colors.primary} strokeWidth={1.8} />
-              </View>
-              <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.home?.moments || 'Moments'}</Text>
-            </TouchableOpacity>
+            {/* First item: My Care if practitioner-invited, else Moments */}
+            {member?.practitioner_id ? (
+              <TouchableOpacity onPress={() => router.push('/(main)/practitioner')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E5E3', justifyContent: 'center', alignItems: 'center' }}>
+                  <User size={22} color={colors.primary} strokeWidth={1.8} />
+                </View>
+                <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={() => router.push('/(main)/home')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E5E3', justifyContent: 'center', alignItems: 'center' }}>
+                  <Heart size={22} color={colors.primary} strokeWidth={1.8} />
+                </View>
+                <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.home?.moments || 'Moments'}</Text>
+              </TouchableOpacity>
+            )}
 
-            {/* My Care */}
-            <TouchableOpacity onPress={() => router.push('/(main)/practitioner')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
-              <View style={{
-                width: 52, height: 52, borderRadius: 26,
-                backgroundColor: '#fff',
-                borderWidth: 1, borderColor: '#E5E5E3',
-                justifyContent: 'center', alignItems: 'center',
-              }}>
-                <User size={22} color={colors.primary} strokeWidth={1.8} />
-              </View>
-              <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
-            </TouchableOpacity>
+            {/* Second item: Moments if practitioner-invited, else My Care */}
+            {member?.practitioner_id ? (
+              <TouchableOpacity onPress={() => router.push('/(main)/home')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E5E3', justifyContent: 'center', alignItems: 'center' }}>
+                  <Heart size={22} color={colors.primary} strokeWidth={1.8} />
+                </View>
+                <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.home?.moments || 'Moments'}</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={() => router.push('/(main)/practitioner')} activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
+                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E5E3', justifyContent: 'center', alignItems: 'center' }}>
+                  <User size={22} color={colors.primary} strokeWidth={1.8} />
+                </View>
+                <Text style={{ fontSize: 11, color: '#8A8A8A', fontWeight: '500' }}>{t.practitioner?.tabLabel || 'My Care'}</Text>
+              </TouchableOpacity>
+            )}
 
             {/* My Stories (active) */}
             <TouchableOpacity activeOpacity={0.8} style={{ alignItems: 'center', gap: 6 }}>
