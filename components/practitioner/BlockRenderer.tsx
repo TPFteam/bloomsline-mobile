@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native'
-import { Video, Mic, FileUp } from 'lucide-react-native'
+import { Video as VideoIcon, Mic, FileUp } from 'lucide-react-native'
+import { Video as ExpoVideo, ResizeMode } from 'expo-av'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 
@@ -979,7 +980,7 @@ export function renderBlock(
             <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 80, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
               {hasVideo ? (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Video size={18} color={colors.bloom} strokeWidth={1.8} />
+                  <VideoIcon size={18} color={colors.bloom} strokeWidth={1.8} />
                   <Text style={{ fontSize: 14, color: colors.bloom, fontWeight: '600' }}>{t?.blocks?.videoRecorded || 'Video recorded'}</Text>
                 </View>
               ) : (
@@ -988,12 +989,15 @@ export function renderBlock(
             </View>
           ) : hasVideo ? (
             <View>
-              {/* Video preview */}
-              <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 20, minHeight: 120, justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
-                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
-                  <Video size={24} color="#fff" strokeWidth={1.8} />
-                </View>
-                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 10 }}>{t?.blocks?.videoReady || 'Video ready'}</Text>
+              {/* Video player */}
+              <View style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 10, backgroundColor: '#1A1A1A' }}>
+                <ExpoVideo
+                  source={{ uri: videoUri! }}
+                  style={{ width: '100%', height: 220 }}
+                  useNativeControls
+                  resizeMode={ResizeMode.CONTAIN}
+                  isLooping={false}
+                />
               </View>
               {/* Change video */}
               <TouchableOpacity
@@ -1010,7 +1014,7 @@ export function renderBlock(
                 onPress={() => pickVideo()}
                 style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 100, borderWidth: 1.5, borderColor: INPUT_BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
               >
-                <Video size={28} color={colors.bloom} strokeWidth={1.8} style={{ marginBottom: 8 }} />
+                <VideoIcon size={28} color={colors.bloom} strokeWidth={1.8} style={{ marginBottom: 8 }} />
                 <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{t?.blocks?.chooseVideo || 'Choose video'}</Text>
                 <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{t?.blocks?.maxDuration || 'Max 7 minutes'}</Text>
               </TouchableOpacity>
