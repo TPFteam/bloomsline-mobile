@@ -68,6 +68,7 @@ import {
   Video,
   Link2,
   User,
+  PenLine,
 } from 'lucide-react-native'
 import { BackButton } from '@/components/ui/BackButton'
 import { PageLoader } from '@/components/PageLoader'
