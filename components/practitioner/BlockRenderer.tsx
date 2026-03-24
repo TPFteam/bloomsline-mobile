@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { View, Text, TextInput, TouchableOpacity } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 
@@ -958,6 +958,86 @@ export function renderBlock(
         />
       )
     }
+
+    case 'video_response': {
+      const videoUrl = blockValue as string | null
+      return (
+        <View>
+          <Text style={LABEL}>{content}{Star}</Text>
+          {readOnly ? (
+            <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 80, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
+              {videoUrl ? (
+                <Text style={{ fontSize: 14, color: colors.bloom, fontWeight: '600' }}>{t?.blocks?.videoRecorded || 'Video recorded'}</Text>
+              ) : (
+                <Text style={{ fontSize: 14, color: MUTED }}>{t?.blocks?.noVideo || 'No video'}</Text>
+              )}
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={async () => {
+                const ImagePicker = require('expo-image-picker')
+                const result = await ImagePicker.launchCameraAsync({ mediaTypes: 'videos', videoMaxDuration: 120, quality: 0.7 })
+                if (!result.canceled && result.assets?.[0]?.uri) {
+                  onChange(result.assets[0].uri)
+                }
+              }}
+              style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 100, borderWidth: 1.5, borderColor: INPUT_BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 28, marginBottom: 8 }}>🎬</Text>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
+                {blockValue ? (t?.blocks?.rerecord || 'Record again') : (t?.blocks?.recordVideo || 'Record video')}
+              </Text>
+              <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{t?.blocks?.maxDuration || 'Max 2 minutes'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )
+    }
+
+    case 'audio_response': {
+      return (
+        <View>
+          <Text style={LABEL}>{content}{Star}</Text>
+          <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, color: MUTED }}>{t?.blocks?.audioComingSoon || 'Audio recording coming soon'}</Text>
+          </View>
+        </View>
+      )
+    }
+
+    case 'file_response': {
+      return (
+        <View>
+          <Text style={LABEL}>{content}{Star}</Text>
+          <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, color: MUTED }}>{t?.blocks?.fileComingSoon || 'File upload coming soon'}</Text>
+          </View>
+        </View>
+      )
+    }
+
+    case 'image': {
+      const imageUrl = (block as any).mediaFile?.url
+      return (
+        <View>
+          {content ? <Text style={LABEL}>{content}</Text> : null}
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={{ width: '100%', height: 200, borderRadius: 16, backgroundColor: colors.surface1 }} resizeMode="cover" />
+          ) : (
+            <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: MUTED }}>Image</Text>
+            </View>
+          )}
+        </View>
+      )
+    }
+
+    case 'affirmation':
+      return (
+        <View style={{ backgroundColor: '#F5F3FF', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#E9D5FF', alignItems: 'center' }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#7C3AED', textAlign: 'center' }}>{content}</Text>
+        </View>
+      )
 
     default:
       return (
