@@ -961,35 +961,76 @@ export function renderBlock(
     }
 
     case 'video_response': {
-      const videoUrl = blockValue as string | null
+      const videoUri = blockValue as string | null
+      const hasVideo = !!videoUri
+
+      const pickVideo = async (fromCamera: boolean) => {
+        const ImagePicker = require('expo-image-picker')
+        const result = fromCamera
+          ? await ImagePicker.launchCameraAsync({ mediaTypes: 'videos', videoMaxDuration: 420, quality: 0.7 })
+          : await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'videos', videoMaxDuration: 420, quality: 0.7 })
+        if (!result.canceled && result.assets?.[0]?.uri) {
+          onChange(result.assets[0].uri)
+        }
+      }
+
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
           {readOnly ? (
             <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 80, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
-              {videoUrl ? (
-                <Text style={{ fontSize: 14, color: colors.bloom, fontWeight: '600' }}>{t?.blocks?.videoRecorded || 'Video recorded'}</Text>
+              {hasVideo ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Video size={18} color={colors.bloom} strokeWidth={1.8} />
+                  <Text style={{ fontSize: 14, color: colors.bloom, fontWeight: '600' }}>{t?.blocks?.videoRecorded || 'Video recorded'}</Text>
+                </View>
               ) : (
                 <Text style={{ fontSize: 14, color: MUTED }}>{t?.blocks?.noVideo || 'No video'}</Text>
               )}
             </View>
+          ) : hasVideo ? (
+            <View>
+              {/* Video preview */}
+              <View style={{ backgroundColor: '#1A1A1A', borderRadius: 16, padding: 20, minHeight: 120, justifyContent: 'center', alignItems: 'center', marginBottom: 10 }}>
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                  <Video size={24} color="#fff" strokeWidth={1.8} />
+                </View>
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', marginTop: 10 }}>{t?.blocks?.videoReady || 'Video ready'}</Text>
+              </View>
+              {/* Re-record / Choose another */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => pickVideo(true)}
+                  style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{t?.blocks?.rerecord || 'Record again'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => pickVideo(false)}
+                  style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{t?.blocks?.chooseFile || 'Choose file'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           ) : (
-            <TouchableOpacity
-              onPress={async () => {
-                const ImagePicker = require('expo-image-picker')
-                const result = await ImagePicker.launchCameraAsync({ mediaTypes: 'videos', videoMaxDuration: 420, quality: 0.7 })
-                if (!result.canceled && result.assets?.[0]?.uri) {
-                  onChange(result.assets[0].uri)
-                }
-              }}
-              style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 100, borderWidth: 1.5, borderColor: INPUT_BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}
-            >
-              <Video size={28} color={colors.bloom} strokeWidth={1.8} style={{ marginBottom: 8 }} />
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
-                {blockValue ? (t?.blocks?.rerecord || 'Record again') : (t?.blocks?.recordVideo || 'Record video')}
-              </Text>
-              <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{t?.blocks?.maxDuration || 'Max 7 minutes'}</Text>
-            </TouchableOpacity>
+            <View>
+              {/* Empty state — record or upload */}
+              <TouchableOpacity
+                onPress={() => pickVideo(true)}
+                style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 100, borderWidth: 1.5, borderColor: INPUT_BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 8 }}
+              >
+                <Video size={28} color={colors.bloom} strokeWidth={1.8} style={{ marginBottom: 8 }} />
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{t?.blocks?.recordVideo || 'Record video'}</Text>
+                <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{t?.blocks?.maxDuration || 'Max 7 minutes'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => pickVideo(false)}
+                style={{ alignItems: 'center', paddingVertical: 8 }}
+              >
+                <Text style={{ fontSize: 13, color: colors.textSecondary }}>{t?.blocks?.orChooseFromGallery || 'or choose from gallery'}</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
       )
