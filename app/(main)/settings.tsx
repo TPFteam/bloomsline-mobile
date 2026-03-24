@@ -11,7 +11,6 @@ import { colors } from '@/lib/theme'
 const NAV_OPTIONS = [
   { key: 'moments', icon: Heart, label: { en: 'Moments', fr: 'Moments' } },
   { key: 'practitioner', icon: User, label: { en: 'My Care', fr: 'Mon Suivi' } },
-  { key: 'stories', icon: PenLine, label: { en: 'My Stories', fr: 'Mes Histoires' } },
 ] as const
 
 export default function Settings() {

@@ -461,7 +461,7 @@ export default {
   // ─── Stories ───
   stories: {
     title: 'My Stories',
-    section: 'My Stories',
+    section: 'Stories',
     sectionCta: 'Write & share your story →',
     create: 'Create',
     createStory: 'Create Story',
