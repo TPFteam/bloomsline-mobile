@@ -196,33 +196,6 @@ export default function Home() {
           )}
         </View>
 
-        {/* Capture prompt */}
-        <TouchableOpacity
-          onPress={toggleCapture}
-          activeOpacity={0.8}
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 14,
-            backgroundColor: '#fff', borderRadius: 18, padding: 16,
-            borderWidth: 1, borderColor: '#EBEBEB', marginBottom: 14,
-          }}
-        >
-          <View style={{
-            width: 44, height: 44, borderRadius: 22,
-            backgroundColor: colors.primary,
-            justifyContent: 'center', alignItems: 'center',
-          }}>
-            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '300', marginTop: -1 }}>+</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>
-              {locale === 'fr' ? 'Capturer un moment' : 'Capture a moment'}
-            </Text>
-            <Text style={{ fontSize: 12, color: '#999', marginTop: 2 }}>
-              {locale === 'fr' ? 'Photo, vidéo, voix ou écriture' : 'Photo, video, voice, or write'}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
         {/* Quick actions */}
         <View style={{ gap: 14 }}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -376,23 +349,39 @@ export default function Home() {
               if (!config) return null
               const Icon = config.icon
               return (
-                <TouchableOpacity
-                  key={key}
-                  onPress={config.route ? () => router.push(config.route as any) : undefined}
-                  activeOpacity={0.8}
-                  style={{ alignItems: 'center', gap: 6 }}
-                >
-                  <View style={{
-                    width: 52, height: 52, borderRadius: 26,
-                    backgroundColor: isActive ? `${colors.bloom}15` : '#fff',
-                    borderWidth: isActive ? 0 : 1,
-                    borderColor: '#E5E5E3',
-                    justifyContent: 'center', alignItems: 'center',
-                  }}>
-                    <Icon size={22} color={isActive ? colors.bloom : colors.primary} strokeWidth={isActive ? 2 : 1.8} />
-                  </View>
-                  <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '600' : '500' }}>{config.label}</Text>
-                </TouchableOpacity>
+                <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={config.route ? () => router.push(config.route as any) : undefined}
+                    activeOpacity={0.8}
+                    style={{ alignItems: 'center', gap: 6 }}
+                  >
+                    <View style={{
+                      width: 52, height: 52, borderRadius: 26,
+                      backgroundColor: isActive ? `${colors.bloom}15` : '#fff',
+                      borderWidth: isActive ? 0 : 1,
+                      borderColor: '#E5E5E3',
+                      justifyContent: 'center', alignItems: 'center',
+                    }}>
+                      <Icon size={22} color={isActive ? colors.bloom : colors.primary} strokeWidth={isActive ? 2 : 1.8} />
+                    </View>
+                    <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '600' : '500' }}>{config.label}</Text>
+                  </TouchableOpacity>
+                  {isActive && (
+                    <TouchableOpacity
+                      onPress={toggleCapture}
+                      activeOpacity={0.8}
+                      style={{ alignItems: 'center', gap: 6 }}
+                    >
+                      <View style={{
+                        width: 40, height: 40, borderRadius: 20,
+                        backgroundColor: colors.primary,
+                        justifyContent: 'center', alignItems: 'center',
+                      }}>
+                        <Text style={{ color: '#fff', fontSize: 20, fontWeight: '300', marginTop: -1 }}>+</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
               )
             })}
 
