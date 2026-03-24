@@ -317,6 +317,32 @@ export default function Home() {
       )}
 
 
+      {/* Capture FAB above nav */}
+      {!viewingMoment && !bloomOpen && !captureOpen && (
+        <TouchableOpacity
+          onPress={toggleCapture}
+          activeOpacity={0.85}
+          style={{
+            position: 'absolute',
+            bottom: insets.bottom + 100,
+            alignSelf: 'center',
+            left: '50%',
+            marginLeft: -24,
+            width: 48, height: 48, borderRadius: 24,
+            backgroundColor: colors.primary,
+            justifyContent: 'center', alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.12,
+            shadowRadius: 10,
+            elevation: 6,
+            zIndex: 11,
+          }}
+        >
+          <Text style={{ color: '#fff', fontSize: 24, fontWeight: '300', marginTop: -1 }}>+</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Bottom floating bar */}
       {!viewingMoment && !bloomOpen && (
         <View style={{
@@ -349,39 +375,23 @@ export default function Home() {
               if (!config) return null
               const Icon = config.icon
               return (
-                <View key={key} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <TouchableOpacity
-                    onPress={config.route ? () => router.push(config.route as any) : undefined}
-                    activeOpacity={0.8}
-                    style={{ alignItems: 'center', gap: 6 }}
-                  >
-                    <View style={{
-                      width: 52, height: 52, borderRadius: 26,
-                      backgroundColor: isActive ? `${colors.bloom}15` : '#fff',
-                      borderWidth: isActive ? 0 : 1,
-                      borderColor: '#E5E5E3',
-                      justifyContent: 'center', alignItems: 'center',
-                    }}>
-                      <Icon size={22} color={isActive ? colors.bloom : colors.primary} strokeWidth={isActive ? 2 : 1.8} />
-                    </View>
-                    <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '600' : '500' }}>{config.label}</Text>
-                  </TouchableOpacity>
-                  {isActive && (
-                    <TouchableOpacity
-                      onPress={toggleCapture}
-                      activeOpacity={0.8}
-                      style={{ alignItems: 'center', gap: 6 }}
-                    >
-                      <View style={{
-                        width: 40, height: 40, borderRadius: 20,
-                        backgroundColor: colors.primary,
-                        justifyContent: 'center', alignItems: 'center',
-                      }}>
-                        <Text style={{ color: '#fff', fontSize: 20, fontWeight: '300', marginTop: -1 }}>+</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                <TouchableOpacity
+                  key={key}
+                  onPress={config.route ? () => router.push(config.route as any) : undefined}
+                  activeOpacity={0.8}
+                  style={{ alignItems: 'center', gap: 6 }}
+                >
+                  <View style={{
+                    width: 52, height: 52, borderRadius: 26,
+                    backgroundColor: isActive ? `${colors.bloom}15` : '#fff',
+                    borderWidth: isActive ? 0 : 1,
+                    borderColor: '#E5E5E3',
+                    justifyContent: 'center', alignItems: 'center',
+                  }}>
+                    <Icon size={22} color={isActive ? colors.bloom : colors.primary} strokeWidth={isActive ? 2 : 1.8} />
+                  </View>
+                  <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '600' : '500' }}>{config.label}</Text>
+                </TouchableOpacity>
               )
             })}
 
