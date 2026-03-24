@@ -49,19 +49,19 @@ export function ConsentModal({ visible, onAccept, locale }: ConsentModalProps) {
   const t = content[locale as keyof typeof content] || content.en
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false}>
-      <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16 }}>
-        <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-          {/* MVP notice */}
-          <Text style={{ fontSize: 12, color: '#999', lineHeight: 18, marginBottom: 20 }}>
-            {t.mvpNotice}
-          </Text>
-
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+        <View style={{
+          backgroundColor: '#fff', borderRadius: 24, width: '100%', maxWidth: 420,
+          maxHeight: '85%', overflow: 'hidden',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 10,
+        }}>
+        <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
           {/* Header */}
-          <Text style={{ fontSize: 28, fontWeight: '700', color: '#1A1A1A', marginBottom: 4 }}>
+          <Text style={{ fontSize: 26, fontWeight: '800', color: '#1A1A1A', marginBottom: 4 }}>
             {t.heading}
           </Text>
-          <Text style={{ fontSize: 16, color: '#999', marginBottom: 24 }}>
+          <Text style={{ fontSize: 15, color: '#999', marginBottom: 20 }}>
             {t.subheading}
           </Text>
 
@@ -147,6 +147,7 @@ export function ConsentModal({ visible, onAccept, locale }: ConsentModalProps) {
             </Text>
           </TouchableOpacity>
         </ScrollView>
+        </View>
       </View>
     </Modal>
   )
