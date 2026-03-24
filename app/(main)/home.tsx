@@ -271,50 +271,42 @@ export default function Home() {
           style={{
             position: 'absolute',
             top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(255,255,255,0.92)',
+            backgroundColor: 'rgba(255,255,255,0.95)',
             zIndex: 20,
+            justifyContent: 'center',
+            alignItems: 'center',
           }}
         >
-          {/* Floating cards */}
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            {CAPTURE_TYPES.map((type) => {
-              const scale = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] })
-              const translateX = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0, type.offsetX] })
-              const translateY = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [60, type.offsetY] })
-              const opacity = expandAnim.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0, 0.5, 1] })
-
-              return (
-                <Animated.View
-                  key={type.key}
-                  style={{
-                    position: 'absolute',
-                    transform: [{ translateX }, { translateY }, { scale }, { rotate: type.rotate }],
-                    opacity,
-                  }}
-                >
-                  <TouchableOpacity
-                    onPress={() => handleCaptureType(type.key)}
-                    activeOpacity={0.85}
-                    style={{
-                      width: CARD_SIZE, height: CARD_SIZE,
-                      backgroundColor: type.color,
-                      borderRadius: 20,
-                      padding: 16,
-                      justifyContent: 'space-between',
-                      shadowColor: type.color,
-                      shadowOffset: { width: 0, height: 8 },
-                      shadowOpacity: 0.3,
-                      shadowRadius: 16,
-                      elevation: 10,
-                    }}
-                  >
-                    <type.Icon size={28} color="#fff" strokeWidth={2} />
-                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{t.home[`capture${type.key.charAt(0).toUpperCase() + type.key.slice(1)}` as keyof typeof t.home]}</Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              )
-            })}
+          {/* Capture grid */}
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', maxWidth: CARD_SIZE * 2 + 12 }}>
+            {CAPTURE_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type.key}
+                onPress={() => handleCaptureType(type.key)}
+                activeOpacity={0.85}
+                style={{
+                  width: CARD_SIZE, height: CARD_SIZE,
+                  backgroundColor: type.color,
+                  borderRadius: 20,
+                  padding: 16,
+                  justifyContent: 'space-between',
+                  shadowColor: type.color,
+                  shadowOffset: { width: 0, height: 8 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 16,
+                  elevation: 10,
+                }}
+              >
+                <type.Icon size={28} color="#fff" strokeWidth={2} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{type.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
+
+          {/* Close hint */}
+          <Text style={{ marginTop: 24, fontSize: 13, color: '#999' }}>
+            {locale === 'fr' ? 'Appuyez pour fermer' : 'Tap to close'}
+          </Text>
         </Pressable>
       )}
 
