@@ -32,7 +32,7 @@ export default function Home() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
   const { user, member } = useAuth()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [moments, setMoments] = useState<Moment[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState<Date>(getToday)
@@ -180,46 +180,52 @@ export default function Home() {
 
         {/* Quick actions */}
         <View style={{ gap: 14 }}>
-          <TouchableOpacity
-            onPress={() => router.push('/(main)/evolution')}
-            activeOpacity={0.85}
-            style={{
-              backgroundColor: colors.bloom,
-              borderRadius: 22,
-              padding: 24,
-              shadowColor: colors.bloom,
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.25,
-              shadowRadius: 20,
-              elevation: 8,
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase', marginBottom: 10 }}>
-              {t.home.evolution}
-            </Text>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: '#fff', letterSpacing: -0.3 }}>
-              {t.home.evolutionCta}
-            </Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            {/* My Evolution */}
+            <TouchableOpacity
+              onPress={() => router.push('/(main)/evolution')}
+              activeOpacity={0.85}
+              style={{
+                flex: 1,
+                backgroundColor: colors.bloom,
+                borderRadius: 24,
+                padding: 20,
+                minHeight: 140,
+                justifyContent: 'flex-end',
+              }}
+            >
+              <Text style={{ fontSize: 20, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 26 }}>
+                {locale === 'fr' ? 'Mon parcours' : 'My Journey'}
+              </Text>
+              <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+                {locale === 'fr' ? 'Tendances et progression' : 'Patterns and progress'}
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => router.push('/(main)/practitioner')}
-            activeOpacity={0.8}
-            style={{
-              backgroundColor: '#fff',
-              borderRadius: 22,
-              padding: 24,
-              borderWidth: 1,
-              borderColor: '#EBEBEB',
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 10 }}>
-              {t.home.practitioner}
-            </Text>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
-              {t.home.practitionerCta}
-            </Text>
-          </TouchableOpacity>
+            {/* Bloom */}
+            <TouchableOpacity
+              onPress={() => setBloomOpen(true)}
+              activeOpacity={0.85}
+              style={{
+                flex: 1,
+                backgroundColor: '#fff',
+                borderRadius: 24,
+                padding: 20,
+                minHeight: 140,
+                justifyContent: 'flex-end',
+                borderWidth: 1,
+                borderColor: '#EBEBEB',
+              }}
+            >
+              <Text style={{ fontSize: 20, fontWeight: '800', color: colors.primary, letterSpacing: -0.5, lineHeight: 26 }}>
+                {locale === 'fr' ? 'Parler à Bloom' : 'Talk to Bloom'}
+              </Text>
+              <Text style={{ fontSize: 11, color: '#999', marginTop: 4 }}>
+                {locale === 'fr' ? 'Réfléchir et grandir' : 'Reflect and grow'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
         </View>
       </PullToRefreshScrollView>
 
@@ -291,29 +297,6 @@ export default function Home() {
         <BloomFullScreen onClose={() => setBloomOpen(false)} firstName={firstName} />
       )}
 
-      {/* Bloom floating mic */}
-      {!viewingMoment && !bloomOpen && !captureOpen && (
-        <TouchableOpacity
-          onPress={() => setBloomOpen(true)}
-          activeOpacity={0.85}
-          style={{
-            position: 'absolute',
-            right: 24,
-            bottom: insets.bottom + 130,
-            width: 48, height: 48, borderRadius: 24,
-            backgroundColor: colors.primary,
-            justifyContent: 'center', alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
-            elevation: 6,
-            zIndex: 11,
-          }}
-        >
-          <Mic size={18} color="#fff" strokeWidth={2} />
-        </TouchableOpacity>
-      )}
 
       {/* Bottom floating bar */}
       {!viewingMoment && !bloomOpen && (

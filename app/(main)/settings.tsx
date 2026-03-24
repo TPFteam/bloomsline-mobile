@@ -17,7 +17,7 @@ const NAV_OPTIONS = [
 export default function Settings() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { user, member, signOut } = useAuth()
+  const { user, member, signOut, updateMember } = useAuth()
   const { t, locale, setLocale } = useI18n()
 
   const currentFirst = (member as any)?.nav_order?.[0] || (member?.practitioner_id ? 'practitioner' : 'moments')
@@ -51,6 +51,8 @@ export default function Settings() {
         .from('members')
         .update({ nav_order: newOrder })
         .eq('id', member?.id)
+      // Update local state so nav bars reflect immediately
+      updateMember({ nav_order: newOrder })
     } catch (e) {
       console.error('Failed to save nav order:', e)
     }

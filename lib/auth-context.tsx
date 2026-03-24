@@ -36,6 +36,7 @@ type AuthContextType = {
   signInWithAzure: () => Promise<{ error: any }>
   sendMagicLink: (email: string, flow: 'signin' | 'signup') => Promise<MagicLinkResult>
   signOut: () => Promise<void>
+  updateMember: (updates: Record<string, any>) => void
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -52,6 +53,7 @@ const AuthContext = createContext<AuthContextType>({
   signInWithAzure: async () => ({ error: null }),
   sendMagicLink: async () => ({ error: null }),
   signOut: async () => {},
+  updateMember: () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -316,7 +318,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ session, user, member, loading, isPractitioner, notEligible, clearNotEligible, signIn, signUp, signInWithGoogle, signInWithAzure, sendMagicLink, signOut }}>
+    <AuthContext.Provider value={{ session, user, member, loading, isPractitioner, notEligible, clearNotEligible, signIn, signUp, signInWithGoogle, signInWithAzure, sendMagicLink, signOut, updateMember: (updates: Record<string, any>) => setMember((prev: any) => prev ? { ...prev, ...updates } : prev) }}>
       {children}
     </AuthContext.Provider>
   )
