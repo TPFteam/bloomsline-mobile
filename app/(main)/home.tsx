@@ -324,6 +324,33 @@ export default function Home() {
       )}
 
 
+      {/* Floating capture button */}
+      {!viewingMoment && !bloomOpen && !captureOpen && (
+        <TouchableOpacity
+          onPress={toggleCapture}
+          activeOpacity={0.85}
+          style={{
+            position: 'absolute',
+            right: 24,
+            bottom: insets.bottom + 110,
+            width: 56, height: 56, borderRadius: 28,
+            backgroundColor: colors.primary,
+            justifyContent: 'center', alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+            elevation: 6,
+            zIndex: 11,
+          }}
+        >
+          <Animated.Text style={{
+            color: '#fff', fontSize: 28, fontWeight: '300',
+            transform: [{ rotate: fabRotateAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '45deg'] }) }],
+          }}>+</Animated.Text>
+        </TouchableOpacity>
+      )}
+
       {/* Bottom floating bar */}
       {!viewingMoment && !bloomOpen && (
         <View style={{
