@@ -65,7 +65,7 @@ export default function Settings() {
     <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top + 16, paddingHorizontal: 24 }}>
       {/* Header */}
       <TouchableOpacity
-        onPress={() => router.back()}
+        onPress={() => router.canGoBack() ? router.back() : router.push('/(main)/home')}
         activeOpacity={0.7}
         style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center', marginBottom: 24 }}
       >
