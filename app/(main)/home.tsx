@@ -225,6 +225,30 @@ export default function Home() {
               </View>
             </TouchableOpacity>
 
+            {/* Capture */}
+            <TouchableOpacity
+              onPress={toggleCapture}
+              activeOpacity={0.85}
+              style={{
+                width: 56,
+                backgroundColor: '#fff',
+                borderRadius: 24,
+                borderWidth: 1,
+                borderColor: '#EBEBEB',
+                minHeight: 180,
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingVertical: 20,
+              }}
+            >
+              <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ color: '#fff', fontSize: 20, fontWeight: '300', marginTop: -1 }}>+</Text>
+              </View>
+              <Text style={{ fontSize: 9, color: '#999', fontWeight: '600', writingDirection: 'ltr' }}>
+                {t.home.capture}
+              </Text>
+            </TouchableOpacity>
+
             {/* Bloom */}
             <TouchableOpacity
               onPress={() => setBloomOpen(true)}
@@ -316,32 +340,6 @@ export default function Home() {
         <BloomFullScreen onClose={() => setBloomOpen(false)} firstName={firstName} />
       )}
 
-
-      {/* Capture FAB above nav */}
-      {!viewingMoment && !bloomOpen && !captureOpen && (
-        <TouchableOpacity
-          onPress={toggleCapture}
-          activeOpacity={0.85}
-          style={{
-            position: 'absolute',
-            bottom: insets.bottom + 100,
-            alignSelf: 'center',
-            left: '50%',
-            marginLeft: -24,
-            width: 48, height: 48, borderRadius: 24,
-            backgroundColor: colors.primary,
-            justifyContent: 'center', alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.12,
-            shadowRadius: 10,
-            elevation: 6,
-            zIndex: 11,
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 24, fontWeight: '300', marginTop: -1 }}>+</Text>
-        </TouchableOpacity>
-      )}
 
       {/* Bottom floating bar */}
       {!viewingMoment && !bloomOpen && (
