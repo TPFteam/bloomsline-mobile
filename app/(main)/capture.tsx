@@ -5,24 +5,33 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { createMoment } from '@/lib/services/moments'
 import * as ImagePicker from 'expo-image-picker'
 import { Audio } from 'expo-av'
-import { Camera, ImageIcon, X, Plus, Check, Mic, Play, Pause, Trash2, RotateCcw } from 'lucide-react-native'
+import { Camera, ImageIcon, X, Plus, Check, Mic, Play, Pause, Trash2, RotateCcw, Leaf, Heart, Sparkles, HeartHandshake, Trophy, Sunrise, Wind, Waves, Moon, CloudRain } from 'lucide-react-native'
 import { useI18n } from '@/lib/i18n'
 
+const MOOD_ICONS: Record<string, any> = {
+  calm: Leaf,
+  grateful: Heart,
+  inspired: Sparkles,
+  loved: HeartHandshake,
+  proud: Trophy,
+  hopeful: Sunrise,
+  anxious: Wind,
+  overwhelmed: Waves,
+  tired: Moon,
+  heavy: CloudRain,
+}
+
 const MOODS = [
-  { key: 'grateful', emoji: '🙏', label: 'Grateful' },
-  { key: 'peaceful', emoji: '🌿', label: 'Peaceful' },
-  { key: 'joyful', emoji: '✨', label: 'Joyful' },
-  { key: 'inspired', emoji: '🌱', label: 'Inspired' },
-  { key: 'loved', emoji: '💕', label: 'Loved' },
-  { key: 'calm', emoji: '🧘', label: 'Calm' },
-  { key: 'hopeful', emoji: '☀️', label: 'Hopeful' },
-  { key: 'proud', emoji: '🏆', label: 'Proud' },
-  { key: 'overwhelmed', emoji: '😮‍💨', label: 'Overwhelmed' },
-  { key: 'tired', emoji: '🌙', label: 'Tired' },
-  { key: 'uncertain', emoji: '🌫️', label: 'Uncertain' },
-  { key: 'tender', emoji: '🌸', label: 'Tender' },
-  { key: 'restless', emoji: '💬', label: 'Restless' },
-  { key: 'heavy', emoji: '🌊', label: 'Heavy' },
+  { key: 'calm', label: 'Calm', color: '#4A9A86' },
+  { key: 'grateful', label: 'Grateful', color: '#10B981' },
+  { key: 'inspired', label: 'Inspired', color: '#8B5CF6' },
+  { key: 'loved', label: 'Loved', color: '#F43F5E' },
+  { key: 'proud', label: 'Proud', color: '#EC4899' },
+  { key: 'hopeful', label: 'Hopeful', color: '#F97316' },
+  { key: 'anxious', label: 'Anxious', color: '#3B82F6' },
+  { key: 'overwhelmed', label: 'Overwhelmed', color: '#EF4444' },
+  { key: 'tired', label: 'Tired', color: '#64748B' },
+  { key: 'heavy', label: 'Heavy', color: '#475569' },
 ]
 
 type CaptureType = 'photo' | 'video' | 'voice' | 'write'
@@ -131,7 +140,7 @@ export default function Capture() {
   const { type } = useLocalSearchParams<{ type?: string }>()
   const captureType = (type as CaptureType) || 'photo'
   const insets = useSafeAreaInsets()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
   const [step, setStep] = useState<Step>(captureType === 'write' ? 'capture' : 'capture')
   const [selectedMoods, setSelectedMoods] = useState<string[]>([])
@@ -587,9 +596,12 @@ export default function Capture() {
                       gap: 6,
                     }}
                   >
-                    <Text style={{ fontSize: 18 }}>{mood.emoji}</Text>
+                    {MOOD_ICONS[mood.key] && (() => {
+                      const Icon = MOOD_ICONS[mood.key]
+                      return <Icon size={18} color={selected ? '#fff' : mood.color} strokeWidth={2} />
+                    })()}
                     <Text style={{ fontSize: 15, fontWeight: '500', color: selected ? '#fff' : '#333' }}>
-                      {t.moods[mood.key as keyof typeof t.moods] || mood.key}
+                      {t.moods[mood.key as keyof typeof t.moods] || mood.label}
                     </Text>
                   </TouchableOpacity>
                 )
@@ -602,11 +614,22 @@ export default function Capture() {
         {step === 'save' && (
           <View>
             <Text style={{ fontSize: 28, fontWeight: '700', color: '#000', marginTop: 24, marginBottom: 6 }}>
-              {t.capture.saveTitle}
+              {captureType === 'write'
+                ? (locale === 'fr' ? 'Votre moment' : 'Your moment')
+                : t.capture.saveTitle}
             </Text>
-            <Text style={{ fontSize: 15, color: '#999', marginBottom: 32 }}>
-              {t.capture.saveSubtitle}
+            <Text style={{ fontSize: 15, color: '#999', marginBottom: 24 }}>
+              {captureType === 'write'
+                ? (locale === 'fr' ? 'Voici ce que vous avez capturé' : 'Here\'s what you captured')
+                : t.capture.saveSubtitle}
             </Text>
+
+            {/* Write preview */}
+            {captureType === 'write' && note ? (
+              <View style={{ backgroundColor: '#f8f8f8', borderRadius: 16, padding: 16, marginBottom: 20 }}>
+                <Text style={{ fontSize: 15, color: '#333', lineHeight: 22 }}>{note}</Text>
+              </View>
+            ) : null}
 
             {/* Media preview — images/video */}
             {mediaItems.length > 0 && !audioUri && (
@@ -632,9 +655,12 @@ export default function Capture() {
                 {selectedMoods.map(m => {
                   const mood = MOODS.find(mo => mo.key === m)
                   return (
-                    <View key={m} style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#f5f5f5', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16 }}>
-                      <Text style={{ fontSize: 14 }}>{mood?.emoji}</Text>
-                      <Text style={{ fontSize: 13, color: '#333', fontWeight: '500' }}>{t.moods[mood?.key as keyof typeof t.moods] || mood?.key}</Text>
+                    <View key={m} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f5f5f5', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16 }}>
+                      {mood && MOOD_ICONS[mood.key] && (() => {
+                        const Icon = MOOD_ICONS[mood.key]
+                        return <Icon size={14} color={mood.color} strokeWidth={2} />
+                      })()}
+                      <Text style={{ fontSize: 13, color: '#333', fontWeight: '500' }}>{t.moods[mood?.key as keyof typeof t.moods] || mood?.label}</Text>
                     </View>
                   )
                 })}

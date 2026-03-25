@@ -72,6 +72,7 @@ import {
 } from 'lucide-react-native'
 import { BackButton } from '@/components/ui/BackButton'
 import { getNavOrder } from '@/lib/nav-order'
+import { InlineGuide } from '@/components/InlineGuide'
 import { PageLoader } from '@/components/PageLoader'
 import { useAuth } from '@/lib/auth-context'
 import { colors, radii, spacing } from '@/lib/theme'
@@ -1591,6 +1592,16 @@ export default function StoriesScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.screenPadding, paddingTop: 0, paddingBottom: 120 }}>
+        {/* Inline guide */}
+        <InlineGuide
+          guideKey="stories"
+          icon={PenLine}
+          title={locale === 'fr' ? 'Votre espace d\'écriture' : 'Your writing space'}
+          description={locale === 'fr'
+            ? 'Écrivez et réfléchissez dans votre espace personnel. Gardez-le privé ou partagez avec les personnes de confiance.'
+            : 'Write and reflect in your personal space. Keep it private or share with people you trust.'}
+        />
+
         {/* Stats */}
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
           {[

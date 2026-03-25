@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import { FileText, Table2, BookOpen, Dumbbell, FileQuestion, Frown, Meh, Smile, CheckCircle, Settings, Mic, PenLine, Heart, User } from 'lucide-react-native'
+import { FileText, Table2, BookOpen, Dumbbell, FileQuestion, Frown, Meh, Smile, CheckCircle, Settings, Mic, PenLine, Heart, User, Calendar, Clock, FolderOpen } from 'lucide-react-native'
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import { BackButton } from '@/components/ui/BackButton'
 import { BloomLogo } from '@/components/BloomLogo'
 import { BloomFullScreen } from '@/components/BloomFullScreen'
 import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
+import { InlineGuide } from '@/components/InlineGuide'
 import { PageLoader } from '@/components/PageLoader'
 import { useAuth } from '@/lib/auth-context'
 import { colors } from '@/lib/theme'
@@ -406,6 +407,16 @@ export default function PractitionerScreen() {
           </Text>
         )}
 
+        {/* Inline guide */}
+        <InlineGuide
+          guideKey="care"
+          icon={User}
+          title={locale === 'fr' ? 'Votre espace de suivi' : 'Your care space'}
+          description={locale === 'fr'
+            ? 'Ici, vous trouverez les ressources partagées par votre praticien, vos séances à venir, et votre progression. Tout est au même endroit.'
+            : 'Here you\'ll find resources shared by your practitioner, upcoming sessions, and your progress. Everything in one place.'}
+        />
+
         {/* ═══════════════════════════════════════════════ */}
         {/* PRACTITIONER CARD */}
         {/* ═══════════════════════════════════════════════ */}
@@ -576,47 +587,26 @@ export default function PractitionerScreen() {
               {resources.slice(0, 3).map((item) => (
                 <ResourceCard key={item.id} item={item} onPress={() => setViewingResource(item)} />
               ))}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => { setAssessmentFilter('all'); setQuickModal('assessments') }}
-                style={{
-                  backgroundColor: '#fff', borderRadius: 22, padding: 24,
-                  borderWidth: 1, borderColor: '#EBEBEB', marginTop: 4,
-                }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 10 }}>
-                  {t.practitioner.myAssessments}
-                </Text>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
-                  {t.practitioner.myAssessmentsCta}
-                </Text>
-              </TouchableOpacity>
+              {resources.length > 3 && (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => { setAssessmentFilter('all'); setQuickModal('assessments') }}
+                  style={{
+                    backgroundColor: colors.primary, borderRadius: 16, paddingVertical: 14,
+                    alignItems: 'center', marginTop: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                    {locale === 'fr' ? 'Voir tout' : 'View all'} ({resources.length})
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           ) : (
-            <EmptyState emoji="📋" title={t.practitioner.noResources} subtitle={t.practitioner.noResourcesSubtitle} />
+            <EmptyState icon={FileText} title={t.practitioner.noResources} subtitle={t.practitioner.noResourcesSubtitle} />
           )}
         </View>
 
-        {/* ═══════════════════════════════════════════════ */}
-        {/* MY STORIES */}
-        {/* ═══════════════════════════════════════════════ */}
-        <View style={{ marginBottom: 32 }}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => router.push('/(main)/stories')}
-            style={{
-              backgroundColor: '#fff', borderRadius: 22, padding: 24,
-              borderWidth: 1, borderColor: '#EBEBEB',
-            }}
-          >
-            <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1.2, color: '#8A8A8A', textTransform: 'uppercase', marginBottom: 10 }}>
-              {t.stories?.section || 'Stories'}
-            </Text>
-            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3 }}>
-              {t.stories?.sectionCta || 'Write & share your story →'}
-            </Text>
-          </TouchableOpacity>
-        </View>
 
         {/* ═══════════════════════════════════════════════ */}
         {/* UPCOMING SESSIONS */}
@@ -627,7 +617,7 @@ export default function PractitionerScreen() {
           </Text>
 
           {upcomingSessions.length === 0 ? (
-            <EmptyState emoji="📅" title={t.practitioner.noUpcoming} subtitle={t.practitioner.noUpcomingSubtitle} />
+            <EmptyState icon={Calendar} title={t.practitioner.noUpcoming} subtitle={t.practitioner.noUpcomingSubtitle} />
           ) : (
             <View style={{ gap: 10 }}>
               {upcomingSessions.map((session) => (
@@ -663,7 +653,7 @@ export default function PractitionerScreen() {
           </View>
 
           {pastSessions.length === 0 ? (
-            <EmptyState emoji="🕐" title={t.practitioner.noHistory} subtitle={t.practitioner.noHistorySubtitle} />
+            <EmptyState icon={Clock} title={t.practitioner.noHistory} subtitle={t.practitioner.noHistorySubtitle} />
           ) : (
             <View style={{ gap: 10 }}>
               {displayHistory.map((session) => (
@@ -1167,7 +1157,7 @@ export default function PractitionerScreen() {
                 </TouchableOpacity>
               </>
             ) : (
-              <EmptyState emoji="👤" title={t.practitioner.noPractitioner} subtitle={t.practitioner.noPractitionerSubtitle} />
+              <EmptyState icon={User} title={t.practitioner.noPractitioner} subtitle={t.practitioner.noPractitionerSubtitle} />
             )}
           </Pressable>
         </Pressable>
@@ -1219,7 +1209,7 @@ export default function PractitionerScreen() {
                   ))}
                 </View>
               ) : (
-                <EmptyState emoji="📝" title={t.practitioner.nothingHere} subtitle={t.practitioner.noCategoryResources} />
+                <EmptyState icon={FolderOpen} title={t.practitioner.nothingHere} subtitle={t.practitioner.noCategoryResources} />
               )}
             </ScrollView>
           </Pressable>
@@ -1299,14 +1289,16 @@ const RESOURCE_ICON_MAP: Record<string, { icon: any; color: string; bg: string }
 
 // ─── Shared Components ──────────────────────────────
 
-function EmptyState({ emoji, title, subtitle }: { emoji: string; title: string; subtitle: string }) {
+function EmptyState({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) {
   return (
     <View style={{ backgroundColor: colors.surface2, borderRadius: 24, padding: 32, alignItems: 'center' }}>
-      <Text style={{ fontSize: 40, marginBottom: 16 }}>{emoji}</Text>
-      <Text style={{ fontSize: 20, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 8 }}>
+      <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#E5E5E5', justifyContent: 'center', alignItems: 'center', marginBottom: 16 }}>
+        <Icon size={24} color="#999" strokeWidth={1.5} />
+      </View>
+      <Text style={{ fontSize: 18, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 8 }}>
         {title}
       </Text>
-      <Text style={{ fontSize: 15, color: '#8A8A8A', textAlign: 'center' }}>{subtitle}</Text>
+      <Text style={{ fontSize: 14, color: '#8A8A8A', textAlign: 'center', lineHeight: 20 }}>{subtitle}</Text>
     </View>
   )
 }

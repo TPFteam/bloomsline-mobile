@@ -8,6 +8,7 @@ import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
 import { Camera, Video, Mic, PenLine, Settings, Heart, User } from 'lucide-react-native'
 import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
+import { InlineGuide } from '@/components/InlineGuide'
 import { colors, CAPTURE_TYPE_COLORS } from '@/lib/theme'
 
 // Extracted components
@@ -152,6 +153,16 @@ export default function Home() {
             </Text>
           </>
         )}
+
+        {/* Inline guide */}
+        <InlineGuide
+          guideKey="moments"
+          icon={Heart}
+          title={locale === 'fr' ? 'Vos moments' : 'Your moments'}
+          description={locale === 'fr'
+            ? 'Capturez ce que vous ressentez — photos, voix, écriture. Votre parcours émotionnel se construit au fil du temps.'
+            : 'Capture how you feel — photos, voice, writing. Your emotional timeline builds over time.'}
+        />
 
         {/* Date strip + Timeline */}
         <View style={{ marginBottom: 32 }}>
@@ -302,10 +313,9 @@ export default function Home() {
             zIndex: 20,
             justifyContent: 'flex-end',
             alignItems: 'center',
-            paddingBottom: insets.bottom + 120,
+            paddingBottom: insets.bottom + 100,
           }}
         >
-          {/* Capture grid */}
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', maxWidth: CARD_SIZE * 2 + 12 }}>
             {CAPTURE_TYPES.map((type) => (
               <TouchableOpacity
@@ -330,11 +340,6 @@ export default function Home() {
               </TouchableOpacity>
             ))}
           </View>
-
-          {/* Close hint */}
-          <Text style={{ marginTop: 24, fontSize: 13, color: '#999' }}>
-            {locale === 'fr' ? 'Appuyez pour fermer' : 'Tap to close'}
-          </Text>
         </Pressable>
       )}
 

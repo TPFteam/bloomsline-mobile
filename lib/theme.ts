@@ -61,62 +61,64 @@ export const typography = {
 // ─── Mood System ─────────────────────────────────────
 
 export const MOOD_SCORES: Record<string, number> = {
-  joyful: 95,
+  calm: 72,
   grateful: 90,
   inspired: 88,
-  proud: 85,
   loved: 82,
-  peaceful: 80,
+  proud: 85,
   hopeful: 75,
-  calm: 72,
+  anxious: 38,
+  overwhelmed: 35,
+  tired: 42,
+  heavy: 32,
+  // Legacy keys for backward compatibility with old moments
+  joyful: 95,
+  peaceful: 80,
   tender: 55,
   restless: 48,
   uncertain: 45,
-  tired: 42,
-  overwhelmed: 38,
-  heavy: 32,
 }
 
 export const MOOD_COLORS: Record<string, string> = {
-  joyful: '#F59E0B',
+  calm: '#4A9A86',
   grateful: '#10B981',
   inspired: '#8B5CF6',
-  proud: '#EC4899',
   loved: '#F43F5E',
-  peaceful: '#06B6D4',
+  proud: '#EC4899',
   hopeful: '#F97316',
-  calm: '#6366F1',
+  anxious: '#3B82F6',
+  overwhelmed: '#EF4444',
+  tired: '#64748B',
+  heavy: '#475569',
+  // Legacy keys
+  joyful: '#F59E0B',
+  peaceful: '#06B6D4',
   tender: '#A78BFA',
   restless: '#EAB308',
   uncertain: '#94A3B8',
-  tired: '#64748B',
-  overwhelmed: '#EF4444',
-  heavy: '#475569',
 }
 
 export interface MoodDef {
   key: string
-  emoji: string
+  icon: string // lucide icon name
   label: string
   color: string
   valence: number
 }
 
 export const MOODS: MoodDef[] = [
-  { key: 'grateful', emoji: '🙏', label: 'Grateful', color: '#10B981', valence: 90 },
-  { key: 'peaceful', emoji: '🌿', label: 'Peaceful', color: '#06B6D4', valence: 80 },
-  { key: 'joyful', emoji: '✨', label: 'Joyful', color: '#F59E0B', valence: 95 },
-  { key: 'inspired', emoji: '🌱', label: 'Inspired', color: '#8B5CF6', valence: 88 },
-  { key: 'loved', emoji: '💕', label: 'Loved', color: '#F43F5E', valence: 82 },
-  { key: 'calm', emoji: '🧘', label: 'Calm', color: '#6366F1', valence: 72 },
-  { key: 'hopeful', emoji: '☀️', label: 'Hopeful', color: '#F97316', valence: 75 },
-  { key: 'proud', emoji: '🏆', label: 'Proud', color: '#EC4899', valence: 85 },
-  { key: 'overwhelmed', emoji: '😮‍💨', label: 'Overwhelmed', color: '#EF4444', valence: 38 },
-  { key: 'tired', emoji: '🌙', label: 'Tired', color: '#64748B', valence: 42 },
-  { key: 'uncertain', emoji: '🌫️', label: 'Uncertain', color: '#94A3B8', valence: 45 },
-  { key: 'tender', emoji: '🌸', label: 'Tender', color: '#A78BFA', valence: 55 },
-  { key: 'restless', emoji: '💬', label: 'Restless', color: '#EAB308', valence: 48 },
-  { key: 'heavy', emoji: '🌊', label: 'Heavy', color: '#475569', valence: 32 },
+  // Positive
+  { key: 'calm', icon: 'Leaf', label: 'Calm', color: '#4A9A86', valence: 72 },
+  { key: 'grateful', icon: 'Heart', label: 'Grateful', color: '#10B981', valence: 90 },
+  { key: 'inspired', icon: 'Sparkles', label: 'Inspired', color: '#8B5CF6', valence: 88 },
+  { key: 'loved', icon: 'HeartHandshake', label: 'Loved', color: '#F43F5E', valence: 82 },
+  { key: 'proud', icon: 'Trophy', label: 'Proud', color: '#EC4899', valence: 85 },
+  { key: 'hopeful', icon: 'Sunrise', label: 'Hopeful', color: '#F97316', valence: 75 },
+  // Difficult
+  { key: 'anxious', icon: 'Wind', label: 'Anxious', color: '#3B82F6', valence: 38 },
+  { key: 'overwhelmed', icon: 'Waves', label: 'Overwhelmed', color: '#EF4444', valence: 35 },
+  { key: 'tired', icon: 'Moon', label: 'Tired', color: '#64748B', valence: 42 },
+  { key: 'heavy', icon: 'CloudRain', label: 'Heavy', color: '#475569', valence: 32 },
 ]
 
 // ─── Capture Types ───────────────────────────────────
