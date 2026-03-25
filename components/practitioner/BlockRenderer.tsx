@@ -977,13 +977,15 @@ export function renderBlock(
           try {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
-            const ext = localUri.split('.').pop()?.split('?')[0] || 'mp4'
+            // Use mp4 as default — blob URLs don't have real extensions
+            const mimeType = result.assets[0].mimeType || 'video/mp4'
+            const ext = mimeType.split('/')[1] || 'mp4'
             const fileName = `${user.id}/video-responses/${Date.now()}.${ext}`
             const fetchResponse = await fetch(localUri)
             const blob = await fetchResponse.blob()
             const { data, error } = await supabase.storage
               .from('resource-media')
-              .upload(fileName, blob, { contentType: `video/${ext}`, upsert: true })
+              .upload(fileName, blob, { contentType: mimeType, upsert: true })
             if (error) {
               console.error('Video upload error:', error)
             } else if (data) {
