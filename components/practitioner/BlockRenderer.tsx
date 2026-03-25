@@ -1003,16 +1003,27 @@ export function renderBlock(
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
           {readOnly ? (
-            <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 80, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
-              {hasVideo ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <VideoIcon size={18} color={colors.bloom} strokeWidth={1.8} />
-                  <Text style={{ fontSize: 14, color: colors.bloom, fontWeight: '600' }}>{t?.blocks?.videoRecorded || 'Video recorded'}</Text>
-                </View>
-              ) : (
-                <Text style={{ fontSize: 14, color: MUTED }}>{t?.blocks?.noVideo || 'No video'}</Text>
-              )}
-            </View>
+            hasVideo && (videoUri!.startsWith('http') || videoUri!.startsWith('blob:')) ? (
+              <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: '#1A1A1A' }}>
+                {Platform.OS === 'web' ? (
+                  // @ts-ignore
+                  <video src={videoUri!} controls style={{ width: '100%', height: 220, backgroundColor: '#1A1A1A', objectFit: 'contain' }} />
+                ) : (
+                  <ExpoVideo source={{ uri: videoUri! }} style={{ width: '100%', height: 220 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+                )}
+              </View>
+            ) : (
+              <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 80, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
+                {hasVideo ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <VideoIcon size={18} color={colors.bloom} strokeWidth={1.8} />
+                    <Text style={{ fontSize: 14, color: colors.bloom, fontWeight: '600' }}>{t?.blocks?.videoRecorded || 'Video recorded'}</Text>
+                  </View>
+                ) : (
+                  <Text style={{ fontSize: 14, color: MUTED }}>{t?.blocks?.noVideo || 'No video'}</Text>
+                )}
+              </View>
+            )
           ) : hasVideo ? (
             <View>
               {/* Video player */}
