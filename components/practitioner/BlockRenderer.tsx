@@ -973,23 +973,26 @@ export function renderBlock(
           const localUri = result.assets[0].uri
           // Show local preview immediately
           onChange(localUri)
-          // Upload to Supabase storage in background
+          // Upload to Supabase storage
           try {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
-            const ext = localUri.split('.').pop() || 'mp4'
-            const fileName = `${user.id}/${Date.now()}.${ext}`
-            const response = await fetch(localUri)
-            const blob = await response.blob()
-            const { error } = await supabase.storage
-              .from('resource-responses')
+            const ext = localUri.split('.').pop()?.split('?')[0] || 'mp4'
+            const fileName = `${user.id}/video-responses/${Date.now()}.${ext}`
+            const fetchResponse = await fetch(localUri)
+            const blob = await fetchResponse.blob()
+            const { data, error } = await supabase.storage
+              .from('resource-media')
               .upload(fileName, blob, { contentType: `video/${ext}`, upsert: true })
-            if (!error) {
-              const { data: urlData } = supabase.storage.from('resource-responses').getPublicUrl(fileName)
+            if (error) {
+              console.error('Video upload error:', error)
+            } else if (data) {
+              const { data: urlData } = supabase.storage.from('resource-media').getPublicUrl(data.path)
+              // Replace local URI with remote URL
               onChange(urlData.publicUrl)
             }
           } catch (e) {
-            console.error('Upload failed:', e)
+            console.error('Video upload failed:', e)
           }
         }
       }
