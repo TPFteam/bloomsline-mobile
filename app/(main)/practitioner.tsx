@@ -240,7 +240,14 @@ export default function PractitionerScreen() {
 
   async function handleSaveDraft() {
     if (!draftResponseId) return
-    setSaving(true); await saveDraft(draftResponseId, responses); setSaving(false)
+    setSaving(true)
+    const ok = await saveDraft(draftResponseId, responses)
+    setSaving(false)
+    if (ok) {
+      showAlert(t.practitioner?.saved || 'Saved', t.practitioner?.draftSaved || 'Your progress has been saved.')
+    } else {
+      showAlert(t.common?.error || 'Error', t.practitioner?.errorFailedSave || 'Failed to save.')
+    }
   }
 
   function showAlert(title: string, message: string) {
