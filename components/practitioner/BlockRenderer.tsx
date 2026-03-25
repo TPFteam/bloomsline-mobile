@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { View, Text, TextInput, TouchableOpacity, Image } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native'
 import { Video as VideoIcon, Mic, FileUp } from 'lucide-react-native'
 import { Video as ExpoVideo, ResizeMode } from 'expo-av'
+import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 
@@ -969,7 +970,27 @@ export function renderBlock(
         const ImagePicker = require('expo-image-picker')
         const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'videos', videoMaxDuration: 420, quality: 0.7 })
         if (!result.canceled && result.assets?.[0]?.uri) {
-          onChange(result.assets[0].uri)
+          const localUri = result.assets[0].uri
+          // Show local preview immediately
+          onChange(localUri)
+          // Upload to Supabase storage in background
+          try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+            const ext = localUri.split('.').pop() || 'mp4'
+            const fileName = `${user.id}/${Date.now()}.${ext}`
+            const response = await fetch(localUri)
+            const blob = await response.blob()
+            const { error } = await supabase.storage
+              .from('resource-responses')
+              .upload(fileName, blob, { contentType: `video/${ext}`, upsert: true })
+            if (!error) {
+              const { data: urlData } = supabase.storage.from('resource-responses').getPublicUrl(fileName)
+              onChange(urlData.publicUrl)
+            }
+          } catch (e) {
+            console.error('Upload failed:', e)
+          }
         }
       }
 
@@ -991,13 +1012,22 @@ export function renderBlock(
             <View>
               {/* Video player */}
               <View style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 10, backgroundColor: '#1A1A1A' }}>
-                <ExpoVideo
-                  source={{ uri: videoUri! }}
-                  style={{ width: '100%', height: 220 }}
-                  useNativeControls
-                  resizeMode={ResizeMode.CONTAIN}
-                  isLooping={false}
-                />
+                {Platform.OS === 'web' ? (
+                  // @ts-ignore — HTML video element for web
+                  <video
+                    src={videoUri!}
+                    controls
+                    style={{ width: '100%', height: 220, borderRadius: 16, backgroundColor: '#1A1A1A', objectFit: 'contain' }}
+                  />
+                ) : (
+                  <ExpoVideo
+                    source={{ uri: videoUri! }}
+                    style={{ width: '100%', height: 220 }}
+                    useNativeControls
+                    resizeMode={ResizeMode.CONTAIN}
+                    isLooping={false}
+                  />
+                )}
               </View>
               {/* Change video */}
               <TouchableOpacity
