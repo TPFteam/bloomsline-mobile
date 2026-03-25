@@ -17,7 +17,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import RenderHtml from 'react-native-render-html'
-import { useFocusEffect, useRouter } from 'expo-router'
+import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router'
 import { getGreetingKey } from '@/components/DayNav'
 import * as Clipboard from 'expo-clipboard'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
@@ -92,6 +92,7 @@ export default function PractitionerScreen() {
   const insets = useSafeAreaInsets()
   const { width: screenWidth } = useWindowDimensions()
   const router = useRouter()
+  const { openResourceId } = useLocalSearchParams<{ openResourceId?: string }>()
   const { member } = useAuth()
   const { t, locale } = useI18n()
 
@@ -164,6 +165,14 @@ export default function PractitionerScreen() {
   }, [member?.id, practitionerId])
 
   useFocusEffect(useCallback(() => { fetchData() }, [fetchData]))
+
+  // Auto-open resource from email deep link
+  useEffect(() => {
+    if (openResourceId && resources.length > 0 && !loading) {
+      const resource = resources.find(r => r.id === openResourceId)
+      if (resource) setViewingResource(resource)
+    }
+  }, [openResourceId, resources, loading])
 
   // Fetch practitioner notes when preview opens for completed resources
   useEffect(() => {
