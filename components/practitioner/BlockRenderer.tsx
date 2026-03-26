@@ -978,8 +978,10 @@ export function renderBlock(
           try {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
-            const mimeType = result.assets[0].mimeType || 'video/mp4'
-            const ext = mimeType.split('/')[1] || 'mp4'
+            // Supabase doesn't support video/quicktime — normalize to mp4
+            let mimeType = result.assets[0].mimeType || 'video/mp4'
+            if (mimeType === 'video/quicktime') mimeType = 'video/mp4'
+            const ext = mimeType === 'video/mp4' ? 'mp4' : (mimeType.split('/')[1] || 'mp4')
             const fileName = `${user.id}/video-responses/${Date.now()}.${ext}`
             const fetchResponse = await fetch(localUri)
             const blob = await fetchResponse.blob()
