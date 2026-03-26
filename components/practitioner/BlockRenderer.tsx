@@ -968,6 +968,7 @@ export function renderBlock(
 
       const pickVideo = async () => {
         const ImagePicker = require('expo-image-picker')
+        const Alert = require('react-native').Alert
         const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: 'videos', videoMaxDuration: 420, quality: 0.7 })
         if (!result.canceled && result.assets?.[0]?.uri) {
           const localUri = result.assets[0].uri
@@ -977,7 +978,6 @@ export function renderBlock(
           try {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
-            // Use mp4 as default — blob URLs don't have real extensions
             const mimeType = result.assets[0].mimeType || 'video/mp4'
             const ext = mimeType.split('/')[1] || 'mp4'
             const fileName = `${user.id}/video-responses/${Date.now()}.${ext}`
@@ -988,13 +988,23 @@ export function renderBlock(
               .upload(fileName, blob, { contentType: mimeType, upsert: true })
             if (error) {
               console.error('Video upload error:', error)
+              // Clear the local blob — don't save unplayable URLs
+              onChange('')
+              if (Platform.OS === 'web') {
+                window.alert('Video upload failed. Please try again.')
+              } else {
+                Alert.alert('Upload failed', 'Video upload failed. Please try again.')
+              }
             } else if (data) {
               const { data: urlData } = supabase.storage.from('resource-media').getPublicUrl(data.path)
-              // Replace local URI with remote URL
               onChange(urlData.publicUrl)
             }
           } catch (e) {
             console.error('Video upload failed:', e)
+            onChange('')
+            if (Platform.OS === 'web') {
+              window.alert('Video upload failed. Please try again.')
+            }
           }
         }
       }
