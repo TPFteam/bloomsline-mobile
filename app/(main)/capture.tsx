@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { createMoment } from '@/lib/services/moments'
 import * as ImagePicker from 'expo-image-picker'
 import { Audio } from 'expo-av'
-import { Camera, ImageIcon, X, Plus, Check, Mic, Play, Pause, Trash2, RotateCcw, Leaf, Heart, Sparkles, HeartHandshake, Trophy, Sunrise, Wind, Waves, Moon, CloudRain } from 'lucide-react-native'
+import { Camera, ImageIcon, X, Plus, Check, Mic, Play, Pause, Trash2, RotateCcw, Leaf, Heart, Sparkles, HeartHandshake, Trophy, Sun, Wind, Waves, Moon, CloudRain, Laugh, TreePalm, Zap, CloudDrizzle, Flame, UserX } from 'lucide-react-native'
 import { useI18n } from '@/lib/i18n'
 
 const MOOD_ICONS: Record<string, any> = {
@@ -14,24 +14,38 @@ const MOOD_ICONS: Record<string, any> = {
   inspired: Sparkles,
   loved: HeartHandshake,
   proud: Trophy,
-  hopeful: Sunrise,
+  hopeful: Sun,
+  funny: Laugh,
+  peaceful: TreePalm,
+  playful: Zap,
   anxious: Wind,
   overwhelmed: Waves,
   tired: Moon,
   heavy: CloudRain,
+  sad: CloudDrizzle,
+  angry: Flame,
+  lonely: UserX,
 }
 
 const MOODS = [
+  // Positive — gentle to energetic
+  { key: 'peaceful', label: 'Peaceful', color: '#06B6D4' },
   { key: 'calm', label: 'Calm', color: '#4A9A86' },
   { key: 'grateful', label: 'Grateful', color: '#10B981' },
-  { key: 'inspired', label: 'Inspired', color: '#8B5CF6' },
+  { key: 'hopeful', label: 'Hopeful', color: '#F97316' },
   { key: 'loved', label: 'Loved', color: '#F43F5E' },
   { key: 'proud', label: 'Proud', color: '#EC4899' },
-  { key: 'hopeful', label: 'Hopeful', color: '#F97316' },
-  { key: 'anxious', label: 'Anxious', color: '#3B82F6' },
-  { key: 'overwhelmed', label: 'Overwhelmed', color: '#EF4444' },
+  { key: 'inspired', label: 'Inspired', color: '#8B5CF6' },
+  { key: 'funny', label: 'Funny', color: '#FBBF24' },
+  { key: 'playful', label: 'Playful', color: '#F59E0B' },
+  // Difficult — mild to intense
   { key: 'tired', label: 'Tired', color: '#64748B' },
+  { key: 'anxious', label: 'Anxious', color: '#3B82F6' },
+  { key: 'sad', label: 'Sad', color: '#6B7280' },
+  { key: 'lonely', label: 'Lonely', color: '#7C3AED' },
+  { key: 'overwhelmed', label: 'Overwhelmed', color: '#EF4444' },
   { key: 'heavy', label: 'Heavy', color: '#475569' },
+  { key: 'angry', label: 'Angry', color: '#DC2626' },
 ]
 
 type CaptureType = 'photo' | 'video' | 'voice' | 'write'
