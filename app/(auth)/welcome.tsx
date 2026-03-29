@@ -301,7 +301,11 @@ export default function Welcome() {
           }}
         >
           <Text style={{ fontSize: 15, color: '#8B6914', lineHeight: 22, textAlign: 'center' }}>
-            {notEligible}
+            {notEligible === 'not_eligible' || notEligible === 'missing_token' || notEligible === 'invalid_token' || notEligible === 'no_email'
+              ? (locale === 'fr'
+                ? 'Nous sommes actuellement en accès anticipé. Demandez une invitation pour nous rejoindre.'
+                : 'We\'re currently in early access. Request an invite to join us.')
+              : notEligible}
           </Text>
           <Text style={{ fontSize: 12, color: '#B8A070', textAlign: 'center', marginTop: 8 }}>
             {locale === 'fr' ? 'Appuyez pour fermer' : 'Tap to dismiss'}

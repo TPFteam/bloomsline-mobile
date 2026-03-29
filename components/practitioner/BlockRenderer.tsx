@@ -696,15 +696,25 @@ export function renderBlock(
       }
 
       if (scaleType === 'rating') {
+        const rMin = (block.scaleMin ?? 1) as number
+        const rMax = (block.scaleMax ?? block.scaleRange ?? 10) as number
+        const rNums = Array.from({ length: rMax - rMin + 1 }, (_, i) => rMin + i)
         return (
           <View>
             <Text style={LABEL}>{content}{Star}</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
-              {Array.from({ length: scale }, (_, i) => i + 1).map((n) => (
-                <TouchableOpacity key={n} onPress={() => onChange(n)}>
-                  <Text style={{ fontSize: 32, color: blockValue !== undefined && n <= (blockValue as number) ? '#000' : '#D4D4D4' }}>★</Text>
-                </TouchableOpacity>
-              ))}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {rNums.map((n) => {
+                const sel = blockValue === n
+                return (
+                  <TouchableOpacity key={n} onPress={() => onChange(n)} style={{
+                    width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center',
+                    backgroundColor: sel ? '#F59E0B' : colors.surface2,
+                    borderWidth: 1, borderColor: sel ? '#F59E0B' : '#E5E5E3',
+                  }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: sel ? '#fff' : colors.primary }}>{n}</Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
           </View>
         )

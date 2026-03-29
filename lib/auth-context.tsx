@@ -168,7 +168,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           // Not eligible or setup failed — sign out (account deleted server-side)
-          setNotEligible(result.message || result.reason || 'not_eligible')
+          const fallbackMsg = result.reason === 'not_eligible'
+            ? 'We\'re currently in early access. Request an invite to join us.'
+            : 'Could not set up your account. Please try again.'
+          setNotEligible(result.message || fallbackMsg)
           await supabase.auth.signOut()
         } catch (err) {
           console.error('setup-member failed:', err)
