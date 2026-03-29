@@ -170,7 +170,7 @@ export default function PractitionerScreen() {
   // Auto-open resource from email deep link
   useEffect(() => {
     if (openResourceId && resources.length > 0 && !loading) {
-      const resource = resources.find(r => r.id === openResourceId)
+      const resource = resources.find(r => r.resourceId === openResourceId || r.id === openResourceId)
       if (resource) setViewingResource(resource)
     }
   }, [openResourceId, resources, loading])
