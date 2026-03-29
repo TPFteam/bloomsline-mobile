@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native'
 import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy } from 'lucide-react-native'
 import { Video as ExpoVideo, ResizeMode } from 'expo-av'
@@ -52,17 +52,109 @@ const PLACEHOLDER = '#9CA3AF'
 
 function ImageWithLightbox({ uri }: { uri: string }) {
   const [open, setOpen] = useState(false)
+  const scaleRef = useRef(1)
+  const posRef = useRef({ x: 0, y: 0 })
+  const imgRef = useRef<HTMLImageElement | null>(null)
+  const dragging = useRef(false)
+  const dragStart = useRef({ x: 0, y: 0 })
+
+  const applyTransform = () => {
+    if (imgRef.current) {
+      imgRef.current.style.transform = `translate(${posRef.current.x}px, ${posRef.current.y}px) scale(${scaleRef.current})`
+    }
+  }
 
   useEffect(() => {
     if (Platform.OS === 'web' && open) {
       document.body.style.overflow = 'hidden'
       document.documentElement.style.overflow = 'hidden'
-      const prevent = (e: Event) => e.preventDefault()
-      document.addEventListener('touchmove', prevent, { passive: false })
+
+      scaleRef.current = 1
+      posRef.current = { x: 0, y: 0 }
+      applyTransform()
+
+      // Zoom via wheel
+      const handleWheel = (e: WheelEvent) => {
+        e.preventDefault()
+        const delta = e.deltaY > 0 ? -0.1 : 0.1
+        scaleRef.current = Math.max(0.5, Math.min(5, scaleRef.current + delta))
+        if (scaleRef.current <= 1) posRef.current = { x: 0, y: 0 }
+        applyTransform()
+      }
+
+      // Touch pinch zoom
+      let lastDist = 0
+      const handleTouchMove = (e: TouchEvent) => {
+        if (e.touches.length === 2) {
+          e.preventDefault()
+          const dx = e.touches[0].clientX - e.touches[1].clientX
+          const dy = e.touches[0].clientY - e.touches[1].clientY
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (lastDist > 0) {
+            const delta = (dist - lastDist) * 0.005
+            scaleRef.current = Math.max(0.5, Math.min(5, scaleRef.current + delta))
+            if (scaleRef.current <= 1) posRef.current = { x: 0, y: 0 }
+            applyTransform()
+          }
+          lastDist = dist
+        } else if (e.touches.length === 1 && scaleRef.current > 1) {
+          // Pan when zoomed
+          e.preventDefault()
+          if (dragging.current) {
+            posRef.current = {
+              x: posRef.current.x + (e.touches[0].clientX - dragStart.current.x),
+              y: posRef.current.y + (e.touches[0].clientY - dragStart.current.y),
+            }
+            dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+            applyTransform()
+          }
+        }
+      }
+      const handleTouchStart = (e: TouchEvent) => {
+        if (e.touches.length === 1 && scaleRef.current > 1) {
+          dragging.current = true
+          dragStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+        }
+      }
+      const handleTouchEnd = () => { lastDist = 0; dragging.current = false }
+
+      // Mouse drag when zoomed
+      const handleMouseDown = (e: MouseEvent) => {
+        if (scaleRef.current > 1) {
+          dragging.current = true
+          dragStart.current = { x: e.clientX, y: e.clientY }
+        }
+      }
+      const handleMouseMove = (e: MouseEvent) => {
+        if (dragging.current && scaleRef.current > 1) {
+          posRef.current = {
+            x: posRef.current.x + (e.clientX - dragStart.current.x),
+            y: posRef.current.y + (e.clientY - dragStart.current.y),
+          }
+          dragStart.current = { x: e.clientX, y: e.clientY }
+          applyTransform()
+        }
+      }
+      const handleMouseUp = () => { dragging.current = false }
+
+      document.addEventListener('wheel', handleWheel, { passive: false })
+      document.addEventListener('touchstart', handleTouchStart, { passive: false })
+      document.addEventListener('touchmove', handleTouchMove, { passive: false })
+      document.addEventListener('touchend', handleTouchEnd)
+      document.addEventListener('mousedown', handleMouseDown)
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+
       return () => {
         document.body.style.overflow = ''
         document.documentElement.style.overflow = ''
-        document.removeEventListener('touchmove', prevent)
+        document.removeEventListener('wheel', handleWheel)
+        document.removeEventListener('touchstart', handleTouchStart)
+        document.removeEventListener('touchmove', handleTouchMove)
+        document.removeEventListener('touchend', handleTouchEnd)
+        document.removeEventListener('mousedown', handleMouseDown)
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
       }
     }
   }, [open])
@@ -75,19 +167,31 @@ function ImageWithLightbox({ uri }: { uri: string }) {
       {open && Platform.OS === 'web' && (() => {
         const ReactDOM = require('react-dom')
         return ReactDOM.createPortal(
+          // @ts-ignore
           <div
             onClick={() => setOpen(false)}
-            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 99999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 99999, display: 'flex', justifyContent: 'center', alignItems: 'center', touchAction: 'none' }}
           >
+            {/* Close button */}
+            {/* @ts-ignore */}
             <div
-              onClick={(e: any) => e.stopPropagation()}
+              onClick={(e: any) => { e.stopPropagation(); setOpen(false) }}
               style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', zIndex: 10 }}
-              // @ts-ignore
-              onClick={() => setOpen(false)}
             >
               <span style={{ color: '#fff', fontSize: 18, fontWeight: 600 }}>✕</span>
             </div>
-            <img src={uri} style={{ maxWidth: '92%', maxHeight: '85%', objectFit: 'contain', borderRadius: 8 }} />
+            {/* Zoom hint */}
+            {/* @ts-ignore */}
+            <div style={{ position: 'absolute', bottom: 20, left: '50%', transform: 'translateX(-50%)', color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+              Pinch or scroll to zoom
+            </div>
+            {/* Image */}
+            <img
+              ref={(el: any) => { imgRef.current = el }}
+              src={uri}
+              onClick={(e: any) => e.stopPropagation()}
+              style={{ maxWidth: '92%', maxHeight: '85%', objectFit: 'contain', borderRadius: 8, transition: 'transform 0.05s ease', cursor: 'grab', userSelect: 'none' }}
+            />
           </div>,
           document.body
         )
