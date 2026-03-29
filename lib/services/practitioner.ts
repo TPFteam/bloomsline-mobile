@@ -45,6 +45,7 @@ export interface ResourceItem {
   dueDate: string | null
   instructions: string | null
   resourceType: string | null
+  isRecurring?: boolean
 }
 
 // ─── Helpers ────────────────────────────────────────
@@ -226,7 +227,7 @@ export async function fetchResources(memberId: string): Promise<ResourceItem[]> 
         .order('due_date', { ascending: true, nullsFirst: false }),
       supabase
         .from('member_shared_resources')
-        .select('id, viewed_at, completed_at, message, resource:resources(id, title, description, type)')
+        .select('id, viewed_at, completed_at, is_recurring, message, resource:resources(id, title, description, type)')
         .eq('member_id', memberId)
         .order('shared_at', { ascending: false }),
     ])
@@ -262,16 +263,19 @@ export async function fetchResources(memberId: string): Promise<ResourceItem[]> 
       for (const s of sharedRes.data) {
         const resource = Array.isArray(s.resource) ? s.resource[0] : s.resource
         if (!resource || assignedIds.has(resource.id)) continue
+        const isRecurring = !!(s as any).is_recurring
+        const rawStatus = (s as any).completed_at ? 'completed' : s.viewed_at ? 'in_progress' : 'pending'
         items.push({
           id: s.id,
           resourceId: resource.id,
           type: 'shared',
           title: extractLocalized(resource.title) || 'Untitled',
           description: extractLocalized(resource.description) || null,
-          status: (s as any).completed_at ? 'completed' : s.viewed_at ? 'in_progress' : 'pending',
+          status: (isRecurring && rawStatus === 'completed') ? 'in_progress' : rawStatus,
           dueDate: null,
           instructions: (s as any).message || null,
           resourceType: resource.type || null,
+          isRecurring,
         })
       }
     }
@@ -419,7 +423,7 @@ export async function openResourceForFill(
         .limit(1)
         .maybeSingle()
 
-      if (existing) {
+      if (existing && !(item.isRecurring && existing.status === 'submitted')) {
         responseId = existing.id
         responses = existing.responses || {}
         practitionerNotes = existing.practitioner_notes || null
@@ -539,7 +543,7 @@ export async function markResourceComplete(
   if (item.type === 'shared') {
     await supabase
       .from('member_shared_resources')
-      .update({ viewed_at: now, completed_at: now })
+      .update({ viewed_at: now, completed_at: item.isRecurring ? null : now })
       .eq('id', item.id)
 
     // Save responses if there's a response record (interactive shared resources)
