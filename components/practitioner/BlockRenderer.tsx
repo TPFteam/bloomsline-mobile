@@ -50,6 +50,27 @@ const SELECTED_BORDER = colors.primary
 const MUTED = '#6B7280'
 const PLACEHOLDER = '#9CA3AF'
 
+function ImageWithLightbox({ uri }: { uri: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.9}>
+        <Image source={{ uri }} style={{ width: '100%', borderRadius: 16, backgroundColor: colors.surface1, minHeight: 200 }} resizeMode="contain" />
+      </TouchableOpacity>
+      {open && (
+        <View style={{ position: 'absolute' as any, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.92)', zIndex: 9999, justifyContent: 'center', alignItems: 'center', ...(Platform.OS === 'web' ? { position: 'fixed' as any } : {}) }}>
+          <TouchableOpacity onPress={() => setOpen(false)} style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
+            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600' }}>✕</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setOpen(false)} activeOpacity={1} style={{ width: '92%', height: '85%' }}>
+            <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+          </TouchableOpacity>
+        </View>
+      )}
+    </>
+  )
+}
+
 function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onReviewStateChange }: {
   block: any; content: string; blockValue: unknown; onBlockChange: (v: unknown) => void; onReviewStateChange?: (inReview: boolean) => void
 }) {
@@ -1331,7 +1352,7 @@ export function renderBlock(
         <View>
           {content ? <Text style={LABEL}>{content}</Text> : null}
           {imageUrl ? (
-            <Image source={{ uri: imageUrl }} style={{ width: '100%', height: 200, borderRadius: 16, backgroundColor: colors.surface1 }} resizeMode="cover" />
+            <ImageWithLightbox uri={imageUrl} />
           ) : (
             <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
               <Text style={{ fontSize: 14, color: MUTED }}>Image</Text>
