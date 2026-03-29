@@ -52,13 +52,48 @@ const PLACEHOLDER = '#9CA3AF'
 
 function ImageWithLightbox({ uri }: { uri: string }) {
   const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && open) {
+      document.body.style.overflow = 'hidden'
+      document.documentElement.style.overflow = 'hidden'
+      const prevent = (e: Event) => e.preventDefault()
+      document.addEventListener('touchmove', prevent, { passive: false })
+      return () => {
+        document.body.style.overflow = ''
+        document.documentElement.style.overflow = ''
+        document.removeEventListener('touchmove', prevent)
+      }
+    }
+  }, [open])
+
   return (
     <>
       <TouchableOpacity onPress={() => setOpen(true)} activeOpacity={0.9}>
-        <Image source={{ uri }} style={{ width: '100%', borderRadius: 16, backgroundColor: colors.surface1, minHeight: 200 }} resizeMode="contain" />
+        <Image source={{ uri }} style={{ width: '100%', height: 280, borderRadius: 16, backgroundColor: colors.surface2 }} resizeMode="contain" />
       </TouchableOpacity>
-      {open && (
-        <View style={{ position: 'absolute' as any, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.92)', zIndex: 9999, justifyContent: 'center', alignItems: 'center', ...(Platform.OS === 'web' ? { position: 'fixed' as any } : {}) }}>
+      {open && Platform.OS === 'web' && (() => {
+        const ReactDOM = require('react-dom')
+        return ReactDOM.createPortal(
+          <div
+            onClick={() => setOpen(false)}
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 99999, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+          >
+            <div
+              onClick={(e: any) => e.stopPropagation()}
+              style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', zIndex: 10 }}
+              // @ts-ignore
+              onClick={() => setOpen(false)}
+            >
+              <span style={{ color: '#fff', fontSize: 18, fontWeight: 600 }}>✕</span>
+            </div>
+            <img src={uri} style={{ maxWidth: '92%', maxHeight: '85%', objectFit: 'contain', borderRadius: 8 }} />
+          </div>,
+          document.body
+        )
+      })()}
+      {open && Platform.OS !== 'web' && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 9999, justifyContent: 'center', alignItems: 'center' }}>
           <TouchableOpacity onPress={() => setOpen(false)} style={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', zIndex: 10 }}>
             <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600' }}>✕</Text>
           </TouchableOpacity>
