@@ -102,7 +102,7 @@ export async function fetchPractitioner(practitionerId: string): Promise<Practit
   }
 }
 
-export async function fetchSessions(memberId: string, userId?: string): Promise<{
+export async function fetchSessions(memberId: string, _userId?: string): Promise<{
   upcoming: UpcomingSession[]
   past: UpcomingSession[]
 }> {
@@ -127,12 +127,22 @@ export async function fetchSessions(memberId: string, userId?: string): Promise<
       .limit(20),
   ])
 
-  // Also fetch from bookings table (member-booked appointments)
-  const bookingQueries = userId ? await Promise.all([
+  // Also fetch from bookings table — match by member_id (members table ID) OR client_email
+  const { data: { user: authUser } } = await supabase.auth.getUser()
+  const userEmail = authUser?.email || null
+
+  // Build OR filter: memberId is the members-table UUID (used when booking from app),
+  // userEmail matches bookings made from the web booking page
+  const orParts: string[] = []
+  if (memberId) orParts.push(`member_id.eq.${memberId}`)
+  if (userEmail) orParts.push(`client_email.eq.${userEmail}`)
+  const bookingFilter = orParts.length > 0 ? orParts.join(',') : null
+
+  const bookingQueries = bookingFilter ? await Promise.all([
     supabase
       .from('bookings')
       .select('id, start_time, end_time, session_type, status, notes, practitioner_id, client_name')
-      .eq('member_id', userId)
+      .or(bookingFilter)
       .in('status', ['confirmed', 'pending'])
       .gte('start_time', now)
       .order('start_time', { ascending: true })
@@ -140,7 +150,7 @@ export async function fetchSessions(memberId: string, userId?: string): Promise<
     supabase
       .from('bookings')
       .select('id, start_time, end_time, session_type, status, notes, practitioner_id, client_name')
-      .eq('member_id', userId)
+      .or(bookingFilter)
       .in('status', ['completed', 'cancelled', 'no_show'])
       .order('start_time', { ascending: false })
       .limit(20),
@@ -168,8 +178,13 @@ export async function fetchSessions(memberId: string, userId?: string): Promise<
     }
   }
 
-  const upcomingBookings = (bookingQueries[0]?.data || []).map(mapBooking)
-  const pastBookings = (bookingQueries[1]?.data || []).map(mapBooking)
+  // Deduplicate booking results (or-filter may not produce dupes, but be safe)
+  const dedupById = (arr: any[]) => {
+    const seen = new Set()
+    return arr.filter(b => { if (seen.has(b.id)) return false; seen.add(b.id); return true })
+  }
+  const upcomingBookings = dedupById(bookingQueries[0]?.data || []).map(mapBooking)
+  const pastBookings = dedupById(bookingQueries[1]?.data || []).map(mapBooking)
 
   // Deduplicate: when a booking is confirmed, a session is also created.
   // Skip bookings that already have a matching session (same practitioner + time).

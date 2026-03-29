@@ -1481,7 +1481,13 @@ function UpcomingSessionCard({
       )}
 
       {/* Status pill */}
-      {needsConfirmation && (
+      {session.status === 'pending' ? (
+        <View style={{ flexDirection: 'row', marginBottom: 12 }}>
+          <View style={{ backgroundColor: '#FFF7ED', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1, borderColor: '#FED7AA' }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: '#EA580C' }}>{locale === 'fr' ? '⏳ En attente de confirmation' : '⏳ Waiting for confirmation'}</Text>
+          </View>
+        </View>
+      ) : needsConfirmation && (
         <View style={{ flexDirection: 'row', marginBottom: 12 }}>
           <View style={{ backgroundColor: colors.surface1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
             <Text style={{ fontSize: 11, fontWeight: '600', color: '#8A8A8A' }}>{t.practitioner.awaitingConfirmation}</Text>
