@@ -964,7 +964,7 @@ export default function PractitionerScreen() {
                   const blocks: any[] = Array.isArray(fillResource.blocks) ? fillResource.blocks
                     : Array.isArray(fillResource.content?.blocks) ? fillResource.content.blocks : []
                   return blocks.map((block: any, i: number) => (
-                    <View key={block.id || i} style={{ marginBottom: 28 }}>
+                    <View key={block.id || i} style={{ marginBottom: 36 }}>
                       {renderBlock(
                         resInstructions && block.type === 'table_exercise' ? { ...block, instructions: resInstructions } : block,
                         responses[block.id], (v) => setResponses(prev => ({ ...prev, [block.id]: v })), (inReview) => setTableReviewReady(inReview), activeResourceItem?.status === 'completed', t, locale

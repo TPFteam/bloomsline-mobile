@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native'
-import { Video as VideoIcon, Mic, FileUp } from 'lucide-react-native'
+import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy } from 'lucide-react-native'
 import { Video as ExpoVideo, ResizeMode } from 'expo-av'
 import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
@@ -426,34 +426,37 @@ export function renderBlock(
   switch (block.type) {
     case 'heading':
       return (
-        <View style={{ paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: colors.bloom + '40', marginBottom: 4 }}>
-          <Text style={{ fontSize: 22, fontWeight: '800', color: colors.primary, letterSpacing: -0.5, lineHeight: 28 }}>{content}</Text>
+        <View style={{ marginTop: 8 }}>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.5, lineHeight: 30 }}>{content}</Text>
         </View>
       )
 
     case 'paragraph':
-      return <Text style={{ fontSize: 16, color: '#374151', lineHeight: 25 }}>{content}</Text>
+      return <Text style={{ fontSize: 17, color: '#374151', lineHeight: 28 }}>{content}</Text>
 
     case 'quote':
       return (
         <View style={{
-          paddingHorizontal: 16, paddingVertical: 14,
-          backgroundColor: '#F0F4F8', borderRadius: 14,
-          borderLeftWidth: 3, borderLeftColor: colors.bloom,
+          paddingHorizontal: 20, paddingVertical: 16,
+          borderLeftWidth: 3, borderLeftColor: '#FBBF24',
+          borderTopRightRadius: 12, borderBottomRightRadius: 12,
         }}>
-          <Text style={{ fontSize: 16, color: '#1F2937', fontStyle: 'italic', lineHeight: 24, fontWeight: '500' }}>{content}</Text>
+          <Text style={{ fontSize: 17, color: '#374151', fontStyle: 'italic', lineHeight: 28 }}>&ldquo;{content}&rdquo;</Text>
+          {block.attribution && <Text style={{ fontSize: 13, color: '#9CA3AF', marginTop: 8 }}>— {block.attribution}</Text>}
         </View>
       )
 
     case 'tip':
       return (
         <View style={{
-          padding: 16, backgroundColor: '#FFF8E1', borderRadius: 16,
-          borderWidth: 1, borderColor: '#FFE082',
+          padding: 16, backgroundColor: '#fff', borderRadius: 12,
+          borderLeftWidth: 3, borderLeftColor: '#10B981',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
         }}>
-          <Text style={{ fontSize: 15, color: '#5D4037', lineHeight: 22 }}>
-            <Text style={{ fontWeight: '700', fontSize: 16 }}>{'💡 '}</Text>{content}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+            <Lightbulb size={18} color="#10B981" style={{ marginTop: 2 }} />
+            <Text style={{ fontSize: 15, color: '#374151', lineHeight: 24, flex: 1 }}>{content}</Text>
+          </View>
         </View>
       )
 
@@ -463,21 +466,20 @@ export function renderBlock(
     case 'key_points': {
       const points: string[] = Array.isArray(block.points) ? block.points : []
       return (
-        <View style={{ backgroundColor: '#F5FAF8', borderRadius: 16, padding: 16 }}>
+        <View style={{
+          backgroundColor: '#fff', borderRadius: 12, padding: 20,
+          borderLeftWidth: 3, borderLeftColor: colors.bloom,
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
+        }}>
           {content ? (
-            <Text style={{ fontWeight: '700', color: colors.primary, marginBottom: 12, fontSize: 16 }}>{content}</Text>
+            <Text style={{ fontWeight: '600', color: '#1A1A1A', marginBottom: 14, fontSize: 16 }}>{content}</Text>
           ) : null}
           {points.map((pt, i) => (
             <View key={i} style={{
-              flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: i < points.length - 1 ? 10 : 0,
+              flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: i < points.length - 1 ? 12 : 0,
             }}>
-              <View style={{
-                width: 22, height: 22, borderRadius: 11, backgroundColor: colors.bloom + '15',
-                alignItems: 'center', justifyContent: 'center', marginTop: 1,
-              }}>
-                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: colors.bloom }} />
-              </View>
-              <Text style={{ flex: 1, fontSize: 15, color: '#3A3A3A', lineHeight: 22 }}>{typeof pt === 'string' ? pt : ''}</Text>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.bloom, marginTop: 8 }} />
+              <Text style={{ flex: 1, fontSize: 15, color: '#374151', lineHeight: 24 }}>{typeof pt === 'string' ? pt : ''}</Text>
             </View>
           ))}
         </View>
@@ -486,19 +488,25 @@ export function renderBlock(
 
     case 'callout': {
       const ct = block.calloutType || 'info'
-      const cs: Record<string, { bg: string; border: string }> = {
-        info: { bg: '#F0F4F8', border: '#94A3B8' },
-        warning: { bg: '#FFFBEB', border: '#D97706' },
-        success: { bg: '#F0FAF6', border: colors.bloom },
-        tip: { bg: '#F0FAF6', border: colors.bloom },
-        example: { bg: '#F5F5F5', border: '#9CA3AF' },
+      const calloutConfig: Record<string, { borderColor: string; iconColor: string; IconComponent: any }> = {
+        info: { borderColor: '#60A5FA', iconColor: '#60A5FA', IconComponent: Info },
+        warning: { borderColor: '#FBBF24', iconColor: '#FBBF24', IconComponent: Target },
+        success: { borderColor: colors.bloom, iconColor: colors.bloom, IconComponent: Lightbulb },
+        tip: { borderColor: '#10B981', iconColor: '#10B981', IconComponent: Lightbulb },
+        example: { borderColor: '#A78BFA', iconColor: '#A78BFA', IconComponent: BookMarked },
       }
-      const s = cs[ct] || cs.info
+      const cfg = calloutConfig[ct] || calloutConfig.info
+      const CalloutIcon = cfg.IconComponent
       return (
         <View style={{
-          padding: 16, backgroundColor: s.bg, borderRadius: 14,
+          padding: 16, backgroundColor: '#fff', borderRadius: 12,
+          borderLeftWidth: 3, borderLeftColor: cfg.borderColor,
+          shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
         }}>
-          <Text style={{ fontSize: 15, color: '#2D2D2D', lineHeight: 23 }}>{content}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+            <CalloutIcon size={18} color={cfg.iconColor} style={{ marginTop: 2 }} />
+            <Text style={{ fontSize: 15, color: '#374151', lineHeight: 24, flex: 1 }}>{content}</Text>
+          </View>
         </View>
       )
     }
@@ -827,29 +835,89 @@ export function renderBlock(
         </View>
       )
 
-    case 'date_picker':
+    case 'date_picker': {
+      const dateVal = (blockValue as string) || ''
+      const showDatePicker = async () => {
+        if (readOnly) return
+        if (Platform.OS === 'web') {
+          // On web, use a date input via prompt
+          const input = window.prompt(locale === 'fr' ? 'Entrez une date (AAAA-MM-JJ)' : 'Enter a date (YYYY-MM-DD)', dateVal)
+          if (input !== null) onChange(input)
+        } else {
+          try {
+            const DateTimePicker = require('@react-native-community/datetimepicker')
+            // Fallback to text input if picker not available
+            onChange(dateVal)
+          } catch {
+            // Picker not installed — use text input
+          }
+        }
+      }
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
-          <TextInput
-            value={(blockValue as string) || ''} editable={!readOnly} onChangeText={(t) => onChange(t)}
-            placeholder="YYYY-MM-DD" placeholderTextColor={PLACEHOLDER}
-            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 15, color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER }}
-          />
+          <TouchableOpacity
+            onPress={showDatePicker}
+            disabled={readOnly}
+            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: dateVal ? colors.bloom : INPUT_BORDER, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            <Text style={{ fontSize: 15, color: dateVal ? colors.primary : PLACEHOLDER }}>
+              {dateVal || (locale === 'fr' ? 'Sélectionner une date' : 'Select a date')}
+            </Text>
+            <Text style={{ fontSize: 18 }}>📅</Text>
+          </TouchableOpacity>
+          {!readOnly && !dateVal && (
+            <TextInput
+              value={dateVal}
+              onChangeText={(t) => onChange(t)}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor={PLACEHOLDER}
+              style={{ backgroundColor: INPUT_BG, borderRadius: 12, padding: 12, fontSize: 14, color: colors.primary, borderWidth: 1, borderColor: INPUT_BORDER, marginTop: 8 }}
+            />
+          )}
         </View>
       )
+    }
 
-    case 'time_input':
+    case 'time_input': {
+      const timeVal = (blockValue as string) || ''
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
-          <TextInput
-            value={(blockValue as string) || ''} editable={!readOnly} onChangeText={(t) => onChange(t)}
-            placeholder="HH:MM" placeholderTextColor={PLACEHOLDER}
-            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 15, color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER }}
-          />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TextInput
+              value={timeVal.split(':')[0] || ''}
+              editable={!readOnly}
+              onChangeText={(h) => {
+                const cleaned = h.replace(/[^0-9]/g, '').slice(0, 2)
+                const mins = timeVal.split(':')[1] || '00'
+                onChange(`${cleaned}:${mins}`)
+              }}
+              placeholder="HH"
+              placeholderTextColor={PLACEHOLDER}
+              keyboardType="number-pad"
+              maxLength={2}
+              style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 20, fontWeight: '600', color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER, width: 70, textAlign: 'center' }}
+            />
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary }}>:</Text>
+            <TextInput
+              value={timeVal.split(':')[1] || ''}
+              editable={!readOnly}
+              onChangeText={(m) => {
+                const cleaned = m.replace(/[^0-9]/g, '').slice(0, 2)
+                const hours = timeVal.split(':')[0] || '00'
+                onChange(`${hours}:${cleaned}`)
+              }}
+              placeholder="MM"
+              placeholderTextColor={PLACEHOLDER}
+              keyboardType="number-pad"
+              maxLength={2}
+              style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 20, fontWeight: '600', color: colors.primary, borderWidth: 1.5, borderColor: INPUT_BORDER, width: 70, textAlign: 'center' }}
+            />
+          </View>
         </View>
       )
+    }
 
     case 'list_input': {
       const listItems: string[] = Array.isArray(blockValue) ? (blockValue as string[]) : ['']
@@ -1083,25 +1151,147 @@ export function renderBlock(
     }
 
     case 'audio_response': {
+      const audioUri = blockValue as string | null
+      const hasAudio = !!audioUri
+
+      const pickAudio = async () => {
+        const DocumentPicker = require('expo-document-picker')
+        const Alert = require('react-native').Alert
+        const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true })
+        if (!result.canceled && result.assets?.[0]?.uri) {
+          const localUri = result.assets[0].uri
+          onChange(localUri)
+          try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+            const mimeType = result.assets[0].mimeType || 'audio/mpeg'
+            const ext = mimeType.split('/')[1] || 'mp3'
+            const fileName = `${user.id}/audio-responses/${Date.now()}.${ext}`
+            const fetchResponse = await fetch(localUri)
+            const blob = await fetchResponse.blob()
+            const { data, error } = await supabase.storage
+              .from('resource-media')
+              .upload(fileName, blob, { contentType: mimeType, upsert: true })
+            if (error) {
+              onChange('')
+              Platform.OS === 'web' ? window.alert('Audio upload failed.') : Alert.alert('Upload failed', 'Please try again.')
+            } else if (data) {
+              const { data: urlData } = supabase.storage.from('resource-media').getPublicUrl(data.path)
+              onChange(urlData.publicUrl)
+            }
+          } catch {
+            onChange('')
+          }
+        }
+      }
+
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
-          <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 20, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-            <Mic size={22} color={MUTED} strokeWidth={1.8} />
-            <Text style={{ fontSize: 13, color: MUTED }}>{t?.blocks?.audioComingSoon || 'Audio recording coming soon'}</Text>
-          </View>
+          {readOnly ? (
+            hasAudio && audioUri!.startsWith('http') ? (
+              <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface2, padding: 12 }}>
+                <ExpoVideo source={{ uri: audioUri! }} style={{ width: '100%', height: 48 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+              </View>
+            ) : (
+              <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{ fontSize: 14, color: MUTED }}>{hasAudio ? (locale === 'fr' ? 'Audio enregistré' : 'Audio recorded') : (locale === 'fr' ? 'Pas d\'audio' : 'No audio')}</Text>
+              </View>
+            )
+          ) : hasAudio ? (
+            <View>
+              <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface2, padding: 12, marginBottom: 10 }}>
+                {audioUri!.startsWith('http') ? (
+                  <ExpoVideo source={{ uri: audioUri! }} style={{ width: '100%', height: 48 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8 }}>
+                    <Mic size={18} color={colors.bloom} />
+                    <Text style={{ fontSize: 13, color: colors.bloom, fontWeight: '600' }}>{locale === 'fr' ? 'Audio sélectionné' : 'Audio selected'}</Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity onPress={pickAudio} style={{ backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{locale === 'fr' ? 'Changer l\'audio' : 'Change audio'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={pickAudio} style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 80, borderWidth: 1.5, borderColor: INPUT_BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}>
+              <Mic size={28} color={colors.bloom} strokeWidth={1.8} style={{ marginBottom: 8 }} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{locale === 'fr' ? 'Choisir un fichier audio' : 'Choose audio file'}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )
     }
 
     case 'file_response': {
+      const fileUri = blockValue as string | null
+      const hasFile = !!fileUri
+      const fileName = hasFile && fileUri!.startsWith('http') ? fileUri!.split('/').pop()?.split('?')[0] || 'file' : ''
+
+      const pickFile = async () => {
+        const DocumentPicker = require('expo-document-picker')
+        const Alert = require('react-native').Alert
+        const result = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true })
+        if (!result.canceled && result.assets?.[0]?.uri) {
+          const localUri = result.assets[0].uri
+          onChange(localUri)
+          try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+            const mimeType = result.assets[0].mimeType || 'application/octet-stream'
+            const originalName = result.assets[0].name || `file-${Date.now()}`
+            const ext = originalName.split('.').pop() || 'bin'
+            const filePath = `${user.id}/file-responses/${Date.now()}.${ext}`
+            const fetchResponse = await fetch(localUri)
+            const blob = await fetchResponse.blob()
+            const { data, error } = await supabase.storage
+              .from('resource-media')
+              .upload(filePath, blob, { contentType: mimeType, upsert: true })
+            if (error) {
+              onChange('')
+              Platform.OS === 'web' ? window.alert('File upload failed.') : Alert.alert('Upload failed', 'Please try again.')
+            } else if (data) {
+              const { data: urlData } = supabase.storage.from('resource-media').getPublicUrl(data.path)
+              onChange(urlData.publicUrl)
+            }
+          } catch {
+            onChange('')
+          }
+        }
+      }
+
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
-          <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 20, minHeight: 60, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center', gap: 8 }}>
-            <FileUp size={22} color={MUTED} strokeWidth={1.8} />
-            <Text style={{ fontSize: 13, color: MUTED }}>{t?.blocks?.fileComingSoon || 'File upload coming soon'}</Text>
-          </View>
+          {readOnly ? (
+            <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
+              {hasFile ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <FileUp size={18} color={colors.bloom} />
+                  <Text style={{ fontSize: 13, color: colors.bloom, fontWeight: '600' }} numberOfLines={1}>{fileName || (locale === 'fr' ? 'Fichier envoyé' : 'File uploaded')}</Text>
+                </View>
+              ) : (
+                <Text style={{ fontSize: 14, color: MUTED }}>{locale === 'fr' ? 'Pas de fichier' : 'No file'}</Text>
+              )}
+            </View>
+          ) : hasFile ? (
+            <View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 10 }}>
+                <FileUp size={20} color={colors.bloom} />
+                <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500', flex: 1 }} numberOfLines={1}>{fileName || (locale === 'fr' ? 'Fichier sélectionné' : 'File selected')}</Text>
+              </View>
+              <TouchableOpacity onPress={pickFile} style={{ backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{locale === 'fr' ? 'Changer le fichier' : 'Change file'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity onPress={pickFile} style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 80, borderWidth: 1.5, borderColor: INPUT_BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}>
+              <FileUp size={28} color={colors.bloom} strokeWidth={1.8} style={{ marginBottom: 8 }} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{locale === 'fr' ? 'Choisir un fichier' : 'Choose file'}</Text>
+              <Text style={{ fontSize: 12, color: MUTED, marginTop: 4 }}>{locale === 'fr' ? 'PDF, image, document...' : 'PDF, image, document...'}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )
     }
@@ -1128,6 +1318,191 @@ export function renderBlock(
           <Text style={{ fontSize: 16, fontWeight: '600', color: '#7C3AED', textAlign: 'center' }}>{content}</Text>
         </View>
       )
+
+    // ─── Media blocks (psychoeducation) ────────────────────
+    case 'video': {
+      const videoUrl = (block as any).mediaFile?.url || (block as any).url || content
+      return videoUrl ? (
+        <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: '#000' }}>
+          {Platform.OS === 'web' ? (
+            // @ts-ignore — HTML video element for web
+            <video controls src={videoUrl} style={{ width: '100%', height: 220, backgroundColor: '#000', objectFit: 'contain' }} />
+          ) : (
+            <ExpoVideo
+              source={{ uri: videoUrl }}
+              style={{ width: '100%', height: 220 }}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+            />
+          )}
+          {(block as any).caption && (
+            <View style={{ padding: 12, backgroundColor: colors.surface2 }}>
+              <Text style={{ fontSize: 12, color: MUTED }}>{(block as any).caption}</Text>
+            </View>
+          )}
+        </View>
+      ) : null
+    }
+
+    case 'audio': {
+      const audioUrl = (block as any).mediaFile?.url || (block as any).url || content
+      return audioUrl ? (
+        <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface2, padding: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: `${colors.bloom}20`, justifyContent: 'center', alignItems: 'center' }}>
+              <Mic size={20} color={colors.bloom} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primary }}>{(block as any).title || (locale === 'fr' ? 'Audio' : 'Audio')}</Text>
+              {(block as any).caption && <Text style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{(block as any).caption}</Text>}
+            </View>
+          </View>
+          {Platform.OS === 'web' ? (
+            // @ts-ignore — HTML audio element for web
+            <audio controls src={audioUrl} style={{ width: '100%', marginTop: 12, borderRadius: 8 }} />
+          ) : (
+            <ExpoVideo
+              source={{ uri: audioUrl }}
+              style={{ width: '100%', height: 48, marginTop: 12 }}
+              useNativeControls
+              resizeMode={ResizeMode.CONTAIN}
+            />
+          )}
+        </View>
+      ) : null
+    }
+
+    case 'link': {
+      const linkUrl = (block as any).linkUrl || (block as any).url || content
+      const linkTitle = (block as any).linkTitle || (block as any).title || linkUrl
+      return linkUrl ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14, backgroundColor: colors.surface2, borderRadius: 16, borderWidth: 1, borderColor: '#E5E5E3' }}>
+          <TouchableOpacity
+            onPress={() => {
+              try { const { Linking } = require('react-native'); Linking.openURL(linkUrl) } catch {}
+            }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+          >
+            <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: `${colors.bloom}15`, justifyContent: 'center', alignItems: 'center' }}>
+              <ExternalLink size={18} color={colors.bloom} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primary }} numberOfLines={1}>{linkTitle}</Text>
+              <Text style={{ fontSize: 11, color: MUTED, marginTop: 2 }} numberOfLines={1}>{linkUrl}</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              try {
+                const Clipboard = require('expo-clipboard')
+                Clipboard.setStringAsync(linkUrl)
+              } catch {
+                if (Platform.OS === 'web') navigator.clipboard.writeText(linkUrl)
+              }
+            }}
+            style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E5E3', justifyContent: 'center', alignItems: 'center' }}
+          >
+            <Copy size={15} color={MUTED} />
+          </TouchableOpacity>
+        </View>
+      ) : null
+    }
+
+    // ─── Exercise step blocks ──────────────────────────────
+    case 'instruction': {
+      const stepContent = (block as any).instructions || (block as any).content || content
+      return (
+        <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <BookOpen size={16} color={colors.bloom} />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>{locale === 'fr' ? 'Instructions' : 'Instructions'}</Text>
+          </View>
+          <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 21 }}>{typeof stepContent === 'string' ? stripHtmlTags(stepContent) : ''}</Text>
+        </View>
+      )
+    }
+
+    case 'timed_action': {
+      const duration = (block as any).duration || 60
+      const mins = Math.floor(duration / 60)
+      const secs = duration % 60
+      return (
+        <View style={{ backgroundColor: '#FFF7ED', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#FED7AA' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <Play size={16} color="#EA580C" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#EA580C' }}>{locale === 'fr' ? 'Action minutée' : 'Timed Action'}</Text>
+            <Text style={{ fontSize: 12, color: '#9A3412', marginLeft: 'auto' }}>{mins > 0 ? `${mins}m ` : ''}{secs > 0 ? `${secs}s` : ''}</Text>
+          </View>
+          <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 21 }}>{typeof content === 'string' ? stripHtmlTags(content) : (block as any).instructions || ''}</Text>
+        </View>
+      )
+    }
+
+    case 'breathing': {
+      const pattern = (block as any).pattern || '4-7-8'
+      const cycles = (block as any).cycles || 3
+      return (
+        <View style={{ backgroundColor: '#F0FDF4', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#BBF7D0', alignItems: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <Wind size={16} color="#16A34A" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#16A34A' }}>{locale === 'fr' ? 'Respiration' : 'Breathing'}</Text>
+          </View>
+          <Text style={{ fontSize: 24, fontWeight: '700', color: '#15803D', marginBottom: 4 }}>{pattern}</Text>
+          <Text style={{ fontSize: 12, color: '#166534' }}>{cycles} {locale === 'fr' ? 'cycles' : 'cycles'}</Text>
+          {(block as any).instructions && <Text style={{ fontSize: 13, color: colors.primary, marginTop: 10, textAlign: 'center', lineHeight: 19 }}>{(block as any).instructions}</Text>}
+        </View>
+      )
+    }
+
+    case 'visualization': {
+      return (
+        <View style={{ backgroundColor: '#EFF6FF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#BFDBFE' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <Eye size={16} color="#2563EB" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#2563EB' }}>{locale === 'fr' ? 'Visualisation' : 'Visualization'}</Text>
+          </View>
+          <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 21 }}>{typeof content === 'string' ? stripHtmlTags(content) : (block as any).instructions || ''}</Text>
+          {(block as any).mediaFile?.url && (
+            <Image source={{ uri: (block as any).mediaFile.url }} style={{ width: '100%', height: 180, borderRadius: 12, marginTop: 12 }} resizeMode="cover" />
+          )}
+        </View>
+      )
+    }
+
+    case 'body_scan': {
+      return (
+        <View style={{ backgroundColor: '#FDF4FF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#F5D0FE' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <Activity size={16} color="#A855F7" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#A855F7' }}>{locale === 'fr' ? 'Scan corporel' : 'Body Scan'}</Text>
+          </View>
+          <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 21 }}>{typeof content === 'string' ? stripHtmlTags(content) : (block as any).instructions || ''}</Text>
+        </View>
+      )
+    }
+
+    case 'reflection': {
+      const reflectionPrompt = (block as any).prompt || (block as any).instructions || content
+      return (
+        <View style={{ backgroundColor: '#FFFBEB', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#FDE68A' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <PenLine size={16} color="#D97706" />
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#D97706' }}>{locale === 'fr' ? 'Réflexion' : 'Reflection'}</Text>
+          </View>
+          <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 21, fontStyle: 'italic' }}>{typeof reflectionPrompt === 'string' ? stripHtmlTags(reflectionPrompt) : ''}</Text>
+          {!readOnly && (
+            <TextInput
+              style={{ backgroundColor: '#fff', borderWidth: 1, borderColor: '#FDE68A', borderRadius: 12, padding: 12, marginTop: 12, fontSize: 14, minHeight: 80, textAlignVertical: 'top', color: colors.primary }}
+              multiline
+              placeholder={locale === 'fr' ? 'Écrivez votre réflexion...' : 'Write your reflection...'}
+              placeholderTextColor={MUTED}
+              value={typeof blockValue === 'string' ? blockValue : ''}
+              onChangeText={(text) => onChange(text)}
+            />
+          )}
+        </View>
+      )
+    }
 
     default:
       return (
