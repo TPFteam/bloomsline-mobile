@@ -28,6 +28,7 @@ import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
 import { InlineGuide } from '@/components/InlineGuide'
 import { PageLoader } from '@/components/PageLoader'
 import { useAuth } from '@/lib/auth-context'
+import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 import { renderBlock } from '@/components/practitioner/BlockRenderer'
@@ -132,6 +133,9 @@ export default function PractitionerScreen() {
   const [tableReviewReady, setTableReviewReady] = useState(false)
   const [practitionerNotes, setPractitionerNotes] = useState<string | null>(null)
   const [responseStatus, setResponseStatus] = useState<string | null>(null)
+  const [pastResponses, setPastResponses] = useState<{ id: string; submitted_at: string; responses: Record<string, unknown> }[]>([])
+  const [viewingPastResponse, setViewingPastResponse] = useState<{ id: string; submitted_at: string; responses: Record<string, unknown> } | null>(null)
+  const [previewBlocks, setPreviewBlocks] = useState<any[] | null>(null)
   const [previewNotes, setPreviewNotes] = useState<string | null>(null)
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackSelection, setFeedbackSelection] = useState<'negative' | 'neutral' | 'positive' | null>(null)
@@ -182,6 +186,24 @@ export default function PractitionerScreen() {
     } else {
       setPreviewNotes(null)
     }
+    // Fetch past responses and resource blocks for recurring resources
+    if (viewingResource?.isRecurring && member?.id) {
+      supabase
+        .from('resource_responses')
+        .select('id, submitted_at, responses')
+        .eq('resource_id', viewingResource.resourceId)
+        .eq('member_id', member.id)
+        .eq('status', 'submitted')
+        .order('submitted_at', { ascending: false })
+        .then(({ data }) => setPastResponses(data || []))
+      // Pre-fetch resource blocks for displaying past responses
+      supabase.from('resources').select('blocks').eq('id', viewingResource.resourceId).single()
+        .then(({ data }) => { if (data) setPreviewBlocks(data.blocks || []) })
+    } else {
+      setPastResponses([])
+      setPreviewBlocks(null)
+    }
+    setViewingPastResponse(null)
   }, [viewingResource?.id])
 
   const onRefresh = useCallback(async () => {
@@ -863,17 +885,74 @@ export default function PractitionerScreen() {
 
                 </ScrollView>
 
+                {/* Past responses for recurring resources */}
+                {viewingResource.isRecurring && pastResponses.length > 0 && (
+                  <View style={{ marginHorizontal: 28, marginTop: 12 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 8 }}>
+                      {locale === 'fr' ? `Réponses précédentes (${pastResponses.length})` : `Past responses (${pastResponses.length})`}
+                    </Text>
+                    {pastResponses.slice(0, 5).map((pr) => {
+                      const isExpanded = viewingPastResponse?.id === pr.id
+                      return (
+                        <View key={pr.id} style={{ marginBottom: 6 }}>
+                          <TouchableOpacity
+                            onPress={() => setViewingPastResponse(isExpanded ? null : pr)}
+                            style={{
+                              backgroundColor: isExpanded ? colors.surface1 : '#fff',
+                              borderRadius: 12, padding: 12,
+                              borderWidth: 1, borderColor: isExpanded ? colors.bloom : '#EBEBEB',
+                              flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+                            }}
+                          >
+                            <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500' }}>
+                              {new Date(pr.submitted_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                            <Text style={{ fontSize: 12, color: '#999' }}>{isExpanded ? '▲' : '▼'}</Text>
+                          </TouchableOpacity>
+                          {isExpanded && pr.responses && (
+                            <View style={{ backgroundColor: '#FAFAF8', borderRadius: 12, padding: 14, marginTop: 4, borderWidth: 1, borderColor: '#F0F0F0' }}>
+                              {(() => {
+                                const blocks = previewBlocks || []
+                                const entries = Object.entries(pr.responses as Record<string, unknown>)
+                                if (entries.length === 0) return <Text style={{ fontSize: 13, color: '#999', fontStyle: 'italic' }}>{locale === 'fr' ? 'Aucune réponse' : 'No responses'}</Text>
+                                return entries.map(([blockId, value]) => {
+                                  if (value === undefined || value === null || value === '') return null
+                                  const block = blocks.find((b: any) => b.id === blockId)
+                                  const question = block ? (typeof block.content === 'string' ? block.content : (block.content?.en || block.content?.fr || '')) : ''
+                                  const displayValue = Array.isArray(value)
+                                    ? value.filter(Boolean).join(', ')
+                                    : typeof value === 'object'
+                                    ? Object.entries(value as Record<string, unknown>).map(([k, v]) => `${k}: ${v}`).join(', ')
+                                    : String(value)
+                                  return (
+                                    <View key={blockId} style={{ marginBottom: 10 }}>
+                                      {question ? <Text style={{ fontSize: 12, fontWeight: '600', color: '#888', marginBottom: 3 }}>{question}</Text> : null}
+                                      <Text style={{ fontSize: 14, color: colors.primary, lineHeight: 20 }}>{displayValue}</Text>
+                                    </View>
+                                  )
+                                })
+                              })()}
+                            </View>
+                          )}
+                        </View>
+                      )
+                    })}
+                  </View>
+                )}
+
                 <TouchableOpacity
                   onPress={() => handleOpenResource(viewingResource)}
                   activeOpacity={0.8}
                   style={{
-                    backgroundColor: viewingResource.status === 'completed' ? colors.surface1 : colors.primary,
+                    backgroundColor: colors.primary,
                     borderRadius: 28, paddingVertical: 16, alignItems: 'center',
                     marginHorizontal: 28, marginTop: 16,
                   }}
                 >
-                  <Text style={{ fontSize: 17, fontWeight: '600', color: viewingResource.status === 'completed' ? colors.primary : '#fff' }}>
-                    {viewingResource.status === 'completed' ? t.common.done
+                  <Text style={{ fontSize: 17, fontWeight: '600', color: '#fff' }}>
+                    {viewingResource.isRecurring
+                      ? (locale === 'fr' ? 'Remplir à nouveau' : 'Fill again')
+                      : viewingResource.status === 'completed' ? t.common.done
                       : viewingResource.status === 'in_progress' ? t.common.continue : t.practitioner.start}
                   </Text>
                 </TouchableOpacity>
@@ -1341,6 +1420,9 @@ function ResourceCard({ item, onPress }: { item: ResourceItem; onPress: () => vo
         <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }} numberOfLines={1}>{item.title}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
           <StatusBadge status={item.status} />
+          {item.isRecurring && (item.submissionCount || 0) > 0 && (
+            <Text style={{ fontSize: 11, color: colors.bloom, fontWeight: '600' }}>({item.submissionCount})</Text>
+          )}
           {item.dueDate && (
             <Text style={{ fontSize: 11, color: '#8A8A8A' }}>{t.practitioner.due.replace('{date}', formatDate(item.dueDate))}</Text>
           )}

@@ -46,6 +46,7 @@ export interface ResourceItem {
   instructions: string | null
   resourceType: string | null
   isRecurring?: boolean
+  submissionCount?: number
 }
 
 // ─── Helpers ────────────────────────────────────────
@@ -276,6 +277,25 @@ export async function fetchResources(memberId: string): Promise<ResourceItem[]> 
           instructions: (s as any).message || null,
           resourceType: resource.type || null,
           isRecurring,
+        })
+      }
+    }
+
+    // Fetch submission counts for recurring resources
+    const recurringItems = items.filter(i => i.isRecurring)
+    if (recurringItems.length > 0) {
+      const resourceIds = recurringItems.map(i => i.resourceId)
+      const { data: counts } = await supabase
+        .from('resource_responses')
+        .select('resource_id')
+        .eq('member_id', memberId)
+        .eq('status', 'submitted')
+        .in('resource_id', resourceIds)
+      if (counts) {
+        const countMap: Record<string, number> = {}
+        counts.forEach((c: any) => { countMap[c.resource_id] = (countMap[c.resource_id] || 0) + 1 })
+        items.forEach(item => {
+          if (item.isRecurring) item.submissionCount = countMap[item.resourceId] || 0
         })
       }
     }
