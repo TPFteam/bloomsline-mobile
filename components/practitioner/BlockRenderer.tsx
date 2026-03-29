@@ -837,42 +837,31 @@ export function renderBlock(
 
     case 'date_picker': {
       const dateVal = (blockValue as string) || ''
-      const showDatePicker = async () => {
-        if (readOnly) return
-        if (Platform.OS === 'web') {
-          // On web, use a date input via prompt
-          const input = window.prompt(locale === 'fr' ? 'Entrez une date (AAAA-MM-JJ)' : 'Enter a date (YYYY-MM-DD)', dateVal)
-          if (input !== null) onChange(input)
-        } else {
-          try {
-            const DateTimePicker = require('@react-native-community/datetimepicker')
-            // Fallback to text input if picker not available
-            onChange(dateVal)
-          } catch {
-            // Picker not installed — use text input
-          }
-        }
-      }
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
-          <TouchableOpacity
-            onPress={showDatePicker}
-            disabled={readOnly}
-            style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, borderWidth: 1.5, borderColor: dateVal ? colors.bloom : INPUT_BORDER, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-          >
-            <Text style={{ fontSize: 15, color: dateVal ? colors.primary : PLACEHOLDER }}>
-              {dateVal || (locale === 'fr' ? 'Sélectionner une date' : 'Select a date')}
-            </Text>
-            <Text style={{ fontSize: 18 }}>📅</Text>
-          </TouchableOpacity>
-          {!readOnly && !dateVal && (
+          {Platform.OS === 'web' ? (
+            // @ts-ignore — HTML date input for web
+            <input
+              type="date"
+              value={dateVal}
+              onChange={(e: any) => !readOnly && onChange(e.target.value)}
+              disabled={readOnly}
+              style={{
+                width: '100%', padding: 14, fontSize: 15, borderRadius: 16,
+                border: `1.5px solid ${dateVal ? colors.bloom : INPUT_BORDER}`,
+                backgroundColor: INPUT_BG, color: colors.primary,
+                fontFamily: 'inherit',
+              }}
+            />
+          ) : (
             <TextInput
               value={dateVal}
+              editable={!readOnly}
               onChangeText={(t) => onChange(t)}
               placeholder="YYYY-MM-DD"
               placeholderTextColor={PLACEHOLDER}
-              style={{ backgroundColor: INPUT_BG, borderRadius: 12, padding: 12, fontSize: 14, color: colors.primary, borderWidth: 1, borderColor: INPUT_BORDER, marginTop: 8 }}
+              style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 14, fontSize: 15, color: colors.primary, borderWidth: 1.5, borderColor: dateVal ? colors.bloom : INPUT_BORDER }}
             />
           )}
         </View>
@@ -1189,25 +1178,28 @@ export function renderBlock(
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
           {readOnly ? (
-            hasAudio && audioUri!.startsWith('http') ? (
+            hasAudio ? (
               <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface2, padding: 12 }}>
-                <ExpoVideo source={{ uri: audioUri! }} style={{ width: '100%', height: 48 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+                {Platform.OS === 'web' ? (
+                  // @ts-ignore
+                  <audio controls src={audioUri!} style={{ width: '100%', borderRadius: 8 }} />
+                ) : (
+                  <ExpoVideo source={{ uri: audioUri! }} style={{ width: '100%', height: 48 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+                )}
               </View>
             ) : (
               <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, color: MUTED }}>{hasAudio ? (locale === 'fr' ? 'Audio enregistré' : 'Audio recorded') : (locale === 'fr' ? 'Pas d\'audio' : 'No audio')}</Text>
+                <Text style={{ fontSize: 14, color: MUTED }}>{locale === 'fr' ? 'Pas d\'audio' : 'No audio'}</Text>
               </View>
             )
           ) : hasAudio ? (
             <View>
               <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface2, padding: 12, marginBottom: 10 }}>
-                {audioUri!.startsWith('http') ? (
-                  <ExpoVideo source={{ uri: audioUri! }} style={{ width: '100%', height: 48 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+                {Platform.OS === 'web' ? (
+                  // @ts-ignore
+                  <audio controls src={audioUri!} style={{ width: '100%', borderRadius: 8 }} />
                 ) : (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8 }}>
-                    <Mic size={18} color={colors.bloom} />
-                    <Text style={{ fontSize: 13, color: colors.bloom, fontWeight: '600' }}>{locale === 'fr' ? 'Audio sélectionné' : 'Audio selected'}</Text>
-                  </View>
+                  <ExpoVideo source={{ uri: audioUri! }} style={{ width: '100%', height: 48 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
                 )}
               </View>
               <TouchableOpacity onPress={pickAudio} style={{ backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER }}>
@@ -1265,25 +1257,52 @@ export function renderBlock(
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
           {readOnly ? (
-            <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
-              {hasFile ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <FileUp size={18} color={colors.bloom} />
-                  <Text style={{ fontSize: 13, color: colors.bloom, fontWeight: '600' }} numberOfLines={1}>{fileName || (locale === 'fr' ? 'Fichier envoyé' : 'File uploaded')}</Text>
-                </View>
-              ) : (
+            hasFile ? (
+              <TouchableOpacity
+                onPress={() => {
+                  try { const { Linking } = require('react-native'); Linking.openURL(fileUri!) } catch {}
+                }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surface2, borderRadius: 16, padding: 14 }}
+              >
+                <FileUp size={20} color={colors.bloom} />
+                <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500', flex: 1 }} numberOfLines={1}>{fileName || (locale === 'fr' ? 'Fichier envoyé' : 'File uploaded')}</Text>
+                <ExternalLink size={16} color={colors.bloom} />
+              </TouchableOpacity>
+            ) : (
+              <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
                 <Text style={{ fontSize: 14, color: MUTED }}>{locale === 'fr' ? 'Pas de fichier' : 'No file'}</Text>
-              )}
-            </View>
+              </View>
+            )
           ) : hasFile ? (
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 10 }}>
                 <FileUp size={20} color={colors.bloom} />
                 <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '500', flex: 1 }} numberOfLines={1}>{fileName || (locale === 'fr' ? 'Fichier sélectionné' : 'File selected')}</Text>
+                {fileUri!.startsWith('http') && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      try { const { Linking } = require('react-native'); Linking.openURL(fileUri!) } catch {}
+                    }}
+                  >
+                    <ExternalLink size={16} color={colors.bloom} />
+                  </TouchableOpacity>
+                )}
               </View>
-              <TouchableOpacity onPress={pickFile} style={{ backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{locale === 'fr' ? 'Changer le fichier' : 'Change file'}</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {fileUri!.startsWith('http') && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      try { const { Linking } = require('react-native'); Linking.openURL(fileUri!) } catch {}
+                    }}
+                    style={{ flex: 1, backgroundColor: colors.bloom, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>{locale === 'fr' ? 'Ouvrir' : 'Open'}</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={pickFile} style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{locale === 'fr' ? 'Changer le fichier' : 'Change file'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ) : (
             <TouchableOpacity onPress={pickFile} style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 80, borderWidth: 1.5, borderColor: INPUT_BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}>
