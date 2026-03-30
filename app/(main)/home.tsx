@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import NotificationBell from '@/components/NotificationBell'
 import { View, Text, TouchableOpacity, Animated, Pressable, Platform } from 'react-native'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { useRouter, useFocusEffect } from 'expo-router'
@@ -118,17 +119,22 @@ export default function Home() {
           <>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
               <BloomLogo size={36} />
-              <TouchableOpacity
-                onPress={() => router.push('/(main)/settings')}
-                activeOpacity={0.7}
-                style={{
-                  width: 36, height: 36, borderRadius: 18,
-                  backgroundColor: '#f5f5f5',
-                  justifyContent: 'center', alignItems: 'center',
-                }}
-              >
-                <Settings size={18} color="#666" strokeWidth={1.8} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <NotificationBell onOpenResource={(resourceId) => {
+                  router.push({ pathname: '/(main)/practitioner', params: { openResourceId: resourceId } })
+                }} />
+                <TouchableOpacity
+                  onPress={() => router.push('/(main)/settings')}
+                  activeOpacity={0.7}
+                  style={{
+                    width: 36, height: 36, borderRadius: 18,
+                    backgroundColor: '#f5f5f5',
+                    justifyContent: 'center', alignItems: 'center',
+                  }}
+                >
+                  <Settings size={18} color="#666" strokeWidth={1.8} />
+                </TouchableOpacity>
+              </View>
             </View>
             <View style={{ marginBottom: 20 }}>
               <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>

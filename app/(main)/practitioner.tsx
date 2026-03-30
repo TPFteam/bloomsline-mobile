@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import NotificationBell from '@/components/NotificationBell'
 import { FileText, Table2, BookOpen, Dumbbell, FileQuestion, Frown, Meh, Smile, CheckCircle, Settings, Mic, PenLine, Heart, User, Calendar, Clock, FolderOpen } from 'lucide-react-native'
 import {
   View,
@@ -398,17 +399,23 @@ export default function PractitionerScreen() {
         {isHome ? (
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
             <BloomLogo size={36} />
-            <TouchableOpacity
-              onPress={() => router.push('/(main)/settings')}
-              activeOpacity={0.7}
-              style={{
-                width: 36, height: 36, borderRadius: 18,
-                backgroundColor: '#f5f5f5',
-                justifyContent: 'center', alignItems: 'center',
-              }}
-            >
-              <Settings size={18} color="#666" strokeWidth={1.8} />
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <NotificationBell onOpenResource={(resourceId) => {
+                const resource = resources.find(r => r.resourceId === resourceId || r.id === resourceId)
+                if (resource) setViewingResource(resource)
+              }} />
+              <TouchableOpacity
+                onPress={() => router.push('/(main)/settings')}
+                activeOpacity={0.7}
+                style={{
+                  width: 36, height: 36, borderRadius: 18,
+                  backgroundColor: '#f5f5f5',
+                  justifyContent: 'center', alignItems: 'center',
+                }}
+              >
+                <Settings size={18} color="#666" strokeWidth={1.8} />
+              </TouchableOpacity>
+            </View>
           </View>
         ) : (
           <View style={{ marginBottom: 28 }}>

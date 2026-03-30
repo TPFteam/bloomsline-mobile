@@ -588,6 +588,10 @@ export async function markResourceComplete(
         .update({ responses, status: 'submitted', submitted_at: now, updated_at: now })
         .eq('id', responseId)
     }
+
+    // Notify practitioner that member submitted a response
+    notifyPractitionerResourceSubmitted(item, responseId).catch(() => {})
+
     return true
   } else {
     await supabase
@@ -638,4 +642,54 @@ export async function invitePractitioner(email: string): Promise<boolean> {
     body: JSON.stringify({ email: email.trim() }),
   })
   return res.ok
+}
+
+// ─── Notify Practitioner on Resource Submission ────
+
+async function notifyPractitionerResourceSubmitted(item: ResourceItem, responseId: string | null) {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    // Get the shared resource record to find the practitioner
+    const { data: shareRecord } = await supabase
+      .from('member_shared_resources')
+      .select('practitioner_id, member_id')
+      .eq('id', item.id)
+      .single()
+    if (!shareRecord) return
+
+    // Get member name
+    const { data: member } = await supabase
+      .from('members')
+      .select('first_name, last_name')
+      .eq('id', shareRecord.member_id)
+      .single()
+    const memberName = member ? `${member.first_name || ''} ${member.last_name || ''}`.trim() : 'A member'
+
+    await fetch(`${API_URL}/api/notifications/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        userId: shareRecord.practitioner_id,
+        userType: 'practitioner',
+        type: 'resource_submitted',
+        entityType: 'resource_response',
+        entityId: responseId || item.id,
+        metadata: {
+          memberId: shareRecord.member_id,
+          memberName,
+          resourceId: item.resourceId,
+          resourceTitle: item.title,
+          responseId,
+          submittedAt: new Date().toISOString(),
+        },
+      }),
+    })
+  } catch (err) {
+    console.error('Error notifying practitioner:', err)
+  }
 }
