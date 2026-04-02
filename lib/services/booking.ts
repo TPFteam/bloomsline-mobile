@@ -158,7 +158,33 @@ export async function fetchAvailableSlots(
   date: string,
   duration: number,
 ): Promise<{ slots: TimeSlot[]; practitionerTimezone: string | null }> {
-  // Get practitioner's availability schedule for the day of week
+  // Use the care app API which checks Google Calendar busy times
+  try {
+    const res = await fetch(
+      `${API_URL}/api/bookings/available-slots?practitionerId=${practitionerId}&date=${date}&duration=${duration}`
+    )
+
+    if (res.ok) {
+      const data = await res.json()
+      return {
+        slots: data.slots || [],
+        practitionerTimezone: data.practitionerTimezone || null,
+      }
+    }
+  } catch (err) {
+    console.warn('API slot fetch failed, falling back to direct query:', err)
+  }
+
+  // Fallback: direct Supabase query (no Google Calendar check)
+  return fetchAvailableSlotsFallback(practitionerId, date, duration)
+}
+
+// Fallback when the care app API is unreachable
+async function fetchAvailableSlotsFallback(
+  practitionerId: string,
+  date: string,
+  duration: number,
+): Promise<{ slots: TimeSlot[]; practitionerTimezone: string | null }> {
   const dayOfWeek = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase()
 
   const { data: schedules } = await supabase
@@ -172,7 +198,6 @@ export async function fetchAvailableSlots(
 
   const practitionerTz = schedules[0].timezone || 'UTC'
 
-  // Get booking settings for buffer times
   const { data: settings } = await supabase
     .from('booking_settings')
     .select('buffer_before, buffer_after, min_notice_hours')
@@ -184,19 +209,14 @@ export async function fetchAvailableSlots(
   const minNoticeMs = (settings?.min_notice_hours || 0) * 3600000
   const now = Date.now()
 
-  // Get existing bookings for this date to check conflicts
-  const dayStart = `${date}T00:00:00`
-  const dayEnd = `${date}T23:59:59`
-
   const { data: existingBookings } = await supabase
     .from('bookings')
     .select('start_time, end_time')
     .eq('practitioner_id', practitionerId)
-    .gte('start_time', dayStart)
-    .lte('start_time', dayEnd)
+    .gte('start_time', `${date}T00:00:00`)
+    .lte('start_time', `${date}T23:59:59`)
     .neq('status', 'cancelled')
 
-  // Check availability overrides (blocked dates)
   const { data: overrides } = await supabase
     .from('availability_overrides')
     .select('is_available')
@@ -207,16 +227,12 @@ export async function fetchAvailableSlots(
     return { slots: [], practitionerTimezone: practitionerTz }
   }
 
-  // Generate 30-minute slots from each schedule block
   const allSlots: TimeSlot[] = []
   const durationMs = duration * 60000
 
   for (const schedule of schedules) {
     const [startH, startM] = schedule.start_time.split(':').map(Number)
     const [endH, endM] = schedule.end_time.split(':').map(Number)
-
-    // Create slot times in practitioner's timezone by building ISO strings
-    // We iterate in 30-min intervals from start to end
     let currentMinutes = startH * 60 + startM
     const endMinutes = endH * 60 + endM
 
@@ -224,29 +240,20 @@ export async function fetchAvailableSlots(
       const slotH = Math.floor(currentMinutes / 60)
       const slotM = currentMinutes % 60
       const slotTimeStr = `${date}T${String(slotH).padStart(2, '0')}:${String(slotM).padStart(2, '0')}:00`
-
-      // Create Date in practitioner's timezone
       const slotStart = new Date(slotTimeStr)
-      // Approximate: treat the date string as local time in practitioner TZ
-      // For proper timezone handling we'd need a library, but this works for same-tz scenarios
       const slotEnd = new Date(slotStart.getTime() + durationMs)
 
-      const slotStartMs = slotStart.getTime()
-      const slotEndMs = slotEnd.getTime()
-
-      // Check min notice
-      if (slotStartMs - now < minNoticeMs) {
+      if (slotStart.getTime() - now < minNoticeMs) {
         currentMinutes += 30
         continue
       }
 
-      // Check conflicts with existing bookings
       let hasConflict = false
       if (existingBookings) {
         for (const booking of existingBookings) {
           const bStart = new Date(booking.start_time).getTime() - bufferBefore
           const bEnd = new Date(booking.end_time).getTime() + bufferAfter
-          if (slotStartMs < bEnd && slotEndMs > bStart) {
+          if (slotStart.getTime() < bEnd && slotEnd.getTime() > bStart) {
             hasConflict = true
             break
           }
@@ -254,12 +261,8 @@ export async function fetchAvailableSlots(
       }
 
       if (!hasConflict) {
-        allSlots.push({
-          slot_start: slotStart.toISOString(),
-          slot_end: slotEnd.toISOString(),
-        })
+        allSlots.push({ slot_start: slotStart.toISOString(), slot_end: slotEnd.toISOString() })
       }
-
       currentMinutes += 30
     }
   }
