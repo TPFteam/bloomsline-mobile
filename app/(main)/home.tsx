@@ -166,8 +166,8 @@ export default function Home() {
           icon={Heart}
           title={locale === 'fr' ? 'Vos moments' : 'Your moments'}
           description={locale === 'fr'
-            ? 'Capturez ce que vous ressentez — photos, voix, écriture. Votre parcours émotionnel se construit au fil du temps.'
-            : 'Capture how you feel — photos, voice, writing. Your emotional timeline builds over time.'}
+            ? 'Gardez les moments qui ont compté pour vous (photos, vocaux, textes).'
+            : 'Keep the moments that mattered to you (photos, voice, texts).'}
         />
 
         {/* Date strip + Timeline */}
