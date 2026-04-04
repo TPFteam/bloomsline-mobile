@@ -4,6 +4,7 @@ import { X } from 'lucide-react-native'
 import { colors } from '@/lib/theme'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
+import { useI18n } from '@/lib/i18n'
 
 interface InlineGuideProps {
   guideKey: string // 'care' | 'moments' | 'stories'
@@ -13,6 +14,7 @@ interface InlineGuideProps {
 }
 
 export function InlineGuide({ guideKey, icon: Icon, title, description }: InlineGuideProps) {
+  const { locale } = useI18n()
   const { user } = useAuth()
   const [visible, setVisible] = useState(false)
 
@@ -78,7 +80,7 @@ export function InlineGuide({ guideKey, icon: Icon, title, description }: Inline
       </View>
       <TouchableOpacity onPress={dismiss} style={{ alignSelf: 'flex-end', marginTop: 12 }}>
         <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>
-          Got it
+          {locale === 'fr' ? 'Compris' : 'Got it'}
         </Text>
       </TouchableOpacity>
     </View>
