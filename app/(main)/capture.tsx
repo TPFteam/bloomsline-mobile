@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { Audio } from 'expo-av'
 import { Camera, ImageIcon, X, Plus, Check, Mic, Play, Pause, Trash2, RotateCcw, Leaf, Heart, Sparkles, HeartHandshake, Trophy, Sun, Wind, Waves, Moon, CloudRain, Laugh, TreePalm, Zap, CloudDrizzle, Flame, UserX } from 'lucide-react-native'
 import { useI18n } from '@/lib/i18n'
+import { colors } from '@/lib/theme'
 
 const MOOD_ICONS: Record<string, any> = {
   calm: Leaf,
@@ -151,14 +152,24 @@ function AudioPlayer({ uri, duration, compact }: { uri: string; duration: number
 // ─── Main Capture Component ───────────────────────────
 export default function Capture() {
   const router = useRouter()
-  const { type } = useLocalSearchParams<{ type?: string }>()
+  const { type, walkthrough, prefill } = useLocalSearchParams<{ type?: string; walkthrough?: string; prefill?: string }>()
   const captureType = (type as CaptureType) || 'photo'
+  const isWalkthrough = walkthrough === '1'
   const insets = useSafeAreaInsets()
   const { t, locale } = useI18n()
+
+  // If walkthrough capture is loaded directly (refresh), go back to home
+  useEffect(() => {
+    if (isWalkthrough && !router.canGoBack()) {
+      router.replace('/(main)/home')
+    }
+  }, [])
 
   const [step, setStep] = useState<Step>(captureType === 'write' ? 'capture' : 'capture')
   const [selectedMoods, setSelectedMoods] = useState<string[]>([])
   const [note, setNote] = useState('')
+  const [typingDone, setTypingDone] = useState(!isWalkthrough)
+  const typingIndex = useRef(0)
   const [mediaItems, setMediaItems] = useState<{ uri: string; mimeType: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -168,6 +179,24 @@ export default function Capture() {
   const [audioDuration, setAudioDuration] = useState(0)
   const pulseAnim = useRef(new Animated.Value(1)).current
   const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Walkthrough typing animation
+  useEffect(() => {
+    if (!isWalkthrough || !prefill) return
+    typingIndex.current = 0
+    setNote('')
+    const interval = setInterval(() => {
+      typingIndex.current++
+      if (typingIndex.current >= prefill.length) {
+        clearInterval(interval)
+        setNote(prefill)
+        setTypingDone(true)
+      } else {
+        setNote(prefill.slice(0, typingIndex.current))
+      }
+    }, 40)
+    return () => clearInterval(interval)
+  }, [isWalkthrough, prefill])
 
   // For voice recording pulse
   useEffect(() => {
@@ -321,7 +350,7 @@ export default function Capture() {
   }
 
   const canProceedFromCapture = captureType === 'write'
-    ? note.trim().length > 0
+    ? note.trim().length > 0 && typingDone
     : captureType === 'voice'
     ? !recording && mediaItems.length > 0
     : mediaItems.length > 0 // photo/video require at least one item
@@ -329,27 +358,35 @@ export default function Capture() {
   const stepLabels: Step[] = ['capture', 'mood', 'save']
   const currentStepIndex = stepLabels.indexOf(step)
 
-  const title = {
-    photo: t.capture.titlePhoto,
-    video: t.capture.titleVideo,
-    voice: t.capture.titleVoice,
-    write: t.capture.titleWrite,
-  }[captureType]
+  const title = isWalkthrough && step === 'capture'
+    ? (locale === 'fr' ? 'Votre premier moment' : 'Your first moment')
+    : {
+        photo: t.capture.titlePhoto,
+        video: t.capture.titleVideo,
+        voice: t.capture.titleVoice,
+        write: t.capture.titleWrite,
+      }[captureType]
 
-  const subtitle = {
-    photo: t.capture.subtitlePhoto,
-    video: t.capture.subtitleVideo,
-    voice: audioUri ? t.capture.subtitleVoiceDone : t.capture.subtitleVoice,
-    write: t.capture.subtitleWrite,
-  }[captureType]
+  const subtitle = isWalkthrough && step === 'capture'
+    ? (locale === 'fr' ? 'Modifiez le texte ou continuez' : 'Edit the text or continue')
+    : {
+        photo: t.capture.subtitlePhoto,
+        video: t.capture.subtitleVideo,
+        voice: audioUri ? t.capture.subtitleVoiceDone : t.capture.subtitleVoice,
+        write: t.capture.subtitleWrite,
+      }[captureType]
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top, paddingBottom: insets.bottom }}>
       {/* Header */}
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingVertical: 16 }}>
-        <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}>
-          <X size={20} color="#000" />
-        </TouchableOpacity>
+        {isWalkthrough ? (
+          <View style={{ width: 40 }} />
+        ) : (
+          <TouchableOpacity onPress={() => router.back()} style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}>
+            <X size={20} color="#000" />
+          </TouchableOpacity>
+        )}
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {stepLabels.map((s, i) => (
             <View
@@ -551,13 +588,28 @@ export default function Capture() {
             {/* Write */}
             {captureType === 'write' && (
               <View style={{ flex: 1 }}>
+                {isWalkthrough && !typingDone ? (
+                  /* Typing animation — read-only while text appears */
+                  <View style={{
+                    flex: 1,
+                    minHeight: 280,
+                    backgroundColor: '#f8f8f8',
+                    borderRadius: 20,
+                    padding: 20,
+                  }}>
+                    <Text style={{ fontSize: 18, color: '#000', lineHeight: 28 }}>
+                      {note}
+                      <Text style={{ color: colors.bloom }}>|</Text>
+                    </Text>
+                  </View>
+                ) : (
                 <TextInput
                   value={note}
                   onChangeText={setNote}
                   placeholder={t.capture.writePlaceholder}
                   placeholderTextColor="#ccc"
                   multiline
-                  autoFocus
+                  autoFocus={!isWalkthrough}
                   style={{
                     flex: 1,
                     minHeight: 280,
@@ -571,6 +623,7 @@ export default function Capture() {
                     outlineStyle: 'none',
                   } as any}
                 />
+                )}
               </View>
             )}
           </View>

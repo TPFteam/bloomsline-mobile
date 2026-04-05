@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Dimensions } from 'react-native'
+import { View, Text, TouchableOpacity, Dimensions, Animated } from 'react-native'
+import { useEffect, useRef } from 'react'
 import { MOOD_SCORES, MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { formatTime } from '@/components/DayNav'
@@ -17,10 +18,24 @@ interface EmotionalTimelineProps {
     moments: Moment[]
     showNow: boolean
     onMomentPress?: (m: Moment) => void
+    glowDots?: boolean
 }
 
-export function EmotionalTimeline({ moments, showNow, onMomentPress }: EmotionalTimelineProps) {
-    const { t } = useI18n()
+export function EmotionalTimeline({ moments, showNow, onMomentPress, glowDots }: EmotionalTimelineProps) {
+    const { t, locale } = useI18n()
+    const pulseAnim = useRef(new Animated.Value(0)).current
+
+    useEffect(() => {
+        if (!glowDots) return
+        const loop = Animated.loop(
+            Animated.sequence([
+                Animated.timing(pulseAnim, { toValue: 1, duration: 1000, useNativeDriver: true }),
+                Animated.timing(pulseAnim, { toValue: 0, duration: 1000, useNativeDriver: true }),
+            ])
+        )
+        loop.start()
+        return () => loop.stop()
+    }, [glowDots])
     const sorted = [...moments]
         .filter(m => m.moods && m.moods.length > 0)
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
@@ -139,7 +154,12 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress }: Emotional
                         const isLatest = i === points.length - 1
                         const color = MOOD_COLORS[pt.mood] || '#666'
                         const elements = []
-                        if (isLatest) {
+                        if (glowDots) {
+                            elements.push(
+                                <Circle key={`glow2-${i}`} cx={pt.x} cy={pt.y} r={24} fill={color} opacity={0.08} />,
+                                <Circle key={`glow1-${i}`} cx={pt.x} cy={pt.y} r={16} fill={color} opacity={0.15} />,
+                            )
+                        } else if (isLatest) {
                             elements.push(
                                 <Circle key={`glow-${i}`} cx={pt.x} cy={pt.y} r={16} fill={color} opacity={0.1} />
                             )
@@ -148,10 +168,10 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress }: Emotional
                             <Circle
                                 key={`orb-${i}`}
                                 cx={pt.x} cy={pt.y}
-                                r={isLatest ? 8 : 5}
+                                r={isLatest || glowDots ? 8 : 5}
                                 fill={color}
                                 stroke="#fff"
-                                strokeWidth={isLatest ? 3 : 2}
+                                strokeWidth={isLatest || glowDots ? 3 : 2}
                             />
                         )
                         return elements
@@ -173,22 +193,69 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress }: Emotional
 
                 </Svg>
 
-                {/* Touch targets (native Views overlaid on SVG) */}
-                {points.map((pt, i) => (
-                    <TouchableOpacity
-                        key={`hit-${i}`}
-                        activeOpacity={0.7}
-                        onPress={() => onMomentPress?.(pt.moment)}
-                        style={{
-                            position: 'absolute',
-                            left: pt.x - 18,
-                            top: pt.y - 18,
-                            width: 36,
-                            height: 36,
-                            borderRadius: 18,
-                        }}
-                    />
-                ))}
+                {/* Touch targets + pulse rings */}
+                {points.map((pt, i) => {
+                    const color = MOOD_COLORS[pt.mood] || '#666'
+                    return (
+                        <TouchableOpacity
+                            key={`hit-${i}`}
+                            activeOpacity={0.7}
+                            onPress={() => onMomentPress?.(pt.moment)}
+                            style={{
+                                position: 'absolute',
+                                left: pt.x - 22,
+                                top: pt.y - 22,
+                                width: 44,
+                                height: 44,
+                                borderRadius: 22,
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}
+                        >
+                            {glowDots && (
+                                <>
+                                    {/* Outer expanding ring */}
+                                    <Animated.View style={{
+                                        position: 'absolute',
+                                        width: 44,
+                                        height: 44,
+                                        borderRadius: 22,
+                                        borderWidth: 2,
+                                        borderColor: color,
+                                        opacity: pulseAnim.interpolate({
+                                            inputRange: [0, 0.5, 1],
+                                            outputRange: [0.6, 0.1, 0],
+                                        }),
+                                        transform: [{
+                                            scale: pulseAnim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [1, 2.2],
+                                            }),
+                                        }],
+                                    }} />
+                                    {/* Inner soft glow */}
+                                    <Animated.View style={{
+                                        position: 'absolute',
+                                        width: 44,
+                                        height: 44,
+                                        borderRadius: 22,
+                                        backgroundColor: color,
+                                        opacity: pulseAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [0.15, 0.05],
+                                        }),
+                                        transform: [{
+                                            scale: pulseAnim.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: [1, 1.6],
+                                            }),
+                                        }],
+                                    }} />
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    )
+                })}
             </View>
 
             {/* Latest mood pill */}

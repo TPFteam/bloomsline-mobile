@@ -397,8 +397,7 @@ export default function PractitionerScreen() {
       >
         {/* Header */}
         {isHome ? (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-            <BloomLogo size={36} />
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 28 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <NotificationBell onOpenResource={(resourceId) => {
                 const resource = resources.find(r => r.resourceId === resourceId || r.id === resourceId)

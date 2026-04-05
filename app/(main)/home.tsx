@@ -1,19 +1,21 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import NotificationBell from '@/components/NotificationBell'
-import { View, Text, TouchableOpacity, Animated, Pressable, Platform } from 'react-native'
+import { View, Text, TouchableOpacity, Animated, Pressable } from 'react-native'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
-import { Camera, Video, Mic, PenLine, Settings, Heart, User, Plus } from 'lucide-react-native'
+import { Camera, Video, Mic, PenLine, Settings, Heart, User, Plus, Lightbulb } from 'lucide-react-native'
 import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
 import { InlineGuide } from '@/components/InlineGuide'
+import { WelcomeGuide } from '@/components/WelcomeGuide'
 import { colors, CAPTURE_TYPE_COLORS } from '@/lib/theme'
+import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
+import { supabase } from '@/lib/supabase'
 
 // Extracted components
-import { BloomLogo } from '@/components/BloomLogo'
 import { DayNav, getToday, isSameDay, getGreetingKey } from '@/components/DayNav'
 import { useI18n } from '@/lib/i18n'
 import { EmotionalTimeline } from '@/components/EmotionalTimeline'
@@ -22,10 +24,10 @@ import { BloomFullScreen } from '@/components/BloomFullScreen'
 
 const CARD_SIZE = 95
 const CAPTURE_TYPES = [
-  { key: 'photo', Icon: Camera, label: 'Photo', color: CAPTURE_TYPE_COLORS.photo, rotate: '-6deg', offsetX: -55, offsetY: -120 },
-  { key: 'video', Icon: Video, label: 'Video', color: CAPTURE_TYPE_COLORS.video, rotate: '5deg', offsetX: 55, offsetY: -120 },
-  { key: 'voice', Icon: Mic, label: 'Voice', color: CAPTURE_TYPE_COLORS.voice, rotate: '-4deg', offsetX: -55, offsetY: -10 },
-  { key: 'write', Icon: PenLine, label: 'Write', color: CAPTURE_TYPE_COLORS.write, rotate: '4deg', offsetX: 55, offsetY: -10 },
+  { key: 'photo', Icon: Camera, label: 'Photo', color: CAPTURE_TYPE_COLORS.photo },
+  { key: 'write', Icon: PenLine, label: 'Write', color: CAPTURE_TYPE_COLORS.write },
+  { key: 'voice', Icon: Mic, label: 'Voice', color: CAPTURE_TYPE_COLORS.voice },
+  { key: 'video', Icon: Video, label: 'Video', color: CAPTURE_TYPE_COLORS.video },
 ]
 
 // ─── Main Screen ─────────────────────────────────────
@@ -42,9 +44,147 @@ export default function Home() {
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null)
   const [captureOpen, setCaptureOpen] = useState(false)
   const [bloomOpen, setBloomOpen] = useState(false)
+  const [showWelcome, setShowWelcome] = useState(false)
+  const [spotlightGuide, setSpotlightGuide] = useState(false)
+  const [walkthroughCTA, setWalkthroughCTA] = useState(false)
+  const [walkthroughReturn, setWalkthroughReturn] = useState(false)
+  const [walkthroughFinal, setWalkthroughFinal] = useState(false)
+  const [revealActive, setRevealActive] = useState(false)
+  const [captureHighlight, setCaptureHighlight] = useState(false)
+  const captureHighlightPulse = useRef(new Animated.Value(0)).current
+  const walkthroughActive = useRef(false)
+  const [practitionerName, setPractitionerName] = useState<string | undefined>(undefined)
+  const walkthroughFade = useRef(new Animated.Value(0)).current
+  const finalFade = useRef(new Animated.Value(0)).current
+  const revealScale = useRef(new Animated.Value(0)).current
+  const revealOpacity = useRef(new Animated.Value(1)).current
   const expandAnim = useRef(new Animated.Value(0)).current
   const fabRotateAnim = useRef(new Animated.Value(0)).current
   const bloomPulse = useRef(new Animated.Value(0)).current
+
+  // Check if welcome guide should show
+  useEffect(() => {
+    if (!user?.id) return
+    supabase
+      .from('users')
+      .select('guides_seen')
+      .eq('id', user.id)
+      .single()
+      .then(async ({ data }) => {
+        const seen = data?.guides_seen || {}
+        if (!seen.walkthrough_complete) {
+          // Check if user already has moments (previous incomplete walkthrough)
+          const start = new Date(); start.setHours(0, 0, 0, 0)
+          const end = new Date(); end.setDate(end.getDate() + 1); end.setHours(0, 0, 0, 0)
+          const existing = await getMemberMoments(1, 0, start, end)
+          if (existing.length > 0) {
+            // Already has moments — skip onboarding, mark complete
+            await supabase.from('users').update({
+              guides_seen: { ...seen, welcome: true, moments: true, walkthrough_complete: true }
+            }).eq('id', user!.id)
+          } else {
+            setShowWelcome(true)
+          }
+        }
+      })
+    if (member?.practitioner_id) {
+      supabase
+        .from('users')
+        .select('full_name')
+        .eq('id', member.practitioner_id)
+        .single()
+        .then(({ data }) => {
+          if (data?.full_name) setPractitionerName(data.full_name)
+        })
+    }
+  }, [user?.id, member?.practitioner_id])
+
+  const handleWelcomeDismiss = async () => {
+    setShowWelcome(false)
+    setSpotlightGuide(true)
+    // Mark welcome as seen
+    if (!user?.id) return
+    const { data } = await supabase.from('users').select('guides_seen').eq('id', user.id).single()
+    const seen = data?.guides_seen || {}
+    await supabase.from('users').update({ guides_seen: { ...seen, welcome: true } }).eq('id', user.id)
+  }
+
+  const handleSpotlightDismiss = () => {
+    walkthroughFade.setValue(0)
+    setWalkthroughCTA(true)
+    setSpotlightGuide(false)
+    setTimeout(() => {
+      Animated.timing(walkthroughFade, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }).start()
+    }, 300)
+  }
+
+  const startWalkthrough = () => {
+    setWalkthroughCTA(false)
+    walkthroughActive.current = true
+    const prefill = locale === 'fr'
+      ? 'Je suis curieux de voir comment ça marche...'
+      : "I'm feeling curious about how this works..."
+    router.push({ pathname: '/(main)/capture', params: { type: 'write', walkthrough: '1', prefill } })
+  }
+
+  const handleMomentClose = () => {
+    if (walkthroughReturn) {
+      setViewingMoment(null)
+      setWalkthroughReturn(false)
+      setWalkthroughFinal(true)
+      finalFade.setValue(0)
+      setTimeout(() => {
+        Animated.timing(finalFade, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }).start()
+      }, 300)
+    } else {
+      setViewingMoment(null)
+    }
+  }
+
+  const handleWalkthroughComplete = async () => {
+    // Start reveal animation
+    setRevealActive(true)
+    revealScale.setValue(0)
+    revealOpacity.setValue(1)
+
+    // Phase 1: circle expands from center
+    Animated.timing(revealScale, {
+      toValue: 1,
+      duration: 700,
+      useNativeDriver: true,
+    }).start(() => {
+      // Phase 2: reveal the app — hide walkthrough states, fade out overlay
+      setWalkthroughFinal(false)
+      Animated.timing(revealOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start(() => {
+        setRevealActive(false)
+        setCaptureHighlight(true)
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(captureHighlightPulse, { toValue: 1, duration: 1000, useNativeDriver: true }),
+            Animated.timing(captureHighlightPulse, { toValue: 0, duration: 1000, useNativeDriver: true }),
+          ])
+        ).start()
+      })
+    })
+
+    // Save to DB
+    if (!user?.id) return
+    const { data } = await supabase.from('users').select('guides_seen').eq('id', user.id).single()
+    const seen = data?.guides_seen || {}
+    await supabase.from('users').update({ guides_seen: { ...seen, walkthrough_complete: true } }).eq('id', user.id)
+  }
 
   useEffect(() => {
     Animated.loop(
@@ -58,24 +198,21 @@ export default function Home() {
   const isToday = isSameDay(selectedDate, getToday())
 
   const toggleCapture = () => {
+    if (captureHighlight) setCaptureHighlight(false)
     const opening = !captureOpen
     if (opening) {
       setCaptureOpen(true)
-      Animated.parallel([
-        Animated.spring(expandAnim, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }),
-        Animated.spring(fabRotateAnim, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }),
-      ]).start()
+      Animated.spring(expandAnim, { toValue: 1, friction: 8, tension: 60, useNativeDriver: true }).start()
     } else {
-      expandAnim.setValue(0)
-      fabRotateAnim.setValue(0)
-      setCaptureOpen(false)
+      Animated.timing(expandAnim, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
+        setCaptureOpen(false)
+      })
     }
   }
 
   const handleCaptureType = (type: string) => {
     setCaptureOpen(false)
     expandAnim.setValue(0)
-    fabRotateAnim.setValue(0)
     router.push({ pathname: '/(main)/capture', params: { type } })
   }
 
@@ -90,6 +227,11 @@ export default function Home() {
     const data = await getMemberMoments(20, 0, start, end)
     setMoments(data)
     setLoading(false)
+    // Check if returning from walkthrough capture
+    if (walkthroughActive.current && data.length > 0) {
+      walkthroughActive.current = false
+      setWalkthroughReturn(true)
+    }
   }, [selectedDate])
 
   useFocusEffect(
@@ -117,8 +259,7 @@ export default function Home() {
         {/* Header */}
         {isHome ? (
           <>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
-              <BloomLogo size={36} />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 28 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <NotificationBell onOpenResource={(resourceId) => {
                   router.push({ pathname: '/(main)/practitioner', params: { openResourceId: resourceId } })
@@ -160,169 +301,384 @@ export default function Home() {
           </>
         )}
 
-        {/* Inline guide */}
-        <InlineGuide
-          guideKey="moments"
-          icon={Heart}
-          title={locale === 'fr' ? 'Vos moments' : 'Your moments'}
-          description={locale === 'fr'
-            ? 'Gardez les moments qui ont compté pour vous (photos, vocaux, textes).'
-            : 'Keep the moments that mattered to you (photos, voice, texts).'}
-        />
+        {/* Inline guide — hidden during walkthrough CTA */}
+        {!walkthroughCTA && (
+          <InlineGuide
+            guideKey="moments"
+            icon={Heart}
+            title={locale === 'fr' ? 'Vos moments' : 'Your moments'}
+            description={locale === 'fr'
+              ? 'Gardez les moments qui ont compté pour vous (photos, vocaux, textes).'
+              : 'Keep the moments that mattered to you (photos, voice, texts).'}
+            spotlight={spotlightGuide}
+            onDismiss={handleSpotlightDismiss}
+          />
+        )}
 
-        {/* Date strip + Timeline */}
-        <View style={{ marginBottom: 32 }}>
-          <DayNav selected={selectedDate} onSelect={setSelectedDate} />
-
-          {todayMomentCount === 0 ? (
-            isToday ? (
-              <TouchableOpacity
-                onPress={() => router.push('/(main)/capture')}
-                style={{
-                  backgroundColor: colors.surface2,
-                  borderRadius: 24,
-                  padding: 32,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ fontSize: 48, marginBottom: 16 }}>✦</Text>
-                <Text style={{ fontSize: 20, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 8 }}>
-                  {t.home.emptyTitle}
-                </Text>
-                <Text style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center' }}>
-                  {t.home.emptySubtitle}
-                </Text>
-              </TouchableOpacity>
-            ) : (
-              <View
-                style={{
-                  backgroundColor: colors.surface2,
-                  borderRadius: 24,
-                  padding: 32,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>✦</Text>
-                <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textFaint, textAlign: 'center' }}>
-                  {t.home.noMoments}
-                </Text>
-              </View>
-            )
-          ) : (
-            <EmotionalTimeline moments={moments} showNow={isToday} onMomentPress={setViewingMoment} />
-          )}
-        </View>
-
-        {/* Quick actions */}
-        <View style={{ gap: 14 }}>
-          <View style={{ position: 'relative' }}>
+        {spotlightGuide ? (
+          /* Skeleton placeholders while spotlight guide is active */
+          <View style={{ opacity: 0.4 }}>
+            {/* Date strip skeleton */}
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#E5E5E5' }} />
+              <View style={{ width: 80, height: 16, borderRadius: 8, backgroundColor: '#E5E5E5' }} />
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#E5E5E5' }} />
+            </View>
+            {/* Timeline skeleton */}
+            <View style={{ backgroundColor: '#F0F0EE', borderRadius: 24, padding: 32, alignItems: 'center', marginBottom: 32 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#E5E5E5', marginBottom: 16 }} />
+              <View style={{ width: 180, height: 16, borderRadius: 8, backgroundColor: '#E5E5E5', marginBottom: 8 }} />
+              <View style={{ width: 140, height: 12, borderRadius: 6, backgroundColor: '#E5E5E5' }} />
+            </View>
+            {/* Cards skeleton */}
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              {/* My Evolution */}
-              <TouchableOpacity
-                onPress={() => router.push('/(main)/evolution')}
-                activeOpacity={0.85}
-                style={{
-                  flex: 1,
-                  backgroundColor: colors.bloom,
-                  borderRadius: 24,
-                  padding: 20,
-                  minHeight: 160,
-                  justifyContent: 'space-between',
-                }}
-              >
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
-                  <Heart size={18} color="#fff" strokeWidth={2} />
-                </View>
-                <View>
-                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 24 }}>
-                    {locale === 'fr' ? 'Mon parcours' : 'My Journey'}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
-                    {locale === 'fr' ? 'Tendances et progression' : 'Patterns and progress'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
+              <View style={{ flex: 1, backgroundColor: '#E5E5E5', borderRadius: 24, height: 160 }} />
+              <View style={{ flex: 1, backgroundColor: '#E5E5E5', borderRadius: 24, height: 160 }} />
+            </View>
+          </View>
+        ) : (
+          <>
+            {/* Date strip + Timeline */}
+            <View style={{ marginBottom: 32 }}>
+              <DayNav selected={selectedDate} onSelect={setSelectedDate} />
 
-              {/* Bloom — only for self-onboarded users (signup_source = waitlist) */}
-              {(member as any)?.signup_source !== 'practitioner_invite' && <TouchableOpacity
-                onPress={() => setBloomOpen(true)}
-                activeOpacity={0.85}
-                style={{
-                  flex: 1,
-                  backgroundColor: '#1A1A1A',
-                  borderRadius: 24,
-                  padding: 20,
-                  minHeight: 160,
-                  justifyContent: 'space-between',
-                }}
-              >
-                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
-                  <Mic size={18} color="#fff" strokeWidth={2} />
-                </View>
-                <View>
-                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 24 }}>
-                    {locale === 'fr' ? 'Parler à Bloom' : 'Talk to Bloom'}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
-                    {locale === 'fr' ? 'Réfléchir et grandir' : 'Reflect and grow'}
-                  </Text>
-                </View>
-              </TouchableOpacity>}
+              {todayMomentCount === 0 ? (
+                isToday ? (
+                  walkthroughCTA ? (
+                    /* Walkthrough CTA — personalized first moment prompt */
+                    <Animated.View style={{ opacity: walkthroughFade, transform: [{ translateY: walkthroughFade.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) }] }}>
+                    <TouchableOpacity
+                      onPress={startWalkthrough}
+                      activeOpacity={0.85}
+                      style={{
+                        backgroundColor: '#fff',
+                        borderRadius: 24,
+                        padding: 24,
+                        borderWidth: 2,
+                        borderColor: `${colors.bloom}30`,
+                        shadowColor: colors.bloom,
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 16,
+                        elevation: 6,
+                      }}
+                    >
+                      <Text style={{ fontSize: 15, color: '#888', marginBottom: 12 }}>
+                        {locale === 'fr' ? 'Créez votre premier moment' : 'Create your first moment'}
+                      </Text>
+                      <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 16, lineHeight: 28 }}>
+                        {locale === 'fr' ? 'Comment vous sentez-vous\nen ce moment ?' : 'How are you feeling\nright now?'}
+                      </Text>
+                      <View style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 12,
+                        backgroundColor: `${colors.bloom}15`,
+                        borderRadius: 16, padding: 14,
+                        shadowColor: colors.bloom,
+                        shadowOffset: { width: 0, height: 0 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 12,
+                        elevation: 6,
+                      }}>
+                        <View style={{
+                          width: 40, height: 40, borderRadius: 20,
+                          backgroundColor: colors.bloom,
+                          justifyContent: 'center', alignItems: 'center',
+                        }}>
+                          <Plus size={20} color="#fff" strokeWidth={2.5} />
+                        </View>
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: colors.bloom }}>
+                          {locale === 'fr' ? 'Commencer ici →' : 'Start here →'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    </Animated.View>
+                  ) : (
+                  <TouchableOpacity
+                    onPress={() => router.push('/(main)/capture')}
+                    style={{
+                      backgroundColor: colors.surface2,
+                      borderRadius: 24,
+                      padding: 32,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 48, marginBottom: 16 }}>✦</Text>
+                    <Text style={{ fontSize: 20, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 8 }}>
+                      {t.home.emptyTitle}
+                    </Text>
+                    <Text style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center' }}>
+                      {t.home.emptySubtitle}
+                    </Text>
+                  </TouchableOpacity>
+                  )
+                ) : (
+                  <View
+                    style={{
+                      backgroundColor: colors.surface2,
+                      borderRadius: 24,
+                      padding: 32,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>✦</Text>
+                    <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textFaint, textAlign: 'center' }}>
+                      {t.home.noMoments}
+                    </Text>
+                  </View>
+                )
+              ) : (
+                <EmotionalTimeline moments={moments} showNow={isToday} onMomentPress={setViewingMoment} glowDots={walkthroughReturn} />
+              )}
             </View>
 
-          </View>
+            {/* Final walkthrough card — after closing first moment detail */}
+            {walkthroughFinal && (
+              <Animated.View style={{
+                opacity: finalFade,
+                transform: [{ translateY: finalFade.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+              }}>
+                <View style={{
+                  backgroundColor: '#fff',
+                  borderRadius: 24,
+                  padding: 24,
+                  borderWidth: 1,
+                  borderColor: '#EBEBEB',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.08,
+                  shadowRadius: 16,
+                  elevation: 4,
+                  overflow: 'hidden',
+                }}>
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, marginBottom: 8, lineHeight: 28 }}>
+                    {locale === 'fr' ? `Bravo ${firstName} !` : `Well done, ${firstName}!`}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#888', lineHeight: 21, marginBottom: 6 }}>
+                    {locale === 'fr'
+                      ? 'Continuez à capturer de petits moments au fil de la journée. Ensemble, ils dessinent votre fil émotionnel.'
+                      : 'Keep capturing small moments throughout your day. Together, they build your emotional flow.'}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: '#888', lineHeight: 21, marginBottom: 16 }}>
+                    {locale === 'fr'
+                      ? 'Avec le temps, cela vous aide à comprendre vos habitudes et à voir votre progression.'
+                      : 'Over time, this helps you understand your patterns and see your progress.'}
+                  </Text>
 
-        </View>
+                  {/* Emotional flow preview */}
+                  <View style={{ marginBottom: 20, marginHorizontal: -8 }}>
+                    <Svg width="100%" height={80} viewBox="0 0 300 80">
+                      <Defs>
+                        <LinearGradient id="flowFill" x1="0" y1="0" x2="0" y2="1">
+                          <Stop offset="0" stopColor="#8B5CF6" stopOpacity="0.12" />
+                          <Stop offset="1" stopColor="#8B5CF6" stopOpacity="0" />
+                        </LinearGradient>
+                      </Defs>
+                      {/* Fill */}
+                      <Path
+                        d="M0,40 C40,40 50,18 80,18 C110,18 120,55 160,52 C200,49 210,15 240,12 C270,9 290,30 300,28 L300,80 L0,80 Z"
+                        fill="url(#flowFill)"
+                      />
+                      {/* Curve */}
+                      <Path
+                        d="M0,40 C40,40 50,18 80,18 C110,18 120,55 160,52 C200,49 210,15 240,12 C270,9 290,30 300,28"
+                        stroke="#1A1A1A"
+                        strokeWidth="2.5"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      {/* Dots */}
+                      <Circle cx="80" cy="18" r="5" fill={colors.bloom} />
+                      <Circle cx="160" cy="52" r="5" fill="#F43F5E" />
+                      <Circle cx="240" cy="12" r="7" fill="#8B5CF6" />
+                      <Circle cx="240" cy="12" r="12" fill="#8B5CF6" fillOpacity="0.15" />
+                    </Svg>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={handleWalkthroughComplete}
+                    activeOpacity={0.85}
+                    style={{
+                      height: 52, borderRadius: 26,
+                      backgroundColor: colors.primary,
+                      justifyContent: 'center', alignItems: 'center',
+                    }}
+                  >
+                    <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>
+                      {locale === 'fr' ? 'Je suis prêt' : "I'm ready"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </Animated.View>
+            )}
+
+            {/* Quick actions — hidden during walkthrough */}
+            {!walkthroughCTA && !walkthroughReturn && !walkthroughFinal && (
+            <View style={{ gap: 14 }}>
+              <View style={{ position: 'relative' }}>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {/* My Evolution */}
+                  <TouchableOpacity
+                    onPress={() => router.push('/(main)/evolution')}
+                    activeOpacity={0.85}
+                    style={{
+                      flex: 1,
+                      backgroundColor: colors.bloom,
+                      borderRadius: 24,
+                      padding: 20,
+                      minHeight: 160,
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Heart size={18} color="#fff" strokeWidth={2} />
+                    </View>
+                    <View>
+                      <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 24 }}>
+                        {locale === 'fr' ? 'Mon parcours' : 'My Journey'}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 4 }}>
+                        {locale === 'fr' ? 'Tendances et progression' : 'Patterns and progress'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Bloom — only for self-onboarded users (signup_source = waitlist) */}
+                  {(member as any)?.signup_source !== 'practitioner_invite' && <TouchableOpacity
+                    onPress={() => setBloomOpen(true)}
+                    activeOpacity={0.85}
+                    style={{
+                      flex: 1,
+                      backgroundColor: '#1A1A1A',
+                      borderRadius: 24,
+                      padding: 20,
+                      minHeight: 160,
+                      justifyContent: 'space-between',
+                    }}
+                  >
+                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' }}>
+                      <Mic size={18} color="#fff" strokeWidth={2} />
+                    </View>
+                    <View>
+                      <Text style={{ fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.5, lineHeight: 24 }}>
+                        {locale === 'fr' ? 'Parler à Bloom' : 'Talk to Bloom'}
+                      </Text>
+                      <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 4 }}>
+                        {locale === 'fr' ? 'Réfléchir et grandir' : 'Reflect and grow'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>}
+                </View>
+
+              </View>
+
+              {/* Tips for you */}
+              <TouchableOpacity
+                onPress={() => router.push('/(main)/tips' as any)}
+                activeOpacity={0.85}
+                style={{
+                  backgroundColor: '#F8F7F4',
+                  borderRadius: 24,
+                  padding: 20,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 16,
+                  borderWidth: 1,
+                  borderColor: '#EBEBEB',
+                }}
+              >
+                <View style={{
+                  width: 44, height: 44, borderRadius: 22,
+                  backgroundColor: '#FEF3C7',
+                  justifyContent: 'center', alignItems: 'center',
+                }}>
+                  <Lightbulb size={22} color="#F59E0B" strokeWidth={1.8} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>
+                    {locale === 'fr' ? 'Conseils pour vous' : 'Tips for you'}
+                  </Text>
+                  <Text style={{ fontSize: 13, color: '#999' }}>
+                    {locale === 'fr' ? 'Petites idées pour mieux capturer vos moments' : 'Simple ideas to get more from your moments'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+            )}
+          </>
+        )}
       </PullToRefreshScrollView>
 
       {/* Moment detail sheet */}
       {viewingMoment && (
         <MomentDetail
           moment={viewingMoment}
-          onClose={() => setViewingMoment(null)}
+          onClose={handleMomentClose}
           onOpenStory={(storyId) => router.push({ pathname: '/(main)/stories', params: { openStoryId: storyId } })}
         />
       )}
 
-      {/* Capture overlay */}
+      {/* Capture type pills — slides up above the + button */}
       {captureOpen && (
-        <Pressable
-          onPress={toggleCapture}
-          style={{
+        <>
+          <Animated.View
+            style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              zIndex: 19,
+              opacity: expandAnim,
+            }}
+          >
+            <Pressable onPress={toggleCapture} style={{ flex: 1 }} />
+          </Animated.View>
+          <View style={{
             position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(255,255,255,0.95)',
+            bottom: insets.bottom + 90,
+            right: 20,
             zIndex: 20,
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            paddingBottom: insets.bottom + 100,
-          }}
-        >
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12, justifyContent: 'center', maxWidth: CARD_SIZE * 2 + 12 }}>
-            {CAPTURE_TYPES.map((type) => (
-              <TouchableOpacity
+            alignItems: 'flex-end',
+            gap: 8,
+          }}>
+            {CAPTURE_TYPES.slice().reverse().map((type, i) => (
+              <Animated.View
                 key={type.key}
-                onPress={() => handleCaptureType(type.key)}
-                activeOpacity={0.85}
                 style={{
-                  width: CARD_SIZE, height: CARD_SIZE,
-                  backgroundColor: type.color,
-                  borderRadius: 20,
-                  padding: 16,
-                  justifyContent: 'space-between',
-                  shadowColor: type.color,
-                  shadowOffset: { width: 0, height: 8 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 16,
-                  elevation: 10,
+                  opacity: expandAnim,
+                  transform: [{
+                    translateY: expandAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [20 + i * 8, 0],
+                    }),
+                  }, {
+                    scale: expandAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.8, 1],
+                    }),
+                  }],
                 }}
               >
-                <type.Icon size={28} color="#fff" strokeWidth={2} />
-                <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>{type.label}</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleCaptureType(type.key)}
+                  activeOpacity={0.85}
+                  style={{
+                    width: 52, height: 52, borderRadius: 16,
+                    backgroundColor: '#fff',
+                    justifyContent: 'center', alignItems: 'center',
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 8,
+                    elevation: 4,
+                    borderWidth: 1,
+                    borderColor: '#F0F0F0',
+                  }}
+                >
+                  <type.Icon size={22} color={type.color} strokeWidth={1.8} />
+                </TouchableOpacity>
+              </Animated.View>
             ))}
           </View>
-        </Pressable>
+        </>
       )}
 
       {/* Bloom full screen */}
@@ -331,8 +687,8 @@ export default function Home() {
       )}
 
 
-      {/* Bottom floating bar */}
-      {!viewingMoment && !bloomOpen && (
+      {/* Bottom floating bar — hidden during walkthrough */}
+      {!viewingMoment && !bloomOpen && !walkthroughCTA && !spotlightGuide && !walkthroughReturn && !walkthroughFinal && (
         <View style={{
           position: 'absolute',
           bottom: insets.bottom + 20,
@@ -388,25 +744,112 @@ export default function Home() {
             })}
           </View>
           {/* Capture — standalone circle */}
-          <TouchableOpacity
-            onPress={toggleCapture}
-            activeOpacity={0.8}
-            style={{
-              width: 56, height: 56, borderRadius: 28,
-              backgroundColor: captureOpen ? colors.primary : '#fff',
-              justifyContent: 'center', alignItems: 'center',
-              borderWidth: 1,
-              borderColor: captureOpen ? colors.primary : '#EBEBEB',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.1,
-              shadowRadius: 20,
-              elevation: 8,
-            }}
-          >
-            <Plus size={24} color={captureOpen ? '#fff' : colors.primary} strokeWidth={2} />
-          </TouchableOpacity>
+          <View style={{ alignItems: 'center' }}>
+            {/* Tooltip */}
+            {captureHighlight && (
+              <View style={{
+                position: 'absolute',
+                bottom: 64,
+                backgroundColor: colors.primary,
+                paddingHorizontal: 12, paddingVertical: 6,
+                borderRadius: 10,
+              }}>
+                <Text style={{ fontSize: 12, color: '#fff', fontWeight: '600' }}>
+                  {locale === 'fr' ? 'Ajoutez vos moments' : 'Add your moments'}
+                </Text>
+                {/* Arrow */}
+                <View style={{
+                  position: 'absolute', bottom: -6,
+                  left: '50%', marginLeft: -6,
+                  width: 0, height: 0,
+                  borderLeftWidth: 6, borderRightWidth: 6, borderTopWidth: 6,
+                  borderLeftColor: 'transparent', borderRightColor: 'transparent',
+                  borderTopColor: colors.primary,
+                }} />
+              </View>
+            )}
+            {/* Pulse ring */}
+            {captureHighlight && (
+              <Animated.View style={{
+                position: 'absolute',
+                width: 56, height: 56, borderRadius: 28,
+                borderWidth: 2,
+                borderColor: colors.bloom,
+                opacity: captureHighlightPulse.interpolate({
+                  inputRange: [0, 0.5, 1],
+                  outputRange: [0.6, 0.1, 0],
+                }),
+                transform: [{
+                  scale: captureHighlightPulse.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [1, 1.8],
+                  }),
+                }],
+              }} />
+            )}
+            <TouchableOpacity
+              onPress={toggleCapture}
+              activeOpacity={0.8}
+              style={{
+                width: 56, height: 56, borderRadius: 28,
+                backgroundColor: captureOpen ? colors.primary : '#fff',
+                justifyContent: 'center', alignItems: 'center',
+                borderWidth: 1,
+                borderColor: captureOpen ? colors.primary : '#EBEBEB',
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 6 },
+                shadowOpacity: 0.1,
+                shadowRadius: 20,
+                elevation: 8,
+              }}
+            >
+              <Plus size={24} color={captureOpen ? '#fff' : colors.primary} strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
         </View>
+      )}
+
+      {/* Welcome guide modal */}
+      <WelcomeGuide
+        visible={showWelcome}
+        onDismiss={handleWelcomeDismiss}
+        locale={locale}
+        hasPractitioner={!!member?.practitioner_id}
+        practitionerName={practitionerName}
+        memberFirstName={member?.first_name}
+      />
+
+      {/* Magic circle reveal */}
+      {revealActive && (
+        <Animated.View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            top: 0, left: 0, right: 0, bottom: 0,
+            zIndex: 100,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: '#FAFAF8',
+            opacity: revealOpacity,
+          }}
+        >
+          <Animated.View style={{
+            width: 80,
+            height: 80,
+            borderRadius: 40,
+            backgroundColor: colors.bloom,
+            transform: [{
+              scale: revealScale.interpolate({
+                inputRange: [0, 0.3, 1],
+                outputRange: [0, 1, 25],
+              }),
+            }],
+            opacity: revealScale.interpolate({
+              inputRange: [0, 0.2, 0.6, 1],
+              outputRange: [0, 1, 0.6, 0],
+            }),
+          }} />
+        </Animated.View>
       )}
     </View>
   )
