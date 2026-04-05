@@ -6,15 +6,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
 import { GalleryVerticalEnd as GitBranch, LayoutGrid } from 'lucide-react-native'
-import { MOOD_SCORES, colors } from '@/lib/theme'
+import { MOOD_COLORS, colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 
 // Extracted components
 import { BackButton } from '@/components/ui/BackButton'
 import { MomentDetail } from '@/components/MomentDetail'
-import { BloomScoreRing } from '@/components/evolution/BloomScoreRing'
-import { EmotionalLandscape } from '@/components/evolution/EmotionalLandscape'
-import { MoodRing } from '@/components/evolution/MoodRing'
 import { MoodCalendar } from '@/components/evolution/MoodCalendar'
 import { RememberThisCard } from '@/components/evolution/RememberThisCard'
 import { FilterRow } from '@/components/evolution/FilterRow'
@@ -32,7 +29,8 @@ export default function Evolution() {
   const [filterMood, setFilterMood] = useState<string | null>(null)
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null)
   const [viewMode, setViewMode] = useState<'river' | 'grid'>('river')
-  const { t } = useI18n()
+  const [displayLimit, setDisplayLimit] = useState(20)
+  const { t, locale } = useI18n()
 
   const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
 
@@ -82,29 +80,6 @@ export default function Evolution() {
   moments.forEach(m => daySet.add(m.created_at.split('T')[0]))
   const activeDays = daySet.size
 
-  // Bloom Score calculation
-  const frequencyScore = Math.min(100, (moments.length / (days * 2)) * 100)
-  const consistencyScore = (activeDays / days) * 100
-
-  let valenceSum = 0
-  let valenceCount = 0
-  moments.forEach(m => {
-    m.moods?.forEach(mood => {
-      valenceSum += MOOD_SCORES[mood] ?? 50
-      valenceCount++
-    })
-  })
-  const valenceScore = valenceCount > 0 ? valenceSum / valenceCount : 50
-
-  const bloomScore = moments.length === 0 ? 0 : Math.round(
-    frequencyScore * 0.3 + valenceScore * 0.35 + consistencyScore * 0.35
-  )
-
-  const scoreLabel = bloomScore >= 80 ? t.evolution.amazingWeek :
-    bloomScore >= 60 ? t.evolution.goingStrong :
-      bloomScore >= 40 ? t.evolution.buildingUp :
-        bloomScore >= 20 ? t.evolution.keepGoing : t.evolution.justStarting
-
   // Filtered moments for library
   const filteredMoments = useMemo(() => {
     let filtered = allMoments
@@ -114,8 +89,15 @@ export default function Evolution() {
     if (filterMood) {
       filtered = filtered.filter(m => m.moods?.includes(filterMood))
     }
+    setDisplayLimit(20) // reset on filter change
     return filtered
   }, [allMoments, filterType, filterMood])
+
+  const displayedMoments = useMemo(() =>
+    filteredMoments.slice(0, displayLimit),
+    [filteredMoments, displayLimit]
+  )
+  const hasMore = displayLimit < filteredMoments.length
 
   const allMoodCounts: Record<string, number> = {}
   allMoments.forEach(m => { m.moods?.forEach(mood => { allMoodCounts[mood] = (allMoodCounts[mood] || 0) + 1 }) })
@@ -125,26 +107,29 @@ export default function Evolution() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <PullToRefreshScrollView
-        onRefresh={onRefresh}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 40, paddingHorizontal: 24 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace('/(main)/home')} />
+      {/* Sticky header */}
+      <View style={{ paddingTop: insets.top + 16, paddingHorizontal: 24, backgroundColor: colors.bg, zIndex: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace('/(main)/home')} />
+          <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary }}>
+            {t.evolution?.title || 'My Journey'}
+          </Text>
+          <View style={{ width: 36 }} />
+        </View>
 
         {/* Time range picker */}
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginTop: 20, marginBottom: 28 }}>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
           {(['7d', '30d', '90d'] as TimeRange[]).map(r => (
             <TouchableOpacity
               key={r}
               onPress={() => setRange(r)}
               style={{
-                paddingHorizontal: 20,
+                paddingHorizontal: 18,
                 paddingVertical: 10,
                 borderRadius: 20,
-                backgroundColor: range === r ? colors.primary : colors.surface1,
+                backgroundColor: range === r ? colors.primary : '#fff',
+                borderWidth: range === r ? 0 : 1,
+                borderColor: '#EBEBEB',
               }}
             >
               <Text style={{ fontSize: 14, fontWeight: '600', color: range === r ? '#fff' : colors.textSecondary }}>
@@ -153,33 +138,90 @@ export default function Evolution() {
             </TouchableOpacity>
           ))}
         </View>
+      </View>
 
-        {/* Bloom Score */}
-        <View style={{ marginBottom: 28 }}>
-          <BloomScoreRing score={bloomScore} trend={0} label={scoreLabel} />
+      <PullToRefreshScrollView
+        onRefresh={onRefresh}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
+
+        {/* Personal insight */}
+        <View style={{
+          backgroundColor: '#fff',
+          borderRadius: 20,
+          padding: 24,
+          marginBottom: 20,
+          borderWidth: 1,
+          borderColor: '#EBEBEB',
+        }}>
+          <Text style={{ fontSize: 20, fontWeight: '600', color: colors.primary, lineHeight: 28 }}>
+            {moments.length === 0
+              ? (locale === 'fr' ? 'Pas encore de moments cette période.' : 'No moments yet this period.')
+              : activeDays === 1
+                ? (locale === 'fr' ? `Vous avez capturé ${moments.length} moment${moments.length > 1 ? 's' : ''} en ${activeDays} jour.` : `You captured ${moments.length} moment${moments.length > 1 ? 's' : ''} in ${activeDays} day.`)
+                : (locale === 'fr' ? `Vous avez capturé ${moments.length} moment${moments.length > 1 ? 's' : ''} en ${activeDays} jours.` : `You captured ${moments.length} moment${moments.length > 1 ? 's' : ''} across ${activeDays} days.`)
+            }
+          </Text>
+          {activeDays > 0 && (
+            <Text style={{ fontSize: 14, color: '#999', marginTop: 8, lineHeight: 20 }}>
+              {activeDays >= days * 0.7
+                ? (locale === 'fr' ? 'Belle régularité. Continuez comme ça.' : "That's great consistency. Keep it up.")
+                : activeDays >= days * 0.4
+                  ? (locale === 'fr' ? 'Vous prenez le rythme.' : "You're building a rhythm.")
+                  : (locale === 'fr' ? 'Chaque moment compte.' : 'Every moment counts.')}
+            </Text>
+          )}
         </View>
 
-        {/* Mood Ring */}
+        {/* Mood bars — conversational */}
         {sortedMoods.length > 0 && (
-          <View style={{ marginBottom: 28 }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 16 }}>
-              {t.evolution.moodSpectrum}
+          <View style={{
+            backgroundColor: '#fff',
+            borderRadius: 20,
+            padding: 20,
+            marginBottom: 20,
+            borderWidth: 1,
+            borderColor: '#EBEBEB',
+          }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 16 }}>
+              {locale === 'fr' ? 'Ce que vous avez ressenti' : 'How you felt'}
             </Text>
-            <MoodRing moodCounts={sortedMoods} totalMoments={totalMoodEntries} />
-          </View>
-        )}
-
-        {/* Emotional Landscape */}
-        {moments.length > 0 && (
-          <View style={{ marginBottom: 28 }}>
-            <EmotionalLandscape moments={moments} days={days} />
+            {sortedMoods.slice(0, 5).map(([mood, count], i) => {
+              const moodColor = MOOD_COLORS[mood] || '#888'
+              const pct = Math.round((count / totalMoodEntries) * 100)
+              const moodLabel = t.moods[mood as keyof typeof t.moods] || mood
+              return (
+                <View key={mood} style={{ marginBottom: i < Math.min(sortedMoods.length, 5) - 1 ? 14 : 0 }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary, textTransform: 'capitalize' }}>
+                      {moodLabel}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: '#BBB' }}>
+                      {count}×
+                    </Text>
+                  </View>
+                  <View style={{ height: 8, borderRadius: 4, backgroundColor: '#F5F5F3' }}>
+                    <View style={{ height: 8, borderRadius: 4, backgroundColor: moodColor, width: `${Math.max(pct, 8)}%` }} />
+                  </View>
+                </View>
+              )
+            })}
           </View>
         )}
 
         {/* Mood Calendar */}
-        <View style={{ marginBottom: 28 }}>
-          <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase', marginBottom: 16 }}>
-            {t.evolution.moodCalendar}
+        <View style={{
+          backgroundColor: '#fff',
+          borderRadius: 20,
+          padding: 20,
+          marginBottom: 28,
+          borderWidth: 1,
+          borderColor: '#EBEBEB',
+        }}>
+          <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 16 }}>
+            {locale === 'fr' ? 'Votre rythme' : 'Your rhythm'}
           </Text>
           <MoodCalendar moments={moments} days={days} />
         </View>
@@ -231,14 +273,36 @@ export default function Evolution() {
         {/* River or Grid view */}
         {viewMode === 'river' ? (
           <EmotionalRiver
-            moments={filteredMoments}
+            moments={displayedMoments}
             onMomentPress={setViewingMoment}
           />
         ) : (
           <MomentsGrid
-            moments={filteredMoments}
+            moments={displayedMoments}
             onMomentPress={setViewingMoment}
           />
+        )}
+
+        {/* Load more */}
+        {hasMore && (
+          <TouchableOpacity
+            onPress={() => setDisplayLimit(prev => prev + 80)}
+            activeOpacity={0.8}
+            style={{
+              alignSelf: 'center',
+              marginTop: 20,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 20,
+              backgroundColor: '#fff',
+              borderWidth: 1,
+              borderColor: '#EBEBEB',
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>
+              {locale === 'fr' ? 'Voir plus' : 'Load more'}
+            </Text>
+          </TouchableOpacity>
         )}
       </PullToRefreshScrollView>
 
