@@ -69,10 +69,14 @@ import {
   Link2,
   User,
   PenLine,
+  Settings,
+  Lightbulb,
 } from 'lucide-react-native'
+import NotificationBell from '@/components/NotificationBell'
 import { BackButton } from '@/components/ui/BackButton'
 import { getNavOrder } from '@/lib/nav-order'
 import { InlineGuide } from '@/components/InlineGuide'
+import { FloatingCapture } from '@/components/FloatingCapture'
 import { PageLoader } from '@/components/PageLoader'
 import { useAuth } from '@/lib/auth-context'
 import { colors, radii, spacing } from '@/lib/theme'
@@ -944,6 +948,7 @@ export default function StoriesScreen() {
   const insets = useSafeAreaInsets()
 
   const [stories, setStories] = useState<Story[]>([])
+  const [guideVisible, setGuideVisible] = useState(true)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
@@ -1564,10 +1569,19 @@ export default function StoriesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
       {/* Header */}
-      <View style={{ paddingTop: insets.top + 12, paddingHorizontal: spacing.screenPadding, paddingBottom: 16, backgroundColor: '#fff' }}>
-        {/* Back button — own row */}
-        <View style={{ marginBottom: 28 }}>
-          <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace('/(main)/practitioner')} />
+      <View style={{ paddingTop: insets.top + 20, paddingHorizontal: spacing.screenPadding, paddingBottom: 16, backgroundColor: '#fff' }}>
+        {/* Top row — notification + settings */}
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <NotificationBell onOpenResource={() => {}} />
+            <TouchableOpacity
+              onPress={() => router.push('/(main)/settings')}
+              activeOpacity={0.7}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}
+            >
+              <Settings size={18} color="#666" strokeWidth={1.8} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Title + Create */}
@@ -1600,7 +1614,22 @@ export default function StoriesScreen() {
           description={locale === 'fr'
             ? 'Écrivez et réfléchissez dans votre espace personnel. Gardez-le privé ou partagez avec les personnes de confiance.'
             : 'Write and reflect in your personal space. Keep it private or share with people you trust.'}
+          onVisibilityChange={setGuideVisible}
         />
+
+        {guideVisible ? (
+          /* Skeleton while guide is showing */
+          <View style={{ opacity: 0.4 }}>
+            <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+              <View style={{ flex: 1, backgroundColor: '#E5E5E5', borderRadius: 16, height: 70 }} />
+              <View style={{ flex: 1, backgroundColor: '#E5E5E5', borderRadius: 16, height: 70 }} />
+              <View style={{ flex: 1, backgroundColor: '#E5E5E5', borderRadius: 16, height: 70 }} />
+            </View>
+            <View style={{ backgroundColor: '#E5E5E5', borderRadius: 20, height: 160, marginBottom: 12 }} />
+            <View style={{ backgroundColor: '#E5E5E5', borderRadius: 20, height: 160 }} />
+          </View>
+        ) : (
+        <>
 
         {/* Stats */}
         <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
@@ -1896,6 +1925,41 @@ export default function StoriesScreen() {
           )}
         </>
         )}
+
+        {/* Tips for you */}
+        <TouchableOpacity
+          onPress={() => router.push({ pathname: '/(main)/tips' as any, params: { context: 'stories' } })}
+          activeOpacity={0.85}
+          style={{
+            backgroundColor: '#F8F7F4',
+            borderRadius: 24,
+            padding: 20,
+            marginTop: 20,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 16,
+            borderWidth: 1,
+            borderColor: '#EBEBEB',
+          }}
+        >
+          <View style={{
+            width: 44, height: 44, borderRadius: 22,
+            backgroundColor: '#FEF3C7',
+            justifyContent: 'center', alignItems: 'center',
+          }}>
+            <Lightbulb size={22} color="#F59E0B" strokeWidth={1.8} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>
+              {locale === 'fr' ? 'Conseils pour vous' : 'Tips for you'}
+            </Text>
+            <Text style={{ fontSize: 13, color: '#999' }}>
+              {locale === 'fr' ? 'Idées pour enrichir vos histoires' : 'Ideas to enrich your stories'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        </>
+        )}
       </ScrollView>
 
       {/* Bottom floating nav bar */}
@@ -1904,9 +1968,13 @@ export default function StoriesScreen() {
           position: 'absolute',
           bottom: insets.bottom + 20,
           left: 0, right: 0,
-          alignItems: 'center',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'flex-end',
+          gap: 10,
           zIndex: 10,
         }}>
+          {/* Nav bubble */}
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 16,
             backgroundColor: '#fff',
@@ -1950,6 +2018,8 @@ export default function StoriesScreen() {
               )
             })}
           </View>
+          {/* Capture circle */}
+          <FloatingCapture inline />
         </View>
       )}
 
@@ -3038,6 +3108,7 @@ export default function StoriesScreen() {
           })()}
         </View>
       </Modal>
+
     </View>
   )
 }

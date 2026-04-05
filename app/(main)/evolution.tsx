@@ -5,7 +5,8 @@ import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
-import { GalleryVerticalEnd as GitBranch, LayoutGrid } from 'lucide-react-native'
+import { GalleryVerticalEnd as GitBranch, LayoutGrid, Settings } from 'lucide-react-native'
+import NotificationBell from '@/components/NotificationBell'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 
@@ -108,13 +109,22 @@ export default function Evolution() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       {/* Sticky header */}
-      <View style={{ paddingTop: insets.top + 16, paddingHorizontal: 24, backgroundColor: colors.bg, zIndex: 10 }}>
+      <View style={{ paddingTop: insets.top + 20, paddingHorizontal: 24, backgroundColor: colors.bg, zIndex: 10 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
           <BackButton onPress={() => router.canGoBack() ? router.back() : router.replace('/(main)/home')} />
           <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary }}>
             {t.evolution?.title || 'My Journey'}
           </Text>
-          <View style={{ width: 36 }} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <NotificationBell onOpenResource={() => {}} />
+            <TouchableOpacity
+              onPress={() => router.push('/(main)/settings')}
+              activeOpacity={0.7}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}
+            >
+              <Settings size={18} color="#666" strokeWidth={1.8} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Time range picker */}

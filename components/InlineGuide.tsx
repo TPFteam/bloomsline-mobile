@@ -5,6 +5,7 @@ import { colors } from '@/lib/theme'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
+
 interface InlineGuideProps {
   guideKey: string // 'care' | 'moments' | 'stories'
   icon: any
@@ -12,9 +13,10 @@ interface InlineGuideProps {
   description: string
   spotlight?: boolean
   onDismiss?: () => void
+  onVisibilityChange?: (visible: boolean) => void
 }
 
-export function InlineGuide({ guideKey, icon: Icon, title, description, spotlight, onDismiss }: InlineGuideProps) {
+export function InlineGuide({ guideKey, icon: Icon, title, description, spotlight, onDismiss, onVisibilityChange }: InlineGuideProps) {
   const { locale } = useI18n()
   const { user } = useAuth()
   const [visible, setVisible] = useState(false)
@@ -32,8 +34,10 @@ export function InlineGuide({ guideKey, icon: Icon, title, description, spotligh
 
   useEffect(() => {
     // In spotlight mode, always show — parent controls visibility
-    if (spotlight) { setVisible(true); return }
+    if (spotlight) { setVisible(true); onVisibilityChange?.(true); return }
     if (!user?.id) return
+    // Assume visible until check completes (prevents content flash)
+    onVisibilityChange?.(true)
     supabase
       .from('users')
       .select('guides_seen')
@@ -41,12 +45,15 @@ export function InlineGuide({ guideKey, icon: Icon, title, description, spotligh
       .single()
       .then(({ data }) => {
         const seen = data?.guides_seen || {}
-        if (!seen[guideKey]) setVisible(true)
+        const show = !seen[guideKey]
+        setVisible(show)
+        onVisibilityChange?.(show)
       })
   }, [user?.id, guideKey, spotlight])
 
   const dismiss = async () => {
     setVisible(false)
+    onVisibilityChange?.(false)
     onDismiss?.()
     if (!user?.id) return
     const { data } = await supabase
@@ -70,14 +77,12 @@ export function InlineGuide({ guideKey, icon: Icon, title, description, spotligh
       padding: 20,
       marginBottom: spotlight ? 0 : 20,
       borderWidth: spotlight ? 2 : 1,
-      borderColor: spotlight ? colors.bloom : `${colors.bloom}20`,
-      ...(spotlight ? {
-        shadowColor: colors.bloom,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
-        shadowRadius: 20,
-        elevation: 12,
-      } : {}),
+      borderColor: spotlight ? colors.bloom : `${colors.bloom}30`,
+      shadowColor: colors.bloom,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: spotlight ? 0.4 : 0.2,
+      shadowRadius: spotlight ? 20 : 12,
+      elevation: spotlight ? 12 : 4,
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14 }}>
         <View style={{
@@ -104,7 +109,9 @@ export function InlineGuide({ guideKey, icon: Icon, title, description, spotligh
       </View>
       <TouchableOpacity onPress={dismiss} style={{ alignSelf: 'flex-end', marginTop: 12 }}>
         <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>
-          {locale === 'fr' ? 'C\'est parti' : 'Let\'s go'}
+          {spotlight
+            ? (locale === 'fr' ? 'C\'est parti' : 'Let\'s go')
+            : (locale === 'fr' ? 'Compris' : 'Got it')}
         </Text>
       </TouchableOpacity>
     </View>

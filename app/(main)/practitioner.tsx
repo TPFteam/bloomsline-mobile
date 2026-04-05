@@ -27,6 +27,7 @@ import { BloomLogo } from '@/components/BloomLogo'
 import { BloomFullScreen } from '@/components/BloomFullScreen'
 import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
 import { InlineGuide } from '@/components/InlineGuide'
+import { FloatingCapture } from '@/components/FloatingCapture'
 import { PageLoader } from '@/components/PageLoader'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
@@ -145,6 +146,7 @@ export default function PractitionerScreen() {
 
   // Quick access
   const [quickModal, setQuickModal] = useState<'practitioners' | 'assessments' | null>(null)
+  const [guideVisible, setGuideVisible] = useState(true)
   const [assessmentFilter, setAssessmentFilter] = useState<'all' | 'pending' | 'completed'>('all')
 
   const practitionerId = member?.practitioner_id
@@ -392,7 +394,7 @@ export default function PractitionerScreen() {
       <PullToRefreshScrollView
         onRefresh={onRefresh}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 180, paddingHorizontal: 24 }}
+        contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 180, paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
@@ -417,8 +419,20 @@ export default function PractitionerScreen() {
             </View>
           </View>
         ) : (
-          <View style={{ marginBottom: 28 }}>
-            <BackButton />
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 28 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <NotificationBell onOpenResource={(resourceId) => {
+                const resource = resources.find(r => r.resourceId === resourceId || r.id === resourceId)
+                if (resource) setViewingResource(resource)
+              }} />
+              <TouchableOpacity
+                onPress={() => router.push('/(main)/settings')}
+                activeOpacity={0.7}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}
+              >
+                <Settings size={18} color="#666" strokeWidth={1.8} />
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -443,7 +457,21 @@ export default function PractitionerScreen() {
           description={locale === 'fr'
             ? 'Ici, vous trouverez les ressources partagées par votre praticien, vos séances à venir, et votre progression. Tout est au même endroit.'
             : 'Here you\'ll find resources shared by your practitioner, upcoming sessions, and your progress. Everything in one place.'}
+          onVisibilityChange={setGuideVisible}
         />
+
+        {guideVisible ? (
+          /* Skeleton while guide is showing */
+          <View style={{ opacity: 0.4 }}>
+            <View style={{ backgroundColor: '#E5E5E5', borderRadius: 22, height: 100, marginBottom: 32 }} />
+            <View style={{ backgroundColor: '#E5E5E5', borderRadius: 22, height: 200, marginBottom: 24 }} />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1, backgroundColor: '#E5E5E5', borderRadius: 18, height: 80 }} />
+              <View style={{ flex: 1, backgroundColor: '#E5E5E5', borderRadius: 18, height: 80 }} />
+            </View>
+          </View>
+        ) : (
+        <View>
 
         {/* ═══════════════════════════════════════════════ */}
         {/* PRACTITIONER CARD */}
@@ -692,6 +720,8 @@ export default function PractitionerScreen() {
         </View>
 
         </>)}
+        </View>
+        )}
       </PullToRefreshScrollView>
 
       {/* ═══════════════════════════════════════════════ */}
@@ -1312,9 +1342,13 @@ export default function PractitionerScreen() {
           position: 'absolute',
           bottom: insets.bottom + 20,
           left: 0, right: 0,
-          alignItems: 'center',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'flex-end',
+          gap: 10,
           zIndex: 10,
         }}>
+          {/* Nav bubble */}
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 16,
             backgroundColor: '#fff',
@@ -1358,6 +1392,8 @@ export default function PractitionerScreen() {
               )
             })}
           </View>
+          {/* Capture circle */}
+          <FloatingCapture inline />
         </View>
       )}
     </View>
