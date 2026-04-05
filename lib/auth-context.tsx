@@ -118,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check if user is a practitioner
       const { data: userData } = await supabase
         .from('users')
-        .select('user_type')
+        .select('user_type, signup_source')
         .eq('id', userId)
         .single()
 
@@ -135,7 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (data) {
-        setMember(data)
+        setMember({ ...data, signup_source: userData?.signup_source || null })
         setLoading(false)
         return
       }
@@ -161,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               .eq('user_id', userId)
               .single()
             if (newMember) {
-              setMember(newMember)
+              setMember({ ...newMember, signup_source: userData?.signup_source || null })
               setLoading(false)
               return
             }

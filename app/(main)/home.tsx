@@ -7,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useAuth } from '@/lib/auth-context'
 import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
-import { Camera, Video, Mic, PenLine, Settings, Heart, User } from 'lucide-react-native'
+import { Camera, Video, Mic, PenLine, Settings, Heart, User, Plus } from 'lucide-react-native'
 import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
 import { InlineGuide } from '@/components/InlineGuide'
 import { colors, CAPTURE_TYPE_COLORS } from '@/lib/theme'
@@ -243,8 +243,8 @@ export default function Home() {
                 </View>
               </TouchableOpacity>
 
-              {/* Bloom */}
-              <TouchableOpacity
+              {/* Bloom — only for self-onboarded users (signup_source = waitlist) */}
+              {(member as any)?.signup_source !== 'practitioner_invite' && <TouchableOpacity
                 onPress={() => setBloomOpen(true)}
                 activeOpacity={0.85}
                 style={{
@@ -267,33 +267,9 @@ export default function Home() {
                     {locale === 'fr' ? 'Réfléchir et grandir' : 'Reflect and grow'}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </TouchableOpacity>}
             </View>
 
-            {/* Capture + overlapping center */}
-            <TouchableOpacity
-              onPress={toggleCapture}
-              activeOpacity={0.85}
-              style={{
-                position: 'absolute',
-                top: -24,
-                left: '50%',
-                marginLeft: -28,
-                width: 56, height: 56, borderRadius: 28,
-                backgroundColor: colors.primary,
-                justifyContent: 'center', alignItems: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 10,
-                elevation: 8,
-                borderWidth: 3,
-                borderColor: '#FAFAF8',
-                zIndex: 5,
-              }}
-            >
-              <Text style={{ color: '#fff', fontSize: 24, fontWeight: '300', marginTop: -1 }}>+</Text>
-            </TouchableOpacity>
           </View>
 
         </View>
@@ -361,9 +337,13 @@ export default function Home() {
           position: 'absolute',
           bottom: insets.bottom + 20,
           left: 0, right: 0,
-          alignItems: 'center',
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'flex-end',
+          gap: 10,
           zIndex: 10,
         }}>
+          {/* Nav bubble — 3 tabs */}
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 16,
             backgroundColor: '#fff',
@@ -406,8 +386,26 @@ export default function Home() {
                 </TouchableOpacity>
               )
             })}
-
           </View>
+          {/* Capture — standalone circle */}
+          <TouchableOpacity
+            onPress={toggleCapture}
+            activeOpacity={0.8}
+            style={{
+              width: 56, height: 56, borderRadius: 28,
+              backgroundColor: captureOpen ? colors.primary : '#fff',
+              justifyContent: 'center', alignItems: 'center',
+              borderWidth: 1,
+              borderColor: captureOpen ? colors.primary : '#EBEBEB',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.1,
+              shadowRadius: 20,
+              elevation: 8,
+            }}
+          >
+            <Plus size={24} color={captureOpen ? '#fff' : colors.primary} strokeWidth={2} />
+          </TouchableOpacity>
         </View>
       )}
     </View>
