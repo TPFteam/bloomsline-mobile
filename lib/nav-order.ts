@@ -4,10 +4,7 @@ export function getNavOrder(member: { practitioner_id?: string; nav_order?: stri
   if (member?.nav_order && Array.isArray(member.nav_order) && member.nav_order.length === 3) {
     return member.nav_order
   }
-  // Default: practitioner-invited → care first, else moments first
-  if (member?.practitioner_id) {
-    return ['practitioner', 'moments', 'stories']
-  }
+  // Default: always moments first
   return ['moments', 'practitioner', 'stories']
 }
 
