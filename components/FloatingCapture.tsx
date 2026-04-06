@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { View, TouchableOpacity, Pressable, Animated } from 'react-native'
+import { View, TouchableOpacity, Pressable, Animated, Modal } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Camera, Video, Mic, PenLine, Plus } from 'lucide-react-native'
@@ -60,73 +60,60 @@ export function FloatingCapture({ inline }: FloatingCaptureProps) {
     </TouchableOpacity>
   )
 
-  const overlay = open ? (
-    <>
-      <Animated.View
-        style={{
-          position: 'absolute',
-          top: -1000, left: -1000, right: -1000, bottom: -1000,
-          backgroundColor: 'rgba(0,0,0,0.3)',
-          zIndex: 19,
-          opacity: expandAnim,
-        }}
-      >
-        <Pressable onPress={toggle} style={{ flex: 1 }} />
-      </Animated.View>
-      <View style={{
-        position: 'absolute',
-        bottom: 70,
-        right: 0,
-        zIndex: 20,
-        alignItems: 'flex-end',
-        gap: 8,
-      }}>
-        {CAPTURE_TYPES.slice().reverse().map((type, i) => (
-          <Animated.View
-            key={type.key}
-            style={{
-              opacity: expandAnim,
-              transform: [{
-                translateY: expandAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [20 + i * 8, 0],
-                }),
-              }, {
-                scale: expandAnim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              }],
-            }}
-          >
-            <TouchableOpacity
-              onPress={() => handleType(type.key)}
-              activeOpacity={0.85}
-              style={{
-                width: 52, height: 52, borderRadius: 16,
-                backgroundColor: '#fff',
-                justifyContent: 'center', alignItems: 'center',
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.08,
-                shadowRadius: 8,
-                elevation: 4,
-                borderWidth: 1,
-                borderColor: '#F0F0F0',
-              }}
-            >
-              <type.Icon size={22} color={type.color} strokeWidth={1.8} />
-            </TouchableOpacity>
-          </Animated.View>
-        ))}
-      </View>
-    </>
-  ) : null
-
   if (inline) {
     return (
       <View style={{ zIndex: 20 }}>
-        {overlay}
+        {/* Full-screen modal overlay for pills */}
+        <Modal visible={open} transparent animationType="none" onRequestClose={toggle}>
+          <Pressable onPress={toggle} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }}>
+            <View style={{
+              position: 'absolute',
+              bottom: insets.bottom + 90,
+              right: 20,
+              alignItems: 'flex-end',
+              gap: 8,
+            }}>
+              {CAPTURE_TYPES.slice().reverse().map((type, i) => (
+                <Animated.View
+                  key={type.key}
+                  style={{
+                    opacity: expandAnim,
+                    transform: [{
+                      translateY: expandAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [20 + i * 8, 0],
+                      }),
+                    }, {
+                      scale: expandAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0.8, 1],
+                      }),
+                    }],
+                  }}
+                >
+                  <TouchableOpacity
+                    onPress={() => handleType(type.key)}
+                    activeOpacity={0.85}
+                    style={{
+                      width: 52, height: 52, borderRadius: 16,
+                      backgroundColor: '#fff',
+                      justifyContent: 'center', alignItems: 'center',
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.08,
+                      shadowRadius: 8,
+                      elevation: 4,
+                      borderWidth: 1,
+                      borderColor: '#F0F0F0',
+                    }}
+                  >
+                    <type.Icon size={22} color={type.color} strokeWidth={1.8} />
+                  </TouchableOpacity>
+                </Animated.View>
+              ))}
+            </View>
+          </Pressable>
+        </Modal>
         {button}
       </View>
     )

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import NotificationBell from '@/components/NotificationBell'
-import { View, Text, TouchableOpacity, Animated, Pressable } from 'react-native'
+import { View, Text, TouchableOpacity, Animated, Pressable, Modal } from 'react-native'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -697,25 +697,13 @@ export default function Home() {
         />
       )}
 
-      {/* Capture type pills — slides up above the + button */}
-      {captureOpen && (
-        <>
-          <Animated.View
-            style={{
-              position: 'absolute',
-              top: 0, left: 0, right: 0, bottom: 0,
-              backgroundColor: 'rgba(0,0,0,0.3)',
-              zIndex: 19,
-              opacity: expandAnim,
-            }}
-          >
-            <Pressable onPress={toggleCapture} style={{ flex: 1 }} />
-          </Animated.View>
+      {/* Capture type pills — modal overlay */}
+      <Modal visible={captureOpen} transparent animationType="none" onRequestClose={toggleCapture}>
+        <Pressable onPress={toggleCapture} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }}>
           <View style={{
             position: 'absolute',
             bottom: insets.bottom + 90,
             right: 20,
-            zIndex: 20,
             alignItems: 'flex-end',
             gap: 8,
           }}>
@@ -758,8 +746,8 @@ export default function Home() {
               </Animated.View>
             ))}
           </View>
-        </>
-      )}
+        </Pressable>
+      </Modal>
 
       {/* Bloom full screen */}
       {bloomOpen && (
