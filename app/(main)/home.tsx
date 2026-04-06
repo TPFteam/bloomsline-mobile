@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import NotificationBell from '@/components/NotificationBell'
 import { View, Text, TouchableOpacity, Animated, Pressable } from 'react-native'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
@@ -29,6 +29,114 @@ const CAPTURE_TYPES = [
   { key: 'voice', Icon: Mic, label: 'Voice', color: CAPTURE_TYPE_COLORS.voice },
   { key: 'video', Icon: Video, label: 'Video', color: CAPTURE_TYPE_COLORS.video },
 ]
+
+// ─── Empty Moment Messages ──────────────────────────
+const EMPTY_MESSAGES_EN = [
+  { text: 'How are you feeling right now?', sub: 'Take a second to check in with yourself.' },
+  { text: "What's on your mind?", sub: 'Even one word captures something real.' },
+  { text: 'Pause. Breathe. Notice.', sub: 'What do you feel in this moment?' },
+  { text: "You're here. That's enough.", sub: 'Capture whatever comes to mind.' },
+  { text: 'What would you like to remember?', sub: 'A thought, a photo, a feeling.' },
+  { text: 'This moment is yours.', sub: 'Write it, snap it, or say it.' },
+  { text: 'Check in with yourself.', sub: "How's your energy right now?" },
+  { text: 'What are you noticing?', sub: 'Sometimes the small things matter most.' },
+]
+
+const EMPTY_MESSAGES_FR = [
+  { text: 'Comment vous sentez-vous ?', sub: 'Prenez un instant pour vous écouter.' },
+  { text: "Qu'avez-vous en tête ?", sub: 'Même un mot capture quelque chose de vrai.' },
+  { text: 'Pause. Respirez. Observez.', sub: 'Que ressentez-vous en ce moment ?' },
+  { text: 'Vous êtes là. C\'est suffisant.', sub: 'Capturez ce qui vous vient.' },
+  { text: 'Que voulez-vous retenir ?', sub: 'Une pensée, une photo, un ressenti.' },
+  { text: 'Ce moment est à vous.', sub: 'Écrivez-le, photographiez-le, ou dites-le.' },
+  { text: 'Faites le point avec vous-même.', sub: 'Comment est votre énergie en ce moment ?' },
+  { text: 'Qu\'observez-vous ?', sub: 'Parfois les petites choses comptent le plus.' },
+]
+
+const PAST_MESSAGES_EN = [
+  'A quiet day.',
+  'No moments captured.',
+  'Nothing here — and that\'s okay.',
+  'An empty page, a full life.',
+]
+
+const PAST_MESSAGES_FR = [
+  'Une journée calme.',
+  'Aucun moment capturé.',
+  'Rien ici — et c\'est très bien.',
+  'Une page vide, une vie remplie.',
+]
+
+function EmptyMomentCard({ onPress, locale, isToday, firstName }: { onPress?: () => void; locale: string; isToday: boolean; firstName: string }) {
+  const glowAnim = useRef(new Animated.Value(0)).current
+
+  // Stable message — only changes when date or locale changes, not on every render
+  const todayKey = new Date().toDateString()
+  const msg = useMemo(() => {
+    const msgs = locale === 'fr' ? EMPTY_MESSAGES_FR : EMPTY_MESSAGES_EN
+    return msgs[Math.floor(Math.random() * msgs.length)]
+  }, [locale, todayKey])
+
+  const pastMsg = useMemo(() => {
+    const msgs = locale === 'fr' ? PAST_MESSAGES_FR : PAST_MESSAGES_EN
+    return msgs[Math.floor(Math.random() * msgs.length)]
+  }, [locale])
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, { toValue: 1, duration: 2000, useNativeDriver: false }),
+        Animated.timing(glowAnim, { toValue: 0, duration: 2000, useNativeDriver: false }),
+      ])
+    ).start()
+  }, [])
+
+  if (!isToday) {
+    return (
+      <View style={{ backgroundColor: '#fff', borderRadius: 24, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: '#EBEBEB' }}>
+        <Text style={{ fontSize: 15, color: '#BBB', textAlign: 'center', fontStyle: 'italic' }}>{pastMsg}</Text>
+      </View>
+    )
+  }
+
+  const borderColor = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [`${colors.bloom}20`, `${colors.bloom}60`],
+  })
+
+  const shadowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.05, 0.2],
+  })
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+      <Animated.View style={{
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        padding: 28,
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor,
+        shadowColor: colors.bloom,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity,
+        shadowRadius: 16,
+        elevation: 4,
+      }}>
+        <Text style={{ fontSize: 20, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 8, lineHeight: 28 }}>
+          {msg.text}
+        </Text>
+        <Text style={{ fontSize: 14, color: '#999', textAlign: 'center', lineHeight: 20, marginBottom: 16 }}>
+          {msg.sub}
+        </Text>
+        <Text style={{ fontSize: 13, fontWeight: '500', color: colors.bloom }}>
+          {locale === 'fr' ? 'Appuyez pour capturer →' : 'Tap to capture →'}
+        </Text>
+      </Animated.View>
+    </TouchableOpacity>
+  )
+}
 
 // ─── Main Screen ─────────────────────────────────────
 
@@ -393,38 +501,10 @@ export default function Home() {
                     </TouchableOpacity>
                     </Animated.View>
                   ) : (
-                  <TouchableOpacity
-                    onPress={() => router.push('/(main)/capture')}
-                    style={{
-                      backgroundColor: colors.surface2,
-                      borderRadius: 24,
-                      padding: 32,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ fontSize: 48, marginBottom: 16 }}>✦</Text>
-                    <Text style={{ fontSize: 20, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 8 }}>
-                      {t.home.emptyTitle}
-                    </Text>
-                    <Text style={{ fontSize: 15, color: colors.textSecondary, textAlign: 'center' }}>
-                      {t.home.emptySubtitle}
-                    </Text>
-                  </TouchableOpacity>
+                  <EmptyMomentCard onPress={() => router.push('/(main)/capture')} locale={locale} isToday={true} firstName={firstName} />
                   )
                 ) : (
-                  <View
-                    style={{
-                      backgroundColor: colors.surface2,
-                      borderRadius: 24,
-                      padding: 32,
-                      alignItems: 'center',
-                    }}
-                  >
-                    <Text style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }}>✦</Text>
-                    <Text style={{ fontSize: 17, fontWeight: '600', color: colors.textFaint, textAlign: 'center' }}>
-                      {t.home.noMoments}
-                    </Text>
-                  </View>
+                  <EmptyMomentCard locale={locale} isToday={false} firstName={firstName} />
                 )
               ) : (
                 <EmotionalTimeline moments={moments} showNow={isToday} onMomentPress={setViewingMoment} glowDots={walkthroughReturn} />
