@@ -1825,7 +1825,7 @@ export default function StoriesScreen() {
         /* ═══════════════════════════════════════════ */
         <>
           {filtered.length === 0 ? (
-            <View style={{ alignItems: 'center', paddingVertical: 60 }}>
+            <View style={{ alignItems: 'center', paddingVertical: 24 }}>
               <View style={{
                 width: 64, height: 64, borderRadius: 32, backgroundColor: colors.surface1,
                 alignItems: 'center', justifyContent: 'center', marginBottom: 12,

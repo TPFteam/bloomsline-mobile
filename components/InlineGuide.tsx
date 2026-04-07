@@ -72,17 +72,17 @@ export function InlineGuide({ guideKey, icon: Icon, title, description, spotligh
 
   return (
     <View style={{
-      backgroundColor: spotlight ? '#fff' : `${colors.bloom}08`,
+      backgroundColor: spotlight ? '#fff' : '#fff',
       borderRadius: 20,
       padding: 20,
       marginBottom: spotlight ? 0 : 20,
-      borderWidth: spotlight ? 2 : 1,
-      borderColor: spotlight ? colors.bloom : `${colors.bloom}30`,
+      borderWidth: spotlight ? 2 : 1.5,
+      borderColor: spotlight ? colors.bloom : `${colors.bloom}40`,
       shadowColor: colors.bloom,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: spotlight ? 0.4 : 0.2,
-      shadowRadius: spotlight ? 20 : 12,
-      elevation: spotlight ? 12 : 4,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: spotlight ? 0.4 : 0.35,
+      shadowRadius: spotlight ? 20 : 16,
+      elevation: spotlight ? 12 : 8,
     }}>
       <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 14 }}>
         <View style={{

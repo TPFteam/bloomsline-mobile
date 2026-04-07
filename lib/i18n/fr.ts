@@ -345,7 +345,7 @@ export default {
 
   // ─── Emotional Timeline ───
   timeline: {
-    emotionalFlow: 'Flux émotionnel',
+    emotionalFlow: 'Fil du jour',
     now: 'maint.',
   },
 
