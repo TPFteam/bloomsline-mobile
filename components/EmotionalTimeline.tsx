@@ -251,6 +251,16 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress, glowDots }:
                                             }),
                                         }],
                                     }} />
+                                    {/* Tap label */}
+                                    <View style={{
+                                        position: 'absolute',
+                                        top: 48,
+                                        alignItems: 'center',
+                                    }}>
+                                        <Text style={{ fontSize: 11, fontWeight: '600', color }}>
+                                            {'↑ '}{locale === 'fr' ? 'Appuyez' : 'Tap'}
+                                        </Text>
+                                    </View>
                                 </>
                             )}
                         </TouchableOpacity>

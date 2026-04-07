@@ -234,8 +234,8 @@ export default function Home() {
     setWalkthroughCTA(false)
     walkthroughActive.current = true
     const prefill = locale === 'fr'
-      ? 'Je suis curieux de voir comment ça marche...'
-      : "I'm feeling curious about how this works..."
+      ? 'Je prends enfin le temps de me recentrer sur moi. ☀️❤️'
+      : "I'm finally taking a moment to focus on myself. ☀️❤️"
     router.push({ pathname: '/(main)/capture', params: { type: 'write', walkthrough: '1', prefill } })
   }
 
@@ -364,10 +364,44 @@ export default function Home() {
         contentContainerStyle={{ paddingTop: insets.top + 20, paddingBottom: 180, paddingHorizontal: 24 }}
         showsVerticalScrollIndicator={false}
       >
+        {showWelcome ? (
+          /* Full skeleton when welcome/spotlight is showing */
+          <View style={{ opacity: 0.4 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 28 }}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#E5E5E5' }} />
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#E5E5E5' }} />
+              </View>
+            </View>
+            <View style={{ marginBottom: 20 }}>
+              <View style={{ width: 200, height: 30, borderRadius: 8, backgroundColor: '#E5E5E5', marginBottom: 8 }} />
+              <View style={{ width: 120, height: 24, borderRadius: 8, backgroundColor: '#E5E5E5' }} />
+            </View>
+            <View style={{ backgroundColor: '#F0F0EE', borderRadius: 20, padding: 20, marginBottom: 20 }}>
+              <View style={{ width: '60%', height: 14, borderRadius: 7, backgroundColor: '#E5E5E5', marginBottom: 12 }} />
+              <View style={{ width: '80%', height: 12, borderRadius: 6, backgroundColor: '#E5E5E5' }} />
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#E5E5E5' }} />
+              <View style={{ width: 80, height: 16, borderRadius: 8, backgroundColor: '#E5E5E5' }} />
+              <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#E5E5E5' }} />
+            </View>
+            <View style={{ backgroundColor: '#F0F0EE', borderRadius: 24, padding: 32, alignItems: 'center', marginBottom: 32 }}>
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#E5E5E5', marginBottom: 16 }} />
+              <View style={{ width: 180, height: 16, borderRadius: 8, backgroundColor: '#E5E5E5', marginBottom: 8 }} />
+              <View style={{ width: 140, height: 12, borderRadius: 6, backgroundColor: '#E5E5E5' }} />
+            </View>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={{ flex: 1, backgroundColor: '#E5E5E5', borderRadius: 24, height: 160 }} />
+              <View style={{ flex: 1, backgroundColor: '#E5E5E5', borderRadius: 24, height: 160 }} />
+            </View>
+          </View>
+        ) : (
+        <>
         {/* Header */}
         {isHome ? (
           <>
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 28 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <NotificationBell onOpenResource={(resourceId) => {
                   router.push({ pathname: '/(main)/practitioner', params: { openResourceId: resourceId } })
@@ -584,7 +618,7 @@ export default function Home() {
                     }}
                   >
                     <Text style={{ fontSize: 16, fontWeight: '600', color: '#fff' }}>
-                      {locale === 'fr' ? 'Je suis prêt' : "I'm ready"}
+                      {locale === 'fr' ? "C'est parti" : "I'm ready"}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -686,6 +720,8 @@ export default function Home() {
             )}
           </>
         )}
+        </>
+        )}
       </PullToRefreshScrollView>
 
       {/* Moment detail sheet */}
@@ -756,7 +792,7 @@ export default function Home() {
 
 
       {/* Bottom floating bar — hidden during walkthrough */}
-      {!viewingMoment && !bloomOpen && !walkthroughCTA && !spotlightGuide && !walkthroughReturn && !walkthroughFinal && (
+      {!viewingMoment && !bloomOpen && !walkthroughCTA && !spotlightGuide && !walkthroughReturn && !walkthroughFinal && !showWelcome && (
         <View style={{
           position: 'absolute',
           bottom: insets.bottom + 20,
@@ -785,7 +821,7 @@ export default function Home() {
               const isActive = key === 'moments'
               const config = {
                 moments: { icon: Heart, label: t.home?.moments || 'Moments', route: null },
-                practitioner: { icon: User, label: t.practitioner?.tabLabel || 'My Care', route: '/(main)/practitioner' },
+                practitioner: { icon: User, label: locale === 'fr' ? 'Mon Suivi' : 'My Care', route: '/(main)/practitioner' },
                 stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: '/(main)/stories' },
               }[key] as { icon: any; label: string; route: string | null }
               if (!config) return null
@@ -799,14 +835,14 @@ export default function Home() {
                 >
                   <View style={{
                     width: 52, height: 52, borderRadius: 26,
-                    backgroundColor: isActive ? `${colors.bloom}15` : '#fff',
+                    backgroundColor: isActive ? colors.bloom : '#fff',
                     borderWidth: isActive ? 0 : 1,
                     borderColor: '#E5E5E3',
                     justifyContent: 'center', alignItems: 'center',
                   }}>
-                    <Icon size={22} color={isActive ? colors.bloom : colors.primary} strokeWidth={isActive ? 2 : 1.8} />
+                    <Icon size={22} color={isActive ? '#fff' : '#999'} strokeWidth={isActive ? 2 : 1.5} />
                   </View>
-                  <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '600' : '500' }}>{config.label}</Text>
+                  <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '700' : '500' }}>{config.label}</Text>
                 </TouchableOpacity>
               )
             })}
@@ -823,7 +859,7 @@ export default function Home() {
                 borderRadius: 10,
               }}>
                 <Text style={{ fontSize: 12, color: '#fff', fontWeight: '600' }}>
-                  {locale === 'fr' ? 'Ajoutez vos moments' : 'Add your moments'}
+                  {locale === 'fr' ? 'Ajouter un moment' : 'Click here to add a moment'}
                 </Text>
                 {/* Arrow */}
                 <View style={{

@@ -180,22 +180,30 @@ export default function Capture() {
   const pulseAnim = useRef(new Animated.Value(1)).current
   const durationInterval = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Walkthrough typing animation
+  // Walkthrough typing animation — slow, thoughtful
   useEffect(() => {
     if (!isWalkthrough || !prefill) return
     typingIndex.current = 0
     setNote('')
-    const interval = setInterval(() => {
+    let cancelled = false
+
+    const typeNext = () => {
+      if (cancelled) return
       typingIndex.current++
       if (typingIndex.current >= prefill.length) {
-        clearInterval(interval)
         setNote(prefill)
-        setTypingDone(true)
-      } else {
-        setNote(prefill.slice(0, typingIndex.current))
+        setTimeout(() => { if (!cancelled) setTypingDone(true) }, 600)
+        return
       }
-    }, 40)
-    return () => clearInterval(interval)
+      setNote(prefill.slice(0, typingIndex.current))
+      const nextChar = prefill[typingIndex.current]
+      const delay = nextChar === '.' || nextChar === ',' ? 150 : nextChar === ' ' ? 100 : 65
+      setTimeout(typeNext, delay)
+    }
+
+    // Pause before starting
+    const startDelay = setTimeout(typeNext, 800)
+    return () => { cancelled = true; clearTimeout(startDelay) }
   }, [isWalkthrough, prefill])
 
   // For voice recording pulse
@@ -599,7 +607,7 @@ export default function Capture() {
                   }}>
                     <Text style={{ fontSize: 18, color: '#000', lineHeight: 28 }}>
                       {note}
-                      <Text style={{ color: colors.bloom }}>|</Text>
+                      {!typingDone && <Text style={{ color: colors.bloom }}>|</Text>}
                     </Text>
                   </View>
                 ) : (

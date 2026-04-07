@@ -1992,7 +1992,7 @@ export default function StoriesScreen() {
               const isActive = key === 'stories'
               const config = {
                 moments: { icon: Heart, label: t.home?.moments || 'Moments', route: '/(main)/home' },
-                practitioner: { icon: User, label: t.practitioner?.tabLabel || 'My Care', route: '/(main)/practitioner' },
+                practitioner: { icon: User, label: locale === 'fr' ? 'Mon Suivi' : 'My Care', route: '/(main)/practitioner' },
                 stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: null },
               }[key] as { icon: any; label: string; route: string | null }
               if (!config) return null
@@ -2006,14 +2006,14 @@ export default function StoriesScreen() {
                 >
                   <View style={{
                     width: 52, height: 52, borderRadius: 26,
-                    backgroundColor: isActive ? `${colors.bloom}15` : '#fff',
+                    backgroundColor: isActive ? colors.bloom : '#fff',
                     borderWidth: isActive ? 0 : 1,
                     borderColor: '#E5E5E3',
                     justifyContent: 'center', alignItems: 'center',
                   }}>
-                    <Icon size={22} color={isActive ? colors.bloom : colors.primary} strokeWidth={isActive ? 2 : 1.8} />
+                    <Icon size={22} color={isActive ? '#fff' : '#999'} strokeWidth={isActive ? 2 : 1.5} />
                   </View>
-                  <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '600' : '500' }}>{config.label}</Text>
+                  <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '700' : '500' }}>{config.label}</Text>
                 </TouchableOpacity>
               )
             })}
