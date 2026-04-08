@@ -54,6 +54,7 @@ export function DesktopWrapper({ children }: { children: React.ReactNode }) {
           borderRadius: 34,
           overflow: 'hidden',
           backgroundColor: '#FAFAF8',
+          width: frameW - 12,
         }}>
           {children}
         </View>
@@ -78,7 +79,7 @@ export function DesktopWrapper({ children }: { children: React.ReactNode }) {
           blooms<Text style={{ fontWeight: '300', color: '#4A9A86' }}>line</Text>
         </Text>
         <Text style={{ fontSize: 14, color: '#999', marginBottom: 32 }}>
-          Where your feelings find a place
+          Small moments, big understanding
         </Text>
 
         {/* Message */}

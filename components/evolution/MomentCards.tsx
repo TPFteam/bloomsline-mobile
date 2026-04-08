@@ -5,7 +5,8 @@ import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
 
-const { width } = Dimensions.get('window')
+const { width: _screenW } = Dimensions.get('window')
+const width = Math.min(_screenW, 430)
 
 // ─── Helpers ────────────────────────────────────────
 

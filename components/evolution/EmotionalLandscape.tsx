@@ -4,7 +4,8 @@ import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
 import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg'
 
-const { width } = Dimensions.get('window')
+const { width: _screenW } = Dimensions.get('window')
+const width = Math.min(_screenW, 430)
 
 interface EmotionalLandscapeProps {
     moments: Moment[]

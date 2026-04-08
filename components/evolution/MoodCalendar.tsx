@@ -1,9 +1,7 @@
-import { View, Text, Dimensions } from 'react-native'
+import { View, Text, useWindowDimensions } from 'react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
-
-const { width } = Dimensions.get('window')
 
 interface MoodCalendarProps {
     moments: Moment[]
@@ -11,6 +9,8 @@ interface MoodCalendarProps {
 }
 
 export function MoodCalendar({ moments, days }: MoodCalendarProps) {
+    const { width: windowWidth } = useWindowDimensions()
+    const width = Math.min(windowWidth, 430) // Cap for desktop phone frame
     const { t } = useI18n()
     // Build day → dominant mood map
     const dayMoodMap: Record<string, string> = {}

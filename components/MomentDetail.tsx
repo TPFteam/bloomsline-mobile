@@ -7,7 +7,9 @@ import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window')
+const { width: _sw, height: _sh } = Dimensions.get('window')
+const SCREEN_WIDTH = Math.min(_sw, 430)
+const SCREEN_HEIGHT = _sh
 
 interface MomentDetailProps {
     moment: Moment

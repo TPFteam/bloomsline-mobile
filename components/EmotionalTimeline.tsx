@@ -1,14 +1,11 @@
-import { View, Text, TouchableOpacity, Dimensions, Animated } from 'react-native'
-import { useEffect, useRef } from 'react'
+import { View, Text, TouchableOpacity, Animated } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
 import { MOOD_SCORES, MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { formatTime } from '@/components/DayNav'
 import { useI18n } from '@/lib/i18n'
 import Svg, { Path, Circle, Defs, LinearGradient, Stop, Line, Text as SvgText } from 'react-native-svg'
 
-const { width } = Dimensions.get('window')
-
-const CHART_W = width - 56
 const TL_H = 180
 const CURVE_TOP = 28
 const CURVE_BOT = 140
@@ -22,6 +19,8 @@ interface EmotionalTimelineProps {
 }
 
 export function EmotionalTimeline({ moments, showNow, onMomentPress, glowDots }: EmotionalTimelineProps) {
+    const [containerWidth, setContainerWidth] = useState(350)
+    const CHART_W = containerWidth - 8
     const { t, locale } = useI18n()
     const pulseAnim = useRef(new Animated.Value(0)).current
 
@@ -82,10 +81,12 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress, glowDots }:
     const latestColor = MOOD_COLORS[latest.mood] || '#000'
 
     return (
-        <View style={{
-            backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden',
-            borderWidth: 1, borderColor: '#EBEBEB',
-        }}>
+        <View
+            onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+            style={{
+                backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden',
+                borderWidth: 1, borderColor: '#EBEBEB',
+            }}>
             {/* Card header */}
             <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Text style={{ fontSize: 12, fontWeight: '600', letterSpacing: 1, color: '#8A8A8A', textTransform: 'uppercase' }}>
