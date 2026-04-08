@@ -500,4 +500,13 @@ export default {
     readChapter: 'Read Chapter',
     icon: 'Icon',
   },
+
+  // ─── Desktop Wrapper ───
+  desktop: {
+    tagline: 'Small moments, big understanding',
+    title: 'Better on mobile.',
+    subtitle: 'Scan the QR code to open Bloomsline on your phone for the best experience.',
+    noDownload: 'No download needed',
+    worksInstantly: 'Works instantly on any phone browser.',
+  },
 } as const

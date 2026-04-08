@@ -97,7 +97,7 @@ export default function PractitionerScreen() {
   const { width: screenWidth } = useWindowDimensions()
   const router = useRouter()
   const { openResourceId } = useLocalSearchParams<{ openResourceId?: string }>()
-  const { member } = useAuth()
+  const { member, allMembers, setActiveMemberId } = useAuth()
   const { t, locale } = useI18n()
 
   const isHome = getHomeScreen(member as any) === 'practitioner'
@@ -149,6 +149,23 @@ export default function PractitionerScreen() {
   const [guideVisible, setGuideVisible] = useState(true)
   const [assessmentFilter, setAssessmentFilter] = useState<'all' | 'pending' | 'completed'>('all')
 
+  // Multi-practitioner names
+  const [practitionerNames, setPractitionerNames] = useState<Record<string, string>>({})
+  const hasMultiplePractitioners = allMembers.length > 1
+
+  useEffect(() => {
+    if (!hasMultiplePractitioners) return
+    const ids = allMembers.filter(m => m.practitioner_id).map(m => m.practitioner_id)
+    if (ids.length === 0) return
+    supabase.from('users').select('id, full_name').in('id', ids).then(({ data }) => {
+      if (data) {
+        const map: Record<string, string> = {}
+        data.forEach(u => { map[u.id] = u.full_name || '' })
+        setPractitionerNames(map)
+      }
+    })
+  }, [allMembers])
+
   const practitionerId = member?.practitioner_id
 
   // ─── Data Fetching ──────────────────────────────────
@@ -158,7 +175,7 @@ export default function PractitionerScreen() {
     try {
       const [practData, sessionsData, resourcesData] = await Promise.all([
         practitionerId ? fetchPractitioner(practitionerId) : Promise.resolve(null),
-        fetchSessions(member.id, member.user_id),
+        fetchSessions(member.id, member.user_id, practitionerId || undefined),
         practitionerId ? fetchResources(member.id) : Promise.resolve([]),
       ])
       setPractitioner(practData)
@@ -447,6 +464,38 @@ export default function PractitionerScreen() {
           <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38, marginBottom: 28 }}>
             {t.practitioner.title}
           </Text>
+        )}
+
+        {/* Practitioner switcher */}
+        {hasMultiplePractitioners && (
+          <View style={{ flexDirection: 'row', backgroundColor: '#f5f5f5', borderRadius: 16, padding: 4, marginBottom: 20 }}>
+            {allMembers.map((m) => {
+              const isActive = m.id === member?.id
+              const name = m.practitioner_id
+                ? (practitionerNames[m.practitioner_id] || '...')
+                : t.practitioner.noPractitioner
+              return (
+                <TouchableOpacity
+                  key={m.id}
+                  onPress={() => setActiveMemberId(m.id)}
+                  activeOpacity={0.7}
+                  style={{
+                    flex: 1, paddingVertical: 12, borderRadius: 12,
+                    backgroundColor: isActive ? '#fff' : 'transparent',
+                    alignItems: 'center',
+                    shadowColor: isActive ? '#000' : 'transparent',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: isActive ? 0.08 : 0,
+                    shadowRadius: 4,
+                  }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: isActive ? '600' : '400', color: isActive ? '#000' : '#999' }} numberOfLines={1}>
+                    {name}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
         )}
 
         {/* Inline guide */}

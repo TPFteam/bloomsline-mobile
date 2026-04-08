@@ -2,8 +2,11 @@ import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { Platform } from 'react-native'
 import { Session, User } from '@supabase/supabase-js'
 import * as WebBrowser from 'expo-web-browser'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 import { supabase } from './supabase'
+
+const ACTIVE_MEMBER_KEY = 'bloomsline_active_member_id'
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
 
@@ -26,6 +29,8 @@ type AuthContextType = {
   session: Session | null
   user: User | null
   member: any | null
+  allMembers: any[]
+  setActiveMemberId: (id: string) => void
   loading: boolean
   isPractitioner: boolean
   notEligible: string | null
@@ -43,6 +48,8 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   member: null,
+  allMembers: [],
+  setActiveMemberId: () => {},
   loading: true,
   isPractitioner: false,
   notEligible: null,
@@ -60,9 +67,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [member, setMember] = useState<any | null>(null)
+  const [allMembers, setAllMembers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isPractitioner, setIsPractitioner] = useState(false)
   const [notEligible, setNotEligible] = useState<string | null>(null)
+  const savedActiveMemberIdRef = useRef<string | null>(null)
+
+  // Load saved active member ID on mount
+  useEffect(() => {
+    AsyncStorage.getItem(ACTIVE_MEMBER_KEY).then((id) => {
+      if (id) savedActiveMemberIdRef.current = id
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     // Use onAuthStateChange as the single source of truth.
@@ -128,14 +144,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      const { data } = await supabase
+      const { data: membersData } = await supabase
         .from('members')
         .select('*')
         .eq('user_id', userId)
-        .single()
 
-      if (data) {
-        setMember({ ...data, signup_source: userData?.signup_source || null })
+      if (membersData && membersData.length > 0) {
+        const enriched = membersData.map(m => ({ ...m, signup_source: userData?.signup_source || null }))
+        setAllMembers(enriched)
+        // Pick active: saved ID > first with practitioner > first
+        const savedId = savedActiveMemberIdRef.current
+        const active = (savedId && enriched.find(m => m.id === savedId))
+          || enriched.find(m => m.practitioner_id)
+          || enriched[0]
+        setMember(active)
         setLoading(false)
         return
       }
@@ -154,14 +176,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const result = await res.json()
 
           if (result.ok) {
-            // Re-fetch member after setup
-            const { data: newMember } = await supabase
+            // Re-fetch members after setup
+            const { data: newMembers } = await supabase
               .from('members')
               .select('*')
               .eq('user_id', userId)
-              .single()
-            if (newMember) {
-              setMember({ ...newMember, signup_source: userData?.signup_source || null })
+            if (newMembers && newMembers.length > 0) {
+              const enriched = newMembers.map(m => ({ ...m, signup_source: userData?.signup_source || null }))
+              setAllMembers(enriched)
+              setMember(enriched[0])
               setLoading(false)
               return
             }
@@ -314,14 +337,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setNotEligible(null)
   }
 
+  function setActiveMemberId(id: string) {
+    const target = allMembers.find(m => m.id === id)
+    if (target) {
+      setMember(target)
+      savedActiveMemberIdRef.current = id
+      AsyncStorage.setItem(ACTIVE_MEMBER_KEY, id).catch(() => {})
+    }
+  }
+
   async function signOut() {
     await supabase.auth.signOut()
     setMember(null)
+    setAllMembers([])
     setIsPractitioner(false)
+    AsyncStorage.removeItem(ACTIVE_MEMBER_KEY).catch(() => {})
   }
 
   return (
-    <AuthContext.Provider value={{ session, user, member, loading, isPractitioner, notEligible, clearNotEligible, signIn, signUp, signInWithGoogle, signInWithAzure, sendMagicLink, signOut, updateMember: (updates: Record<string, any>) => setMember((prev: any) => prev ? { ...prev, ...updates } : prev) }}>
+    <AuthContext.Provider value={{
+      session, user, member, allMembers, setActiveMemberId, loading, isPractitioner, notEligible, clearNotEligible,
+      signIn, signUp, signInWithGoogle, signInWithAzure, sendMagicLink, signOut,
+      updateMember: (updates: Record<string, any>) => {
+        setMember((prev: any) => prev ? { ...prev, ...updates } : prev)
+        setAllMembers((prev) => prev.map(m => m.id === member?.id ? { ...m, ...updates } : m))
+      },
+    }}>
       {children}
     </AuthContext.Provider>
   )

@@ -102,7 +102,7 @@ export async function fetchPractitioner(practitionerId: string): Promise<Practit
   }
 }
 
-export async function fetchSessions(memberId: string, _userId?: string): Promise<{
+export async function fetchSessions(memberId: string, _userId?: string, practitionerId?: string): Promise<{
   upcoming: UpcomingSession[]
   past: UpcomingSession[]
 }> {
@@ -138,22 +138,20 @@ export async function fetchSessions(memberId: string, _userId?: string): Promise
   if (userEmail) orParts.push(`client_email.eq.${userEmail}`)
   const bookingFilter = orParts.length > 0 ? orParts.join(',') : null
 
+  const buildBookingQuery = (statusFilter: string[], order: 'asc' | 'desc', timeOp: 'gte' | 'lte', limit: number) => {
+    let q = supabase
+      .from('bookings')
+      .select('id, start_time, end_time, session_type, status, notes, practitioner_id, client_name')
+      .or(bookingFilter!)
+      .in('status', statusFilter)
+    if (practitionerId) q = q.eq('practitioner_id', practitionerId)
+    if (timeOp === 'gte') q = q.gte('start_time', now)
+    return q.order('start_time', { ascending: order === 'asc' }).limit(limit)
+  }
+
   const bookingQueries = bookingFilter ? await Promise.all([
-    supabase
-      .from('bookings')
-      .select('id, start_time, end_time, session_type, status, notes, practitioner_id, client_name')
-      .or(bookingFilter)
-      .in('status', ['confirmed', 'pending'])
-      .gte('start_time', now)
-      .order('start_time', { ascending: true })
-      .limit(10),
-    supabase
-      .from('bookings')
-      .select('id, start_time, end_time, session_type, status, notes, practitioner_id, client_name')
-      .or(bookingFilter)
-      .in('status', ['completed', 'cancelled', 'no_show'])
-      .order('start_time', { ascending: false })
-      .limit(20),
+    buildBookingQuery(['confirmed', 'pending'], 'asc', 'gte', 10),
+    buildBookingQuery(['completed', 'cancelled', 'no_show'], 'desc', 'lte', 20),
   ]) : [{ data: null }, { data: null }]
 
   // Map bookings to the same UpcomingSession shape

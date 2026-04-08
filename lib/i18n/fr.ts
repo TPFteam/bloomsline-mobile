@@ -500,4 +500,13 @@ export default {
     readChapter: 'Lire le chapitre',
     icon: 'Icône',
   },
+
+  // ─── Desktop Wrapper ───
+  desktop: {
+    tagline: 'Petits moments, grande compréhension',
+    title: 'Mieux sur mobile.',
+    subtitle: 'Scannez le QR code pour ouvrir Bloomsline sur votre téléphone.',
+    noDownload: 'Aucun téléchargement requis',
+    worksInstantly: 'Fonctionne instantanément sur tout navigateur mobile.',
+  },
 } as const

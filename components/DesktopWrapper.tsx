@@ -1,10 +1,12 @@
 import { Platform, useWindowDimensions, View, Text } from 'react-native'
 import { Image } from 'react-native'
+import { useI18n } from '@/lib/i18n'
 
 const QR_URL = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://app.bloomsline.com&color=1A1A1A&bgcolor=FFFFFF'
 
 export function DesktopWrapper({ children }: { children: React.ReactNode }) {
   const { width, height } = useWindowDimensions()
+  const { t } = useI18n()
 
   // Only apply on web with wide screens
   if (Platform.OS !== 'web' || width < 768) {
@@ -79,15 +81,15 @@ export function DesktopWrapper({ children }: { children: React.ReactNode }) {
           blooms<Text style={{ fontWeight: '300', color: '#4A9A86' }}>line</Text>
         </Text>
         <Text style={{ fontSize: 14, color: '#999', marginBottom: 32 }}>
-          Small moments, big understanding
+          {t.desktop.tagline}
         </Text>
 
         {/* Message */}
         <Text style={{ fontSize: 20, fontWeight: '700', color: '#1A1A1A', lineHeight: 28, marginBottom: 8 }}>
-          Better on mobile.
+          {t.desktop.title}
         </Text>
         <Text style={{ fontSize: 15, color: '#888', lineHeight: 22, marginBottom: 28 }}>
-          Scan the QR code to open Bloomsline on your phone for the best experience.
+          {t.desktop.subtitle}
         </Text>
 
         {/* QR Code */}
@@ -118,10 +120,10 @@ export function DesktopWrapper({ children }: { children: React.ReactNode }) {
           borderColor: '#D1FAE5',
         }}>
           <Text style={{ fontSize: 13, fontWeight: '600', color: '#059669' }}>
-            No download needed
+            {t.desktop.noDownload}
           </Text>
           <Text style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>
-            Works instantly on any phone browser.
+            {t.desktop.worksInstantly}
           </Text>
         </View>
       </View>
