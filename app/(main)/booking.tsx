@@ -137,7 +137,12 @@ export default function BookingScreen() {
   function canContinue(): boolean {
     if (step === 'service') return !!selectedService
     if (step === 'datetime') return !!selectedDate && !!selectedSlot
-    if (step === 'details') return clientName.trim().length > 0 && clientEmail.includes('@')
+    if (step === 'details') {
+      const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clientEmail.trim())
+      if (!clientName.trim() || !emailValid) return false
+      if (selectedService?.notesRequired && !notes.trim()) return false
+      return true
+    }
     return true
   }
 
@@ -405,6 +410,10 @@ export default function BookingScreen() {
               <View>
                 <Text style={{ fontSize: 12, fontWeight: '600', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
                   {t.booking.notes}
+                  {selectedService?.notesRequired
+                    ? <Text style={{ color: '#ef4444' }}> *</Text>
+                    : <Text style={{ fontWeight: '400', textTransform: 'none' }}> ({locale === 'fr' ? 'facultatif' : 'optional'})</Text>
+                  }
                 </Text>
                 <TextInput
                   value={notes}

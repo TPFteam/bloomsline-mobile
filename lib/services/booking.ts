@@ -9,6 +9,7 @@ export interface SessionType {
   name: string
   duration: number
   price: number | null
+  notesRequired?: boolean
 }
 
 export interface BookingSettings {
