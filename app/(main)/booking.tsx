@@ -6,6 +6,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
 import { colors } from '@/lib/theme'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import {
@@ -55,6 +56,7 @@ export default function BookingScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [requiresApproval, setRequiresApproval] = useState(false)
+  const [activeDays, setActiveDays] = useState<number[] | null>(null)
 
   const stepIndex = STEPS.indexOf(step)
 
@@ -64,6 +66,18 @@ export default function BookingScreen() {
       setSettings(s)
       setLoading(false)
     })
+    // Fetch available days of week
+    supabase
+      .from('availability_schedules')
+      .select('day_of_week')
+      .eq('user_id', practitionerId)
+      .eq('is_active', true)
+      .then(({ data }: { data: { day_of_week: string }[] | null }) => {
+        if (data) {
+          const dayMap: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 }
+          setActiveDays([...new Set(data.map((d: { day_of_week: string }) => dayMap[d.day_of_week]))])
+        }
+      })
   }, [practitionerId])
 
   // Pre-fill user details
@@ -105,14 +119,15 @@ export default function BookingScreen() {
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month, d)
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      const dayDisabled = activeDays !== null && !activeDays.includes(date.getDay())
       days.push({
         day: d,
         date: dateStr,
-        disabled: date < today || date > maxDate,
+        disabled: date < today || date > maxDate || dayDisabled,
       })
     }
     return { days, offset: firstDay }
-  }, [calendarMonth, settings])
+  }, [calendarMonth, settings, activeDays])
 
   const monthLabel = new Date(calendarMonth.year, calendarMonth.month).toLocaleDateString(loc, { month: 'long', year: 'numeric' })
 
