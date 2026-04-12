@@ -342,6 +342,73 @@ export async function createBooking(input: {
   }
 }
 
+// ─── Patient Modification Settings ─────────────────
+
+export async function fetchModificationSettings(practitionerId: string) {
+  const { data } = await supabase
+    .from('booking_settings')
+    .select('allow_patient_reschedule, allow_patient_cancel, modification_notice_hours')
+    .eq('user_id', practitionerId)
+    .single()
+
+  return {
+    allowReschedule: data?.allow_patient_reschedule ?? false,
+    allowCancel: data?.allow_patient_cancel ?? false,
+    noticeHours: data?.modification_notice_hours ?? 48,
+  }
+}
+
+// ─── Patient Cancel Booking ────────────────────────
+
+export async function cancelBooking(bookingId: string, reason: string) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) return { success: false, error: 'Not authenticated' }
+
+  try {
+    const res = await fetch(`${API_URL}/api/bookings/${bookingId}/member-action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action: 'cancel', reason }),
+    })
+    const data = await res.json()
+    if (!res.ok) return { success: false, error: data.error || 'Failed to cancel' }
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
+// ─── Patient Reschedule Booking ────────────────────
+
+export async function rescheduleBooking(
+  bookingId: string,
+  reason: string,
+  newSlotStart: string,
+  newSlotEnd: string
+) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session?.access_token) return { success: false, error: 'Not authenticated' }
+
+  try {
+    const res = await fetch(`${API_URL}/api/bookings/${bookingId}/member-action`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ action: 'reschedule', reason, newSlotStart, newSlotEnd }),
+    })
+    const data = await res.json()
+    if (!res.ok) return { success: false, error: data.error || 'Failed to reschedule' }
+    return { success: true, newBookingId: data.newBookingId }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Network error' }
+  }
+}
+
 export async function fetchPublishedResources(practitionerId: string) {
   const { data } = await supabase
     .from('resources')

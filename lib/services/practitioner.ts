@@ -33,6 +33,8 @@ export interface UpcomingSession {
     full_name: string
     avatar_url: string | null
   } | null
+  source?: 'session' | 'booking'
+  booking_id?: string
 }
 
 export interface ResourceItem {
@@ -173,6 +175,8 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
       notes: b.notes,
       practitioner_id: b.practitioner_id,
       _source: 'booking',
+      source: 'booking' as const,
+      booking_id: b.id,
     }
   }
 

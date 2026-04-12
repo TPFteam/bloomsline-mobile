@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import NotificationBell from '@/components/NotificationBell'
 import { FileText, Table2, BookOpen, Dumbbell, FileQuestion, Frown, Meh, Smile, CheckCircle, Settings, Mic, PenLine, Heart, User, Calendar, Clock, FolderOpen } from 'lucide-react-native'
 import {
@@ -54,6 +54,7 @@ import {
   UpcomingSession,
   ResourceItem,
 } from '@/lib/services/practitioner'
+import { fetchModificationSettings, cancelBooking, rescheduleBooking, fetchAvailableSlots } from '@/lib/services/booking'
 
 // ─── Helpers ────────────────────────────────────────
 
@@ -123,6 +124,21 @@ export default function PractitionerScreen() {
   const [suggestedDate, setSuggestedDate] = useState('')
   const [suggestedTime, setSuggestedTime] = useState('')
 
+  // Booking modification
+  const [modificationSettings, setModificationSettings] = useState<{ allowReschedule: boolean; allowCancel: boolean; noticeHours: number }>({ allowReschedule: false, allowCancel: false, noticeHours: 48 })
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
+  const [rescheduleBookingId, setRescheduleBookingId] = useState<string | null>(null)
+  const [rescheduleBookingReason, setRescheduleBookingReason] = useState('')
+  const [rescheduleBookingSlots, setRescheduleBookingSlots] = useState<Array<{ slot_start: string; slot_end: string }>>([])
+  const [rescheduleBookingDate, setRescheduleBookingDate] = useState<string | null>(null)
+  const [rescheduleBookingTime, setRescheduleBookingTime] = useState('')
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [rescheduleCalMonth, setRescheduleCalMonth] = useState(() => {
+    const now = new Date()
+    return { year: now.getFullYear(), month: now.getMonth() }
+  })
+
   // Resources
   const [viewingResource, setViewingResource] = useState<ResourceItem | null>(null)
   const [fillResource, setFillResource] = useState<any>(null)
@@ -182,6 +198,10 @@ export default function PractitionerScreen() {
       setUpcomingSessions(sessionsData.upcoming)
       setPastSessions(sessionsData.past)
       setResources(resourcesData)
+      // Load patient modification settings
+      if (practitionerId) {
+        fetchModificationSettings(practitionerId).then(setModificationSettings).catch(() => {})
+      }
     } catch (error) {
       console.error('Error loading practitioner data:', error)
     } finally {
@@ -261,6 +281,131 @@ export default function PractitionerScreen() {
     setActionLoading(sessionId)
     const ok = await declineProposedDate(sessionId)
     if (ok) setUpcomingSessions(prev => prev.map(s => s.id === sessionId ? { ...s, reschedule_status: 'pending' as const, practitioner_proposed_date: null } : s))
+    setActionLoading(null)
+  }
+
+  // ─── Booking Cancel/Reschedule ─────────────────────
+
+  function canModifySession(session: UpcomingSession): boolean {
+    const hoursUntil = (new Date(session.scheduled_at).getTime() - Date.now()) / (1000 * 60 * 60)
+    if (hoursUntil < modificationSettings.noticeHours) return false
+    return modificationSettings.allowCancel || modificationSettings.allowReschedule
+  }
+
+  // cancelSessionId holds either a booking_id or session id
+  async function handleCancelSession() {
+    if (!cancelBookingId || !cancelReason.trim()) return
+    setActionLoading(cancelBookingId)
+
+    // Find the session to determine source
+    const session = upcomingSessions.find(s => s.id === cancelBookingId || s.booking_id === cancelBookingId)
+
+    if (session?.booking_id) {
+      // Booking-based: use API
+      const result = await cancelBooking(session.booking_id, cancelReason.trim())
+      if (result.success) {
+        setUpcomingSessions(prev => prev.filter(s => s.id !== session.id))
+        setCancelBookingId(null)
+        setCancelReason('')
+        Alert.alert(locale === 'fr' ? 'Séance annulée' : 'Session cancelled')
+      } else {
+        Alert.alert(t.common.error, result.error)
+      }
+    } else {
+      // Session-based: direct Supabase update
+      const { error } = await supabase
+        .from('sessions')
+        .update({ status: 'cancelled' })
+        .eq('id', cancelBookingId)
+      if (!error) {
+        setUpcomingSessions(prev => prev.filter(s => s.id !== cancelBookingId))
+        setCancelBookingId(null)
+        setCancelReason('')
+        Alert.alert(locale === 'fr' ? 'Séance annulée' : 'Session cancelled')
+      } else {
+        Alert.alert(t.common.error, error.message)
+      }
+    }
+    setActionLoading(null)
+  }
+
+  const rescheduleCalDays = useMemo(() => {
+    const { year, month } = rescheduleCalMonth
+    const firstDay = new Date(year, month, 1).getDay()
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const days: { day: number; date: string; disabled: boolean }[] = []
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = new Date(year, month, d)
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      days.push({ day: d, date: dateStr, disabled: date < today })
+    }
+    return { days, offset: firstDay }
+  }, [rescheduleCalMonth])
+
+  const rescheduleMonthLabel = new Date(rescheduleCalMonth.year, rescheduleCalMonth.month).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' })
+
+  function rescheduleCalPrev() {
+    setRescheduleCalMonth(p => ({ year: p.month === 0 ? p.year - 1 : p.year, month: p.month === 0 ? 11 : p.month - 1 }))
+  }
+  function rescheduleCalNext() {
+    setRescheduleCalMonth(p => ({ year: p.month === 11 ? p.year + 1 : p.year, month: p.month === 11 ? 0 : p.month + 1 }))
+  }
+
+  function handleSelectRescheduleDate(date: string) {
+    setRescheduleBookingDate(date)
+    setRescheduleBookingTime('')
+    setRescheduleBookingSlots([])
+    // Load slots
+    const session = upcomingSessions.find(s => (s.booking_id || s.id) === rescheduleBookingId)
+    if (!session?.practitioner?.id) return
+    setLoadingSlots(true)
+    fetchAvailableSlots(session.practitioner.id, date, session.duration_minutes)
+      .then(result => setRescheduleBookingSlots(result.slots || []))
+      .catch(() => setRescheduleBookingSlots([]))
+      .finally(() => setLoadingSlots(false))
+  }
+
+  async function handleRescheduleSession() {
+    if (!rescheduleBookingId || !rescheduleBookingTime || !rescheduleBookingReason.trim()) return
+    const slot = rescheduleBookingSlots.find(s => s.slot_start === rescheduleBookingTime)
+    if (!slot) return
+    setActionLoading(rescheduleBookingId)
+
+    // Find the session to determine source
+    const session = upcomingSessions.find(s => s.id === rescheduleBookingId || s.booking_id === rescheduleBookingId)
+
+    if (session?.booking_id) {
+      // Booking-based: use API
+      const result = await rescheduleBooking(session.booking_id, rescheduleBookingReason.trim(), slot.slot_start, slot.slot_end)
+      if (result.success) {
+        setRescheduleBookingId(null)
+        setRescheduleBookingReason('')
+        setRescheduleBookingDate('')
+        setRescheduleBookingTime('')
+        fetchData()
+        Alert.alert(locale === 'fr' ? 'Séance reprogrammée' : 'Session rescheduled')
+      } else {
+        Alert.alert(t.common.error, result.error)
+      }
+    } else {
+      // Session-based: update scheduled_at directly
+      const { error } = await supabase
+        .from('sessions')
+        .update({ scheduled_at: slot.slot_start, duration_minutes: Math.round((new Date(slot.slot_end).getTime() - new Date(slot.slot_start).getTime()) / 60000) })
+        .eq('id', rescheduleBookingId)
+      if (!error) {
+        setRescheduleBookingId(null)
+        setRescheduleBookingReason('')
+        setRescheduleBookingDate('')
+        setRescheduleBookingTime('')
+        fetchData()
+        Alert.alert(locale === 'fr' ? 'Séance reprogrammée' : 'Session rescheduled')
+      } else {
+        Alert.alert(t.common.error, error.message)
+      }
+    }
     setActionLoading(null)
   }
 
@@ -734,6 +879,9 @@ export default function PractitionerScreen() {
                   onReschedule={() => { setRescheduleSessionId(session.id); setRescheduleReason(''); setSuggestedDate(''); setSuggestedTime('') }}
                   onAcceptProposed={() => handleAcceptProposed(session)}
                   onDeclineProposed={() => handleDeclineProposed(session.id)}
+                  canModify={canModifySession(session)}
+                  onCancel={canModifySession(session) && modificationSettings.allowCancel ? () => { setCancelBookingId(session.booking_id || session.id); setCancelReason('') } : undefined}
+                  onRescheduleBooking={canModifySession(session) && modificationSettings.allowReschedule ? () => { setRescheduleBookingId(session.booking_id || session.id); setRescheduleBookingReason(''); setRescheduleBookingDate(''); setRescheduleBookingTime(''); setRescheduleBookingSlots([]) } : undefined}
                 />
               ))}
             </View>
@@ -852,6 +1000,194 @@ export default function PractitionerScreen() {
               </TouchableOpacity>
             </View>
           </Pressable>
+        </Pressable>
+      </Modal>
+      <Modal visible={!!cancelBookingId} transparent animationType="fade" onRequestClose={() => setCancelBookingId(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }} onPress={() => setCancelBookingId(null)}>
+          <Pressable style={{
+            backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+            padding: 28, paddingBottom: insets.bottom + 28,
+          }} onPress={() => {}}><View>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.disabled, alignSelf: 'center', marginBottom: 20 }} />
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3, marginBottom: 4 }}>
+              {locale === 'fr' ? 'Annuler la séance' : 'Cancel session'}
+            </Text>
+            <Text style={{ fontSize: 15, color: '#8A8A8A', marginBottom: 20 }}>
+              {locale === 'fr' ? 'Dites-nous pourquoi vous annulez.' : 'Please tell us why you are cancelling.'}
+            </Text>
+            <TextInput
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              placeholder={locale === 'fr' ? "Raison de l'annulation..." : 'Reason for cancellation...'}
+              placeholderTextColor="#CCCCCC"
+              multiline
+              style={{
+                backgroundColor: colors.surface2, borderRadius: 16, padding: 16, fontSize: 15,
+                color: colors.primary, minHeight: 80, textAlignVertical: 'top', marginBottom: 20,
+              }}
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setCancelBookingId(null)}
+                style={{ flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 28, backgroundColor: colors.surface1 }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>{t.common.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleCancelSession}
+                disabled={!cancelReason.trim() || actionLoading === cancelBookingId}
+                style={{
+                  flex: 1, alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: cancelReason.trim() ? '#DC2626' : colors.disabled,
+                  borderRadius: 28, paddingVertical: 14,
+                }}
+              >
+                {actionLoading === cancelBookingId ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
+                    {locale === 'fr' ? "Confirmer l'annulation" : 'Confirm cancellation'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View></Pressable>
+        </Pressable>
+      </Modal>
+      <Modal visible={!!rescheduleBookingId} transparent animationType="fade" onRequestClose={() => setRescheduleBookingId(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }} onPress={() => setRescheduleBookingId(null)}>
+          <Pressable style={{
+            backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+            padding: 28, paddingBottom: insets.bottom + 28, maxHeight: '80%',
+          }} onPress={() => {}}><View>
+            <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.disabled, alignSelf: 'center', marginBottom: 20 }} />
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3, marginBottom: 4 }}>
+              {locale === 'fr' ? 'Reprogrammer la séance' : 'Reschedule session'}
+            </Text>
+            <Text style={{ fontSize: 15, color: '#8A8A8A', marginBottom: 16 }}>
+              {locale === 'fr' ? 'Choisissez une nouvelle date et heure.' : 'Pick a new date and time.'}
+            </Text>
+            <TextInput
+              value={rescheduleBookingReason}
+              onChangeText={setRescheduleBookingReason}
+              placeholder={locale === 'fr' ? 'Raison du changement...' : 'Reason for change...'}
+              placeholderTextColor="#CCCCCC"
+              style={{
+                backgroundColor: colors.surface2, borderRadius: 16, padding: 16, fontSize: 15,
+                color: colors.primary, marginBottom: 16,
+              }}
+            />
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <TouchableOpacity onPress={rescheduleCalPrev} style={{ padding: 8 }}>
+                    <Text style={{ fontSize: 18, color: colors.primary }}>‹</Text>
+                  </TouchableOpacity>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>{rescheduleMonthLabel}</Text>
+                  <TouchableOpacity onPress={rescheduleCalNext} style={{ padding: 8 }}>
+                    <Text style={{ fontSize: 18, color: colors.primary }}>›</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ flexDirection: 'row' }}>
+                  {(t.booking?.dayHeaders || ['S','M','T','W','T','F','S']).map((d: string, i: number) => (
+                    <View key={`rh-${i}`} style={{ flex: 1, alignItems: 'center', paddingBottom: 6 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '500', color: '#8A8A8A' }}>{d}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {Array.from({ length: rescheduleCalDays.offset }).map((_, i) => (
+                    <View key={`re-${i}`} style={{ width: '14.28%', height: 38 }} />
+                  ))}
+                  {rescheduleCalDays.days.map(({ day, date, disabled }) => {
+                    const isSelected = rescheduleBookingDate === date
+                    return (
+                      <TouchableOpacity
+                        key={date} disabled={disabled} activeOpacity={0.7}
+                        onPress={() => handleSelectRescheduleDate(date)}
+                        style={{ width: '14.28%', height: 38, justifyContent: 'center', alignItems: 'center' }}
+                      >
+                        <View style={{
+                          width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center',
+                          backgroundColor: isSelected ? colors.bloom : 'transparent',
+                        }}>
+                          <Text style={{
+                            fontSize: 14,
+                            color: isSelected ? '#fff' : disabled ? '#d4d4d4' : colors.primary,
+                            fontWeight: isSelected ? '600' : '400',
+                          }}>{day}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </View>
+              </View>
+              {rescheduleBookingDate && (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 10 }}>
+                    {locale === 'fr' ? 'Créneaux disponibles' : 'Available times'}
+                  </Text>
+                  {loadingSlots ? (
+                    <ActivityIndicator size="small" color={colors.bloom} style={{ marginTop: 8 }} />
+                  ) : rescheduleBookingSlots.length === 0 ? (
+                    <Text style={{ fontSize: 13, color: '#8A8A8A' }}>
+                      {locale === 'fr' ? 'Aucun créneau disponible' : 'No available slots'}
+                    </Text>
+                  ) : (
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                      {rescheduleBookingSlots.map((slot) => {
+                        const isSelected = rescheduleBookingTime === slot.slot_start
+                        const time = new Date(slot.slot_start).toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', {
+                          hour: 'numeric', minute: '2-digit', hour12: locale !== 'fr',
+                        })
+                        return (
+                          <TouchableOpacity
+                            key={slot.slot_start}
+                            onPress={() => setRescheduleBookingTime(slot.slot_start)}
+                            style={{
+                              backgroundColor: isSelected ? colors.bloom : '#fff',
+                              borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10,
+                              borderWidth: 1, borderColor: isSelected ? colors.bloom : '#EBEBEB',
+                            }}
+                          >
+                            <Text style={{
+                              fontSize: 13, fontWeight: '500',
+                              color: isSelected ? '#fff' : colors.primary,
+                            }}>{time}</Text>
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </View>
+                  )}
+                </View>
+              )}
+            </ScrollView>
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TouchableOpacity
+                onPress={() => setRescheduleBookingId(null)}
+                style={{ flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 28, backgroundColor: colors.surface1 }}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>{t.common.cancel}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleRescheduleSession}
+                disabled={!rescheduleBookingTime || !rescheduleBookingReason.trim() || actionLoading === rescheduleBookingId}
+                style={{
+                  flex: 1, alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: (rescheduleBookingTime && rescheduleBookingReason.trim()) ? colors.primary : colors.disabled,
+                  borderRadius: 28, paddingVertical: 14,
+                }}
+              >
+                {actionLoading === rescheduleBookingId ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
+                    {locale === 'fr' ? 'Reprogrammer' : 'Reschedule'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View></Pressable>
         </Pressable>
       </Modal>
 
@@ -1526,10 +1862,13 @@ function ResourceCard({ item, onPress }: { item: ResourceItem; onPress: () => vo
 
 function UpcomingSessionCard({
   session, actionLoading, onConfirm, onReschedule, onAcceptProposed, onDeclineProposed,
+  onCancel, onRescheduleBooking, canModify,
 }: {
   session: UpcomingSession; actionLoading: string | null
   onConfirm: () => void; onReschedule: () => void
   onAcceptProposed: () => void; onDeclineProposed: () => void
+  onCancel?: () => void; onRescheduleBooking?: () => void
+  canModify?: boolean
 }) {
   const { t, locale } = useI18n()
   const sessionDate = new Date(session.scheduled_at)
@@ -1627,7 +1966,7 @@ function UpcomingSessionCard({
         </View>
       </View>
 
-      {/* Actions */}
+      {/* Actions — needs confirmation */}
       {needsConfirmation && (
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#EBEBEB' }}>
           <TouchableOpacity
@@ -1644,6 +1983,32 @@ function UpcomingSessionCard({
           >
             <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>{t.practitioner.reschedule}</Text>
           </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Actions — confirmed session with modification allowed */}
+      {!needsConfirmation && !hasProposedDate && canModify && session.member_confirmed && (
+        <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#EBEBEB' }}>
+          {onRescheduleBooking && (
+            <TouchableOpacity
+              onPress={onRescheduleBooking} disabled={isLoading}
+              style={{ flex: 1, backgroundColor: colors.surface1, borderRadius: 28, paddingVertical: 12, alignItems: 'center', opacity: isLoading ? 0.5 : 1 }}
+            >
+              <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>
+                {locale === 'fr' ? 'Reprogrammer' : 'Reschedule'}
+              </Text>
+            </TouchableOpacity>
+          )}
+          {onCancel && (
+            <TouchableOpacity
+              onPress={onCancel} disabled={isLoading}
+              style={{ flex: 1, backgroundColor: '#FEF2F2', borderRadius: 28, paddingVertical: 12, alignItems: 'center', opacity: isLoading ? 0.5 : 1 }}
+            >
+              <Text style={{ color: '#DC2626', fontSize: 14, fontWeight: '600' }}>
+                {locale === 'fr' ? 'Annuler' : 'Cancel'}
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
     </View>
