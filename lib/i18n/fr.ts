@@ -311,7 +311,7 @@ export default {
     emailPlaceholder: 'vous@exemple.com',
     namePlaceholder: 'Votre nom complet',
     phonePlaceholder: 'Optionnel',
-    dayHeaders: ['Di', 'Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa'],
+    dayHeaders: ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di'],
     bookingFailed: 'Échec de la réservation',
     bookingFailedMessage: 'Veuillez réessayer.',
   },

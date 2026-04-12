@@ -331,7 +331,7 @@ export default function PractitionerScreen() {
 
   const rescheduleCalDays = useMemo(() => {
     const { year, month } = rescheduleCalMonth
-    const firstDay = new Date(year, month, 1).getDay()
+    const firstDay = (new Date(year, month, 1).getDay() + 6) % 7 // Monday = 0
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -1089,7 +1089,7 @@ export default function PractitionerScreen() {
                   </TouchableOpacity>
                 </View>
                 <View style={{ flexDirection: 'row' }}>
-                  {(t.booking?.dayHeaders || ['S','M','T','W','T','F','S']).map((d: string, i: number) => (
+                  {(t.booking?.dayHeaders || ['M','T','W','T','F','S','S']).map((d: string, i: number) => (
                     <View key={`rh-${i}`} style={{ flex: 1, alignItems: 'center', paddingBottom: 6 }}>
                       <Text style={{ fontSize: 12, fontWeight: '500', color: '#8A8A8A' }}>{d}</Text>
                     </View>

@@ -107,7 +107,7 @@ export default function BookingScreen() {
 
   const calendarDays = useMemo(() => {
     const { year, month } = calendarMonth
-    const firstDay = new Date(year, month, 1).getDay()
+    const firstDay = (new Date(year, month, 1).getDay() + 6) % 7 // Monday = 0
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const today = new Date()
     today.setHours(0, 0, 0, 0)
