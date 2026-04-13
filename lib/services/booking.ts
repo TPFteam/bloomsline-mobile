@@ -158,11 +158,12 @@ export async function fetchAvailableSlots(
   practitionerId: string,
   date: string,
   duration: number,
+  format?: string,
 ): Promise<{ slots: TimeSlot[]; practitionerTimezone: string | null }> {
   // Use the care app API which checks Google Calendar busy times
   try {
     const res = await fetch(
-      `${API_URL}/api/bookings/available-slots?practitionerId=${practitionerId}&date=${date}&duration=${duration}`
+      `${API_URL}/api/bookings/available-slots?practitionerId=${practitionerId}&date=${date}&duration=${duration}${format ? `&format=${format}` : ''}`
     )
 
     if (res.ok) {
