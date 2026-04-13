@@ -189,17 +189,17 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
   const pastBookings = dedupById(bookingQueries[1]?.data || []).map(mapBooking)
 
   // Deduplicate: when a booking is confirmed, a session is also created.
-  // Skip bookings that already have a matching session (same practitioner + time).
-  const sessionTimes = new Set(
-    [...(upcomingRes.data || []), ...(pastRes.data || [])].map(
-      (s: any) => `${s.practitioner_id}_${s.scheduled_at}`
+  // Keep the booking version (has booking_id for cancel/reschedule), skip the session version.
+  const bookingTimes = new Set(
+    [...upcomingBookings, ...pastBookings].map(
+      (b: any) => `${b.practitioner_id}_${b.scheduled_at}`
     )
   )
-  const dedupBookings = (bookings: any[]) =>
-    bookings.filter((b) => !sessionTimes.has(`${b.practitioner_id}_${b.scheduled_at}`))
+  const dedupSessions = (sessions: any[]) =>
+    sessions.filter((s: any) => !bookingTimes.has(`${s.practitioner_id}_${s.scheduled_at}`))
 
-  const allUpcoming = [...(upcomingRes.data || []), ...dedupBookings(upcomingBookings)]
-  const allPast = [...(pastRes.data || []), ...dedupBookings(pastBookings)]
+  const allUpcoming = [...dedupSessions(upcomingRes.data || []), ...upcomingBookings]
+  const allPast = [...dedupSessions(pastRes.data || []), ...pastBookings]
 
   const allSessions = [...allUpcoming, ...allPast]
   let practitionerMap: Record<string, any> = {}
