@@ -342,11 +342,22 @@ export default function PractitionerScreen() {
         Alert.alert(t.common.error, result.error)
       }
     } else {
-      // Session-based: direct Supabase update
+      // Session-based: cancel session + any matching booking
       const { error } = await supabase
         .from('sessions')
         .update({ status: 'cancelled' })
         .eq('id', cancelBookingId)
+
+      // Also cancel matching booking by practitioner_id + scheduled_at
+      if (!error && session) {
+        await supabase
+          .from('bookings')
+          .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: 'member', cancellation_reason: cancelReason.trim() })
+          .eq('practitioner_id', session.practitioner?.id || '')
+          .eq('start_time', session.scheduled_at)
+          .neq('status', 'cancelled')
+      }
+
       if (!error) {
         setUpcomingSessions(prev => prev.filter(s => s.id !== cancelBookingId))
         setCancelBookingId(null)
@@ -441,11 +452,23 @@ export default function PractitionerScreen() {
         Alert.alert(t.common.error, result.error)
       }
     } else {
-      // Session-based: update scheduled_at directly
+      // Session-based: update scheduled_at + cancel matching old booking
+      const reschSession = upcomingSessions.find(s => (s.booking_id || s.id) === rescheduleBookingId)
       const { error } = await supabase
         .from('sessions')
         .update({ scheduled_at: slot.slot_start, duration_minutes: Math.round((new Date(slot.slot_end).getTime() - new Date(slot.slot_start).getTime()) / 60000) })
         .eq('id', rescheduleBookingId)
+
+      // Cancel old booking + create new one
+      if (!error && reschSession?.practitioner?.id) {
+        await supabase
+          .from('bookings')
+          .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: 'member', cancellation_reason: `Rescheduled: ${rescheduleBookingReason.trim()}` })
+          .eq('practitioner_id', reschSession.practitioner.id)
+          .eq('start_time', reschSession.scheduled_at)
+          .neq('status', 'cancelled')
+      }
+
       if (!error) {
         setRescheduleBookingId(null)
         setRescheduleBookingReason('')
