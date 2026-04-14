@@ -85,7 +85,7 @@ function getSessionTypeLabel(type: string, t?: any): string {
 
 function getFormatLabel(format: string, t?: any): string {
   if (t) {
-    const map: Record<string, string> = { video: t.practitioner.formatVideo, virtual: t.practitioner.formatVideo, in_person: t.practitioner.formatInPerson, phone: t.practitioner.formatPhone }
+    const map: Record<string, string> = { video: t.practitioner.formatVideo, virtual: t.practitioner.formatVideo, telehealth: t.practitioner.formatVideo, in_person: t.practitioner.formatInPerson, phone: t.practitioner.formatPhone }
     if (map[format]) return map[format]
   }
   return format
@@ -126,6 +126,8 @@ export default function PractitionerScreen() {
 
   // Booking modification
   const [modificationSettings, setModificationSettings] = useState<{ allowReschedule: boolean; allowCancel: boolean; noticeHours: number }>({ allowReschedule: false, allowCancel: false, noticeHours: 48 })
+  const [practActiveDays, setPractActiveDays] = useState<number[] | null>(null)
+  const [practDayFormats, setPractDayFormats] = useState<Record<string, string[]>>({})
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
   const [cancelReason, setCancelReason] = useState('')
   const [rescheduleBookingId, setRescheduleBookingId] = useState<string | null>(null)
@@ -198,9 +200,33 @@ export default function PractitionerScreen() {
       setUpcomingSessions(sessionsData.upcoming)
       setPastSessions(sessionsData.past)
       setResources(resourcesData)
-      // Load patient modification settings
+      // Load patient modification settings + active days
       if (practitionerId) {
         fetchModificationSettings(practitionerId).then(setModificationSettings).catch(() => {})
+        supabase
+          .from('availability_schedules')
+          .select('day_of_week, session_format')
+          .eq('user_id', practitionerId)
+          .eq('is_active', true)
+          .then(({ data }: { data: { day_of_week: string; session_format?: string }[] | null }) => {
+            if (data) {
+              const dayMap: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 }
+              setPractActiveDays([...new Set(data.map(d => dayMap[d.day_of_week]))])
+              const dfMap: Record<string, string[]> = {}
+              for (const d of data) {
+                const dayNum = String(dayMap[d.day_of_week])
+                const fmt = d.session_format || 'both'
+                if (!dfMap[dayNum]) dfMap[dayNum] = []
+                if (fmt === 'both') {
+                  if (!dfMap[dayNum].includes('in_person')) dfMap[dayNum].push('in_person')
+                  if (!dfMap[dayNum].includes('video')) dfMap[dayNum].push('video')
+                } else {
+                  if (!dfMap[dayNum].includes(fmt)) dfMap[dayNum].push(fmt)
+                }
+              }
+              setPractDayFormats(dfMap)
+            }
+          })
       }
     } catch (error) {
       console.error('Error loading practitioner data:', error)
@@ -307,7 +333,10 @@ export default function PractitionerScreen() {
         setUpcomingSessions(prev => prev.filter(s => s.id !== session.id))
         setCancelBookingId(null)
         setCancelReason('')
-        Alert.alert(locale === 'fr' ? 'Séance annulée' : 'Session cancelled')
+        Alert.alert(
+          locale === 'fr' ? 'Séance annulée' : 'Session cancelled',
+          locale === 'fr' ? 'Votre demande d\'annulation a été envoyée. Le praticien en sera informé.' : 'Your cancellation request has been sent. The practitioner will be notified.'
+        )
       } else {
         Alert.alert(t.common.error, result.error)
       }
@@ -335,14 +364,29 @@ export default function PractitionerScreen() {
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    const reschSession = upcomingSessions.find(s => (s.booking_id || s.id) === rescheduleBookingId)
     const days: { day: number; date: string; disabled: boolean }[] = []
     for (let d = 1; d <= daysInMonth; d++) {
       const date = new Date(year, month, d)
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-      days.push({ day: d, date: dateStr, disabled: date < today })
+      const dayNum = date.getDay()
+      // Disable past days
+      let disabled = date < today
+      // Disable days without availability
+      if (!disabled && practActiveDays !== null && !practActiveDays.includes(dayNum)) disabled = true
+      // Disable days that don't match session format
+      if (!disabled && reschSession) {
+        const fmt = reschSession.session_format
+        // Map session_format to availability format
+        const availFmt = (fmt === 'telehealth' || fmt === 'virtual' || fmt === 'video') ? 'video' : (fmt === 'in_person' ? 'in_person' : null)
+        if (availFmt && practDayFormats[String(dayNum)]) {
+          if (!practDayFormats[String(dayNum)].includes(availFmt)) disabled = true
+        }
+      }
+      days.push({ day: d, date: dateStr, disabled })
     }
     return { days, offset: firstDay }
-  }, [rescheduleCalMonth])
+  }, [rescheduleCalMonth, practActiveDays, practDayFormats, rescheduleBookingId, upcomingSessions])
 
   const rescheduleMonthLabel = new Date(rescheduleCalMonth.year, rescheduleCalMonth.month).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' })
 
@@ -385,7 +429,10 @@ export default function PractitionerScreen() {
         setRescheduleBookingDate('')
         setRescheduleBookingTime('')
         fetchData()
-        Alert.alert(locale === 'fr' ? 'Séance reprogrammée' : 'Session rescheduled')
+        Alert.alert(
+          locale === 'fr' ? 'Séance reprogrammée' : 'Session rescheduled',
+          locale === 'fr' ? 'Votre demande de reprogrammation a été envoyée. Le praticien en sera informé.' : 'Your reschedule request has been sent. The practitioner will be notified.'
+        )
       } else {
         Alert.alert(t.common.error, result.error)
       }
@@ -401,7 +448,10 @@ export default function PractitionerScreen() {
         setRescheduleBookingDate('')
         setRescheduleBookingTime('')
         fetchData()
-        Alert.alert(locale === 'fr' ? 'Séance reprogrammée' : 'Session rescheduled')
+        Alert.alert(
+          locale === 'fr' ? 'Séance reprogrammée' : 'Session rescheduled',
+          locale === 'fr' ? 'Votre demande de reprogrammation a été envoyée. Le praticien en sera informé.' : 'Your reschedule request has been sent. The practitioner will be notified.'
+        )
       } else {
         Alert.alert(t.common.error, error.message)
       }
@@ -1002,7 +1052,8 @@ export default function PractitionerScreen() {
           </Pressable>
         </Pressable>
       </Modal>
-      <Modal visible={!!cancelBookingId} transparent animationType="fade" onRequestClose={() => setCancelBookingId(null)}>
+      {cancelBookingId && (
+      <Modal visible={true} transparent animationType="fade" onRequestClose={() => setCancelBookingId(null)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }} onPress={() => setCancelBookingId(null)}>
           <Pressable style={{
             backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
@@ -1054,12 +1105,14 @@ export default function PractitionerScreen() {
           </View></Pressable>
         </Pressable>
       </Modal>
-      <Modal visible={!!rescheduleBookingId} transparent animationType="fade" onRequestClose={() => setRescheduleBookingId(null)}>
+      )}
+      {rescheduleBookingId && (
+      <Modal visible={true} transparent animationType="fade" onRequestClose={() => setRescheduleBookingId(null)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }} onPress={() => setRescheduleBookingId(null)}>
           <Pressable style={{
             backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
             padding: 28, paddingBottom: insets.bottom + 28, maxHeight: '80%',
-          }} onPress={() => {}}><View>
+          }} onPress={() => {}}><ScrollView showsVerticalScrollIndicator={false}><View>
             <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.disabled, alignSelf: 'center', marginBottom: 20 }} />
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3, marginBottom: 4 }}>
               {locale === 'fr' ? 'Reprogrammer la séance' : 'Reschedule session'}
@@ -1077,7 +1130,6 @@ export default function PractitionerScreen() {
                 color: colors.primary, marginBottom: 16,
               }}
             />
-            <ScrollView showsVerticalScrollIndicator={false}>
               <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <TouchableOpacity onPress={rescheduleCalPrev} style={{ padding: 8 }}>
@@ -1161,7 +1213,6 @@ export default function PractitionerScreen() {
                   )}
                 </View>
               )}
-            </ScrollView>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity
                 onPress={() => setRescheduleBookingId(null)}
@@ -1187,9 +1238,10 @@ export default function PractitionerScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View></Pressable>
+          </View></ScrollView></Pressable>
         </Pressable>
       </Modal>
+      )}
 
       {/* ═══════════════════════════════════════════════ */}
       {/* RESOURCE DETAIL MODAL */}
@@ -1872,7 +1924,7 @@ function UpcomingSessionCard({
 }) {
   const { t, locale } = useI18n()
   const sessionDate = new Date(session.scheduled_at)
-  const needsConfirmation = !session.member_confirmed && !session.reschedule_requested && session.reschedule_status !== 'proposed'
+  const needsConfirmation = !session.member_confirmed && !session.reschedule_requested && session.reschedule_status !== 'proposed' && !session.booking_id
   const hasProposedDate = session.reschedule_status === 'proposed' && session.practitioner_proposed_date
   const isLoading = actionLoading === session.id
   const loc = locale === 'fr' ? 'fr-FR' : 'en-US'
@@ -1987,7 +2039,7 @@ function UpcomingSessionCard({
       )}
 
       {/* Actions — confirmed session with modification allowed */}
-      {!needsConfirmation && !hasProposedDate && canModify && session.member_confirmed && (
+      {!needsConfirmation && !hasProposedDate && canModify && (session.member_confirmed || session.booking_id) && (
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#EBEBEB' }}>
           {onRescheduleBooking && (
             <TouchableOpacity

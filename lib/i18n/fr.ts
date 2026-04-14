@@ -230,6 +230,7 @@ export default {
     sessionTypeOther: 'Séance',
     formatVideo: 'Vidéo',
     formatInPerson: 'En personne',
+
     formatPhone: 'Téléphone',
     errorLoadResource: 'Impossible de charger la ressource.',
     errorSubmit: 'Échec de l\'envoi.',
