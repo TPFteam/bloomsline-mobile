@@ -130,6 +130,7 @@ export default function PractitionerScreen() {
   const [practDayFormats, setPractDayFormats] = useState<Record<string, string[]>>({})
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
   const [cancelReason, setCancelReason] = useState('')
+  const [confirmationScreen, setConfirmationScreen] = useState<{ type: 'cancelled' | 'rescheduled'; message: string } | null>(null)
   const [rescheduleBookingId, setRescheduleBookingId] = useState<string | null>(null)
   const [rescheduleBookingReason, setRescheduleBookingReason] = useState('')
   const [rescheduleBookingSlots, setRescheduleBookingSlots] = useState<Array<{ slot_start: string; slot_end: string }>>([])
@@ -333,10 +334,10 @@ export default function PractitionerScreen() {
         setUpcomingSessions(prev => prev.filter(s => s.id !== session.id))
         setCancelBookingId(null)
         setCancelReason('')
-        Alert.alert(
-          locale === 'fr' ? 'Séance annulée' : 'Session cancelled',
-          locale === 'fr' ? 'Votre demande d\'annulation a été envoyée. Le praticien en sera informé.' : 'Your cancellation request has been sent. The practitioner will be notified.'
-        )
+        setConfirmationScreen({
+          type: 'cancelled',
+          message: locale === 'fr' ? 'Votre séance a été annulée. Le praticien en sera informé.' : 'Your session has been cancelled. The practitioner will be notified.',
+        })
       } else {
         Alert.alert(t.common.error, result.error)
       }
@@ -350,7 +351,10 @@ export default function PractitionerScreen() {
         setUpcomingSessions(prev => prev.filter(s => s.id !== cancelBookingId))
         setCancelBookingId(null)
         setCancelReason('')
-        Alert.alert(locale === 'fr' ? 'Séance annulée' : 'Session cancelled')
+        setConfirmationScreen({
+          type: 'cancelled',
+          message: locale === 'fr' ? 'Votre séance a été annulée.' : 'Your session has been cancelled.',
+        })
       } else {
         Alert.alert(t.common.error, error.message)
       }
@@ -429,10 +433,10 @@ export default function PractitionerScreen() {
         setRescheduleBookingDate('')
         setRescheduleBookingTime('')
         fetchData()
-        Alert.alert(
-          locale === 'fr' ? 'Séance reprogrammée' : 'Session rescheduled',
-          locale === 'fr' ? 'Votre demande de reprogrammation a été envoyée. Le praticien en sera informé.' : 'Your reschedule request has been sent. The practitioner will be notified.'
-        )
+        setConfirmationScreen({
+          type: 'rescheduled',
+          message: locale === 'fr' ? 'Votre demande de reprogrammation a été envoyée. Le praticien en sera informé.' : 'Your reschedule request has been sent. The practitioner will be notified.',
+        })
       } else {
         Alert.alert(t.common.error, result.error)
       }
@@ -448,10 +452,10 @@ export default function PractitionerScreen() {
         setRescheduleBookingDate('')
         setRescheduleBookingTime('')
         fetchData()
-        Alert.alert(
-          locale === 'fr' ? 'Séance reprogrammée' : 'Session rescheduled',
-          locale === 'fr' ? 'Votre demande de reprogrammation a été envoyée. Le praticien en sera informé.' : 'Your reschedule request has been sent. The practitioner will be notified.'
-        )
+        setConfirmationScreen({
+          type: 'rescheduled',
+          message: locale === 'fr' ? 'Votre séance a été reprogrammée.' : 'Your session has been rescheduled.',
+        })
       } else {
         Alert.alert(t.common.error, error.message)
       }
@@ -1052,6 +1056,35 @@ export default function PractitionerScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      {confirmationScreen && (
+      <Modal visible={true} transparent animationType="fade" onRequestClose={() => setConfirmationScreen(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 28, padding: 32, marginHorizontal: 32, alignItems: 'center', maxWidth: 340, width: '100%' }}>
+            <View style={{
+              width: 64, height: 64, borderRadius: 32, marginBottom: 20, alignItems: 'center', justifyContent: 'center',
+              backgroundColor: confirmationScreen.type === 'cancelled' ? '#FEF2F2' : '#F0FDF4',
+            }}>
+              <Text style={{ fontSize: 28 }}>{confirmationScreen.type === 'cancelled' ? '✕' : '✓'}</Text>
+            </View>
+            <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, textAlign: 'center', marginBottom: 8 }}>
+              {confirmationScreen.type === 'cancelled'
+                ? (locale === 'fr' ? 'Séance annulée' : 'Session cancelled')
+                : (locale === 'fr' ? 'Reprogrammation demandée' : 'Reschedule requested')}
+            </Text>
+            <Text style={{ fontSize: 14, color: '#8A8A8A', textAlign: 'center', lineHeight: 20, marginBottom: 24 }}>
+              {confirmationScreen.message}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setConfirmationScreen(null)}
+              style={{ backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 14, paddingHorizontal: 40, width: '100%', alignItems: 'center' }}
+            >
+              <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>{locale === 'fr' ? 'Compris' : 'Got it'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      )}
+
       {cancelBookingId && (
       <Modal visible={true} transparent animationType="fade" onRequestClose={() => setCancelBookingId(null)}>
         <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }} onPress={() => setCancelBookingId(null)}>
