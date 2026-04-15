@@ -1119,13 +1119,30 @@ export default function PractitionerScreen() {
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3, marginBottom: 4 }}>
               {locale === 'fr' ? 'Annuler la séance' : 'Cancel session'}
             </Text>
-            <Text style={{ fontSize: 15, color: '#8A8A8A', marginBottom: 20 }}>
+            <Text style={{ fontSize: 15, color: '#8A8A8A', marginBottom: 14 }}>
               {locale === 'fr' ? 'Dites-nous pourquoi vous annulez.' : 'Please tell us why you are cancelling.'}
             </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {(locale === 'fr'
+                ? ['Conflit d\'horaire', 'Raison personnelle', 'Je ne me sens pas bien', 'Je souhaite reprogrammer']
+                : ['Schedule conflict', 'Personal reasons', 'Not feeling well', 'Want to reschedule']
+              ).map((reason) => (
+                <TouchableOpacity
+                  key={reason}
+                  onPress={() => setCancelReason(reason)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                    backgroundColor: cancelReason === reason ? colors.primary : colors.surface2,
+                  }}
+                >
+                  <Text style={{ fontSize: 13, color: cancelReason === reason ? '#fff' : colors.primary, fontWeight: '500' }}>{reason}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <TextInput
               value={cancelReason}
               onChangeText={setCancelReason}
-              placeholder={locale === 'fr' ? "Raison de l'annulation..." : 'Reason for cancellation...'}
+              placeholder={locale === 'fr' ? "Ou écrivez votre raison..." : 'Or write your reason...'}
               placeholderTextColor="#CCCCCC"
               multiline
               style={{
@@ -1173,13 +1190,30 @@ export default function PractitionerScreen() {
             <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primary, letterSpacing: -0.3, marginBottom: 4 }}>
               {locale === 'fr' ? 'Reprogrammer la séance' : 'Reschedule session'}
             </Text>
-            <Text style={{ fontSize: 15, color: '#8A8A8A', marginBottom: 16 }}>
+            <Text style={{ fontSize: 15, color: '#8A8A8A', marginBottom: 14 }}>
               {locale === 'fr' ? 'Choisissez une nouvelle date et heure.' : 'Pick a new date and time.'}
             </Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+              {(locale === 'fr'
+                ? ['Conflit d\'horaire', 'Imprévu personnel', 'Changement de disponibilité', 'Autre engagement']
+                : ['Schedule conflict', 'Personal emergency', 'Availability changed', 'Other commitment']
+              ).map((reason) => (
+                <TouchableOpacity
+                  key={reason}
+                  onPress={() => setRescheduleBookingReason(reason)}
+                  style={{
+                    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                    backgroundColor: rescheduleBookingReason === reason ? colors.primary : colors.surface2,
+                  }}
+                >
+                  <Text style={{ fontSize: 13, color: rescheduleBookingReason === reason ? '#fff' : colors.primary, fontWeight: '500' }}>{reason}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             <TextInput
               value={rescheduleBookingReason}
               onChangeText={setRescheduleBookingReason}
-              placeholder={locale === 'fr' ? 'Raison du changement...' : 'Reason for change...'}
+              placeholder={locale === 'fr' ? 'Ou écrivez votre raison...' : 'Or write your reason...'}
               placeholderTextColor="#CCCCCC"
               style={{
                 backgroundColor: colors.surface2, borderRadius: 16, padding: 16, fontSize: 15,
