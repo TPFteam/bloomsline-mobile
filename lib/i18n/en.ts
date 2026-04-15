@@ -83,6 +83,11 @@ export default {
     overwhelmed: 'Overwhelmed',
     tired: 'Tired',
     heavy: 'Heavy',
+    funny: 'Funny',
+    playful: 'Playful',
+    sad: 'Sad',
+    lonely: 'Lonely',
+    angry: 'Angry',
     // Legacy
     peaceful: 'Peaceful',
     joyful: 'Joyful',

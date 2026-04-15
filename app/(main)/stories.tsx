@@ -2572,7 +2572,7 @@ export default function StoriesScreen() {
                         >
                           <Text style={{ fontSize: 16 }}>{mood.emoji}</Text>
                           <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? mood.color : colors.textSecondary }}>
-                            {mood.label}
+                            {t.moods[mood.key as keyof typeof t.moods] || mood.label}
                           </Text>
                         </TouchableOpacity>
                       )
