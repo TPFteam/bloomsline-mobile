@@ -509,6 +509,13 @@ export default {
     uploadingImage: 'Chargement...',
     tapToRecord: 'Appuyez pour enregistrer',
     pointImportant: 'Point important',
+    headingPlaceholder: 'Titre...',
+    itemPlaceholder: 'Élément',
+    addItemLabel: 'Ajouter',
+    quotePlaceholder: 'Texte de citation...',
+    authorPlaceholder: 'Auteur (optionnel)',
+    calloutPlaceholder: 'Note (conseil, info, avertissement)...',
+    linkTitlePlaceholder: 'Titre du lien...',
   },
 
   // ─── Chapters ───

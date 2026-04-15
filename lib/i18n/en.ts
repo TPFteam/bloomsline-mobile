@@ -508,6 +508,13 @@ export default {
     uploadingImage: 'Uploading...',
     tapToRecord: 'Tap to record',
     pointImportant: 'Important point',
+    headingPlaceholder: 'Heading...',
+    itemPlaceholder: 'Item',
+    addItemLabel: 'Add item',
+    quotePlaceholder: 'Quote text...',
+    authorPlaceholder: 'Author (optional)',
+    calloutPlaceholder: 'Callout text (tip, info, warning)...',
+    linkTitlePlaceholder: 'Link title...',
   },
 
   // ─── Chapters ───

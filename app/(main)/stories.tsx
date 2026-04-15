@@ -477,7 +477,7 @@ function EditBlock({
         <TextInput
           value={block.content?.text || ''}
           onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
-          placeholder="Heading..."
+          placeholder={t.stories.headingPlaceholder}
           placeholderTextColor={colors.textFaint}
           style={{ ...inputStyle, fontSize: 18, fontWeight: '700' }}
         />
@@ -507,7 +507,7 @@ function EditBlock({
                   const newItems = [...items]; newItems[i] = t
                   onChange({ ...block, content: { ...block.content, items: newItems } })
                 }}
-                placeholder={`Item ${i + 1}...`}
+                placeholder={`${t.stories.itemPlaceholder} ${i + 1}...`}
                 placeholderTextColor={colors.textFaint}
                 style={{
                   flex: 1, fontSize: 14, color: colors.primary, padding: 10,
@@ -528,7 +528,7 @@ function EditBlock({
             style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4 }}
           >
             <Plus size={14} color={colors.bloom} />
-            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>Add item</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>{t.stories.addItemLabel}</Text>
           </TouchableOpacity>
         </View>
       )
@@ -568,7 +568,7 @@ function EditBlock({
           <TextInput
             value={block.content?.text || ''}
             onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
-            placeholder="Quote text..."
+            placeholder={t.stories.quotePlaceholder}
             placeholderTextColor={colors.textFaint}
             multiline
             scrollEnabled={false}
@@ -577,7 +577,7 @@ function EditBlock({
           <TextInput
             value={block.content?.author || ''}
             onChangeText={(t) => onChange({ ...block, content: { ...block.content, author: t } })}
-            placeholder="Author (optional)"
+            placeholder={t.stories.authorPlaceholder}
             placeholderTextColor={colors.textFaint}
             style={{ ...inputStyle, fontSize: 13, marginTop: 6 }}
           />
@@ -589,7 +589,7 @@ function EditBlock({
           <TextInput
             value={block.content?.text || ''}
             onChangeText={(t) => onChange({ ...block, content: { ...block.content, text: t } })}
-            placeholder="Callout text (tip, info, warning)..."
+            placeholder={t.stories.calloutPlaceholder}
             placeholderTextColor={colors.textFaint}
             multiline
             scrollEnabled={false}
@@ -615,7 +615,7 @@ function EditBlock({
           <TextInput
             value={block.content?.title || ''}
             onChangeText={(t) => onChange({ ...block, content: { ...block.content, title: t } })}
-            placeholder="Link title..."
+            placeholder={t.stories.linkTitlePlaceholder}
             placeholderTextColor={colors.textFaint}
             style={inputStyle}
           />
