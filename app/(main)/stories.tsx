@@ -1471,7 +1471,8 @@ export default function StoriesScreen() {
     try {
       const response = await fetch(uri)
       const blob = await response.blob()
-      const path = `${user.id}/${Date.now()}-${fileName}`
+      const sanitized = fileName.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9._-]/g, '-').replace(/-+/g, '-')
+      const path = `${user.id}/${Date.now()}-${sanitized}`
       const { error } = await supabase.storage.from('story-media').upload(path, blob, { contentType: mimeType, upsert: false })
       if (error) throw error
       const { data: urlData } = supabase.storage.from('story-media').getPublicUrl(path)
