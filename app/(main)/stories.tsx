@@ -465,6 +465,7 @@ function EditBlock({
 }: {
   block: ContentBlock; onChange: (u: ContentBlock) => void; onRemove: () => void
 }) {
+  const { t } = useI18n()
   const inputStyle = {
     fontSize: 15, color: colors.primary, padding: 14,
     backgroundColor: colors.surface2, borderRadius: 14, borderWidth: 1, borderColor: '#EBEBEB',
@@ -486,7 +487,7 @@ function EditBlock({
         <AutoGrowTextInput
           value={block.content?.text || ''}
           onChangeText={(t) => onChange({ ...block, content: { text: t } })}
-          placeholder="Write something..."
+          placeholder={t.stories.writeSomething}
           placeholderTextColor={colors.textFaint}
           inputStyle={inputStyle}
         />
@@ -795,6 +796,7 @@ function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, upload
   setEditTitle: (t: string) => void
   uploading: boolean
 }) {
+  const { t } = useI18n()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const blockRefs = useRef<(View | null)[]>([])
@@ -890,7 +892,7 @@ function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, upload
       <TextInput
         value={editTitle}
         onChangeText={setEditTitle}
-        placeholder="Story title..."
+        placeholder={t.stories.storyTitle}
         placeholderTextColor={colors.textFaint}
         style={{
           fontSize: 24, fontWeight: '800', color: colors.primary, marginBottom: 20, padding: 0,
@@ -2257,7 +2259,7 @@ export default function StoriesScreen() {
               <X size={24} color={colors.primary} />
             </TouchableOpacity>
             <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, flex: 1 }}>
-              {editStory ? 'Edit Story' : 'New Story'}
+              {editStory ? t.stories.editStory : t.stories.newStory}
             </Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
@@ -2266,7 +2268,7 @@ export default function StoriesScreen() {
                 style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.surface1 }}
               >
                 <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
-                  {editSaving ? 'Saving...' : 'Save Draft'}
+                  {editSaving ? t.stories.saving : t.stories.saveDraft}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -2282,7 +2284,7 @@ export default function StoriesScreen() {
                 style={{ paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, backgroundColor: colors.bloom }}
               >
                 <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>
-                  {editStory?.published ? (editSaving ? 'Saving...' : 'Save') : 'Publish'}
+                  {editStory?.published ? (editSaving ? t.stories.saving : t.stories.save) : t.stories.publish}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -2322,13 +2324,13 @@ export default function StoriesScreen() {
 
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {[
-                { type: 'text' as const, icon: AlignLeft, label: 'Text', bg: colors.surface1, fg: colors.primary },
-                { type: 'heading' as const, icon: Type, label: 'Heading', bg: colors.surface1, fg: colors.primary },
-                { type: 'list' as const, icon: FileText, label: 'List', bg: colors.surface1, fg: colors.primary },
-                { type: 'quote' as const, icon: Quote, label: 'Quote', bg: colors.surface1, fg: colors.primary },
-                { type: 'callout' as const, icon: AlertCircle, label: 'Callout', bg: colors.surface1, fg: colors.primary },
-                { type: 'video' as const, icon: Video, label: 'Video', bg: colors.surface1, fg: colors.primary },
-                { type: 'link' as const, icon: Link2, label: 'Link', bg: colors.surface1, fg: colors.primary },
+                { type: 'text' as const, icon: AlignLeft, label: t.stories.blockText, bg: colors.surface1, fg: colors.primary },
+                { type: 'heading' as const, icon: Type, label: t.stories.blockHeading, bg: colors.surface1, fg: colors.primary },
+                { type: 'list' as const, icon: FileText, label: t.stories.blockList, bg: colors.surface1, fg: colors.primary },
+                { type: 'quote' as const, icon: Quote, label: t.stories.blockQuote, bg: colors.surface1, fg: colors.primary },
+                { type: 'callout' as const, icon: AlertCircle, label: t.stories.blockCallout, bg: colors.surface1, fg: colors.primary },
+                { type: 'video' as const, icon: Video, label: t.stories.blockVideo, bg: colors.surface1, fg: colors.primary },
+                { type: 'link' as const, icon: Link2, label: t.stories.blockLink, bg: colors.surface1, fg: colors.primary },
               ].map((btn) => (
                 <TouchableOpacity key={btn.type} onPress={() => addBlock(btn.type)} style={{
                   flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -2343,7 +2345,7 @@ export default function StoriesScreen() {
                 backgroundColor: '#eff6ff', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
               }}>
                 <ImageIcon size={16} color="#2563eb" />
-                <Text style={{ fontSize: 13, fontWeight: '500', color: '#2563eb' }}>Image</Text>
+                <Text style={{ fontSize: 13, fontWeight: '500', color: '#2563eb' }}>{t.stories.blockImage}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={recording ? stopRecording : startRecording}
@@ -2355,7 +2357,7 @@ export default function StoriesScreen() {
               >
                 {recording ? <MicOff size={16} color={colors.error} /> : <Mic size={16} color="#db2777" />}
                 <Text style={{ fontSize: 13, fontWeight: '500', color: recording ? colors.error : '#db2777' }}>
-                  {recording ? 'Stop' : 'Voice'}
+                  {recording ? t.stories.stop : t.stories.blockVoice}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => addBlock('divider')} style={{
@@ -2407,7 +2409,7 @@ export default function StoriesScreen() {
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }}
                     >
                       {story.published ? <EyeOff size={20} color={colors.primary} /> : <Eye size={20} color={colors.primary} />}
-                      <Text style={{ fontSize: 16, color: colors.primary }}>{story.published ? 'Unpublish' : 'Publish'}</Text>
+                      <Text style={{ fontSize: 16, color: colors.primary }}>{story.published ? t.stories.unpublish : t.stories.publish}</Text>
                     </TouchableOpacity>
                     {story.published && (
                       <TouchableOpacity
