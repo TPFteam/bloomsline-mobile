@@ -1,6 +1,11 @@
 import { Platform, useWindowDimensions, View, Text } from 'react-native'
 import { Image } from 'react-native'
+import { useEffect, createContext, useContext } from 'react'
 import { useI18n } from '@/lib/i18n'
+
+// Context to tell child components they're inside the desktop wrapper
+export const DesktopWrapperContext = createContext(false)
+export const useIsDesktopWrapped = () => useContext(DesktopWrapperContext)
 
 const QR_URL = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://app.bloomsline.com&color=1A1A1A&bgcolor=FFFFFF'
 
@@ -8,13 +13,17 @@ export function DesktopWrapper({ children }: { children: React.ReactNode }) {
   const { width, height } = useWindowDimensions()
   const { t } = useI18n()
 
-  // Only apply on web with wide screens
-  if (Platform.OS !== 'web' || width < 768) {
-    return <>{children}</>
-  }
-
+  const isDesktopWeb = Platform.OS === 'web' && width >= 768
   const frameW = 420
   const frameH = Math.min(height - 60, Math.round(frameW / 0.462))
+
+  // No-op effect to keep hook count consistent
+  useEffect(() => {}, [isDesktopWeb, frameW, frameH])
+
+  // Mobile or narrow screen — no frame
+  if (!isDesktopWeb) {
+    return <>{children}</>
+  }
 
   return (
     <View style={{
@@ -51,14 +60,17 @@ export function DesktopWrapper({ children }: { children: React.ReactNode }) {
           zIndex: 100,
         }} />
         {/* Screen */}
-        <View style={{
-          flex: 1,
-          borderRadius: 34,
-          overflow: 'hidden',
-          backgroundColor: '#FAFAF8',
-          width: frameW - 12,
-        }}>
-          {children}
+        <View
+          style={{
+            flex: 1,
+            borderRadius: 34,
+            overflow: 'hidden',
+            backgroundColor: '#FAFAF8',
+            width: frameW - 12,
+          }}>
+          <DesktopWrapperContext.Provider value={true}>
+            {children}
+          </DesktopWrapperContext.Provider>
         </View>
         {/* Home indicator */}
         <View style={{

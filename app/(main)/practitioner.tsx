@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   ScrollView,
   TextInput,
-  Modal,
   Pressable,
   Alert,
   Platform,
@@ -55,6 +54,7 @@ import {
   ResourceItem,
 } from '@/lib/services/practitioner'
 import { fetchModificationSettings, cancelBooking, rescheduleBooking, fetchAvailableSlots } from '@/lib/services/booking'
+import { ContainedModal as Modal } from '@/components/ContainedModal'
 
 // ─── Helpers ────────────────────────────────────────
 
