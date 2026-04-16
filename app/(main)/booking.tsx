@@ -113,7 +113,7 @@ export default function BookingScreen() {
     if (user?.user_metadata?.full_name) setClientName(user.user_metadata.full_name)
   }, [user])
 
-  // Fetch slots when date changes
+  // Fetch slots when date or format changes
   useEffect(() => {
     if (!selectedDate || !practitionerId || !selectedService) return
     setSlotsLoading(true)
@@ -123,7 +123,22 @@ export default function BookingScreen() {
       setPractitionerTz(practitionerTimezone)
       setSlotsLoading(false)
     })
-  }, [selectedDate, practitionerId, selectedService])
+  }, [selectedDate, practitionerId, selectedService, selectedFormat])
+
+  // When the format changes, drop any previously-picked date/slot that doesn't fit
+  // (e.g. user picked a Thursday for Video, then went back and switched to In-person
+  // which is only on Mondays).
+  useEffect(() => {
+    if (!selectedFormat || !selectedDate) return
+    const parts = selectedDate.split('-').map(Number)
+    const dow = new Date(parts[0], parts[1] - 1, parts[2]).getDay()
+    const dayFmts = dayFormats[String(dow)]
+    if (!dayFmts || !dayFmts.includes(selectedFormat)) {
+      setSelectedDate(null)
+      setSelectedSlot(null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedFormat, dayFormats])
 
   // Load quick view
   const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
@@ -139,7 +154,32 @@ export default function BookingScreen() {
       })
       .catch(() => setQuickDays([]))
       .finally(() => setQuickLoading(false))
-  }, [dateViewMode, practitionerId, selectedService])
+  }, [dateViewMode, practitionerId, selectedService, selectedFormat])
+
+  // Pre-select the first bookable date so the calendar never opens blank.
+  // Runs whenever we have the practitioner's schedule and no date is picked —
+  // scans forward client-side using active days, max advance, and format fit.
+  useEffect(() => {
+    if (selectedDate || !settings) return
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const maxAdvance = settings.max_advance_days || 60
+    for (let i = 0; i < maxAdvance; i++) {
+      const candidate = new Date(today)
+      candidate.setDate(today.getDate() + i)
+      const dow = candidate.getDay()
+      if (activeDays !== null && !activeDays.includes(dow)) continue
+      if (selectedFormat && dayFormats[String(dow)] && !dayFormats[String(dow)].includes(selectedFormat)) continue
+      const y = candidate.getFullYear()
+      const m = candidate.getMonth()
+      const d = candidate.getDate()
+      const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      setSelectedDate(dateStr)
+      setCalendarMonth({ year: y, month: m })
+      return
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings, activeDays, dayFormats, selectedFormat, selectedDate])
 
   // ─── Calendar ──────────────────────────────────────
 
