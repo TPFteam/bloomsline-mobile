@@ -1021,7 +1021,7 @@ export function renderBlock(
                 width: '100%', padding: 14, fontSize: 15, borderRadius: 16,
                 border: `1.5px solid ${dateVal ? colors.bloom : INPUT_BORDER}`,
                 backgroundColor: INPUT_BG, color: colors.primary,
-                fontFamily: 'inherit',
+                fontFamily: 'inherit', boxSizing: 'border-box' as any,
               }}
             />
           ) : (
