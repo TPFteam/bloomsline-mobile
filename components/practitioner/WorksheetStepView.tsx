@@ -100,6 +100,7 @@ export function WorksheetStepView({
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false)
   const [contentMeasured, setContentMeasured] = useState(false)
   const [contentOverflows, setContentOverflows] = useState(false)
+  const [showScrollHint, setShowScrollHint] = useState(false)
 
   const step = steps[currentStep]
   if (!step) return null
@@ -126,6 +127,7 @@ export function WorksheetStepView({
       setIsScrolledToBottom(false)
       setContentOverflows(false)
       setContentMeasured(false)
+      setShowScrollHint(false)
       Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start()
     })
   }, [fadeAnim])
@@ -230,19 +232,30 @@ export function WorksheetStepView({
         </Animated.View>
       </ScrollView>
 
-      {/* Scroll-down arrow when content overflows — also show before measurement */}
+      {/* Scroll hint + arrow when content overflows */}
       {!isCompleted && (!contentMeasured || (contentOverflows && !isScrolledToBottom)) && (
         <View style={{ position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center' }}>
-          <TouchableOpacity
-            onPress={() => scrollRef.current?.scrollToEnd({ animated: true })}
-            style={{
-              width: 44, height: 44, borderRadius: 22,
-              backgroundColor: 'rgba(0,0,0,0.2)',
-              justifyContent: 'center', alignItems: 'center',
-            }}
-          >
-            <ChevronDown size={24} color="#fff" />
-          </TouchableOpacity>
+          {showScrollHint ? (
+            <View style={{
+              backgroundColor: 'rgba(0,0,0,0.25)',
+              borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8,
+            }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff' }}>
+                {locale === 'fr' ? '↓ Faites défiler pour continuer' : '↓ Scroll to continue'}
+              </Text>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={() => setShowScrollHint(true)}
+              style={{
+                width: 44, height: 44, borderRadius: 22,
+                backgroundColor: 'rgba(0,0,0,0.2)',
+                justifyContent: 'center', alignItems: 'center',
+              }}
+            >
+              <ChevronDown size={24} color="#fff" />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
