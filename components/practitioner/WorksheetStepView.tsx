@@ -292,7 +292,7 @@ export function WorksheetStepView({
         scrollEventThrottle={16}
       >
         <Animated.View
-          style={{ opacity: fadeAnim }}
+          style={{ opacity: fadeAnim, width: '100%', maxWidth: '100%' }}
           onLayout={(e) => {
             const h = e.nativeEvent.layout.height
             innerContentHeight.current = h
@@ -303,9 +303,9 @@ export function WorksheetStepView({
             setContentMeasured(true)
           }}
         >
-          {/* Context blocks (heading, paragraph, tip) — white text on color */}
+          {/* Context blocks (heading, paragraph, tip) */}
           {step.contextBlocks.map((block, i) => (
-            <View key={block.id || i} style={{ marginBottom: 16 }}>
+            <View key={block.id || i} style={{ marginBottom: 16, maxWidth: '100%', overflow: 'hidden' }}>
               {renderBlock(block, undefined, () => {}, undefined, true, t, locale)}
             </View>
           ))}
@@ -318,7 +318,7 @@ export function WorksheetStepView({
               padding: 20,
               marginTop: step.contextBlocks.length > 0 ? 8 : 0,
               overflow: 'hidden',
-              width: '100%',
+              alignSelf: 'stretch',
             }}>
               {renderBlock(
                 step.questionBlock,
