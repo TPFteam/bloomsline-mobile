@@ -97,7 +97,8 @@ export function WorksheetStepView({
   const [currentStep, setCurrentStep] = useState(0)
   const fadeAnim = useRef(new Animated.Value(1)).current
   const scrollRef = useRef<ScrollView>(null)
-  const [isScrolledToBottom, setIsScrolledToBottom] = useState(true)
+  const [isScrolledToBottom, setIsScrolledToBottom] = useState(false)
+  const [contentMeasured, setContentMeasured] = useState(false)
   const [contentOverflows, setContentOverflows] = useState(false)
 
   const step = steps[currentStep]
@@ -122,8 +123,9 @@ export function WorksheetStepView({
     Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }).start(() => {
       callback()
       scrollRef.current?.scrollTo({ y: 0, animated: false })
-      setIsScrolledToBottom(true) // reset — will be recalculated on layout
+      setIsScrolledToBottom(false)
       setContentOverflows(false)
+      setContentMeasured(false)
       Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start()
     })
   }, [fadeAnim])
@@ -175,10 +177,11 @@ export function WorksheetStepView({
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 120, justifyContent: 'center', flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
         onContentSizeChange={(_w, contentH) => {
-          // Check if content is taller than the visible scroll area (~screen - header - nav)
           const visibleHeight = Dimensions.get('window').height - 140
-          setContentOverflows(contentH > visibleHeight)
-          if (contentH <= visibleHeight) setIsScrolledToBottom(true)
+          const overflows = contentH > visibleHeight
+          setContentOverflows(overflows)
+          setIsScrolledToBottom(!overflows)
+          setContentMeasured(true)
         }}
         onScroll={(e) => {
           const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent
@@ -227,8 +230,8 @@ export function WorksheetStepView({
         </Animated.View>
       </ScrollView>
 
-      {/* Scroll-down arrow when content overflows */}
-      {!isCompleted && contentOverflows && !isScrolledToBottom && (
+      {/* Scroll-down arrow when content overflows — also show before measurement */}
+      {!isCompleted && (!contentMeasured || (contentOverflows && !isScrolledToBottom)) && (
         <View style={{ position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => scrollRef.current?.scrollToEnd({ animated: true })}
@@ -243,8 +246,8 @@ export function WorksheetStepView({
         </View>
       )}
 
-      {/* Bottom navigation — shown when scrolled to bottom (or no overflow) */}
-      {!isCompleted && (!contentOverflows || isScrolledToBottom) && (
+      {/* Bottom navigation — shown only after measurement confirms no overflow, or user scrolled to bottom */}
+      {!isCompleted && contentMeasured && (!contentOverflows || isScrolledToBottom) && (
         <View style={{
           position: 'absolute',
           bottom: 0,
