@@ -1693,6 +1693,61 @@ export function renderBlock(
       )
     }
 
+    // ─── Interactive block types ────────────────────────
+    case 'matching_pairs': {
+      const { MatchingPairs } = require('./interactive/MatchingPairs')
+      return (
+        <MatchingPairs
+          content={content}
+          pairs={block.pairs || []}
+          value={blockValue}
+          onChange={onChange}
+          readOnly={readOnly}
+        />
+      )
+    }
+
+    case 'flashcard': {
+      const { Flashcard } = require('./interactive/Flashcard')
+      return (
+        <Flashcard
+          content={content}
+          cards={block.cards || []}
+          value={blockValue}
+          onChange={onChange}
+          readOnly={readOnly}
+        />
+      )
+    }
+
+    case 'fill_blank': {
+      const { FillBlank } = require('./interactive/FillBlank')
+      return (
+        <FillBlank
+          content={content}
+          sentence={block.sentence || ''}
+          blanks={block.blanks || []}
+          value={blockValue}
+          onChange={onChange}
+          readOnly={readOnly}
+        />
+      )
+    }
+
+    case 'ordering': {
+      const { Ordering } = require('./interactive/Ordering')
+      return (
+        <Ordering
+          content={content}
+          items={block.items || []}
+          correctOrder={block.correctOrder}
+          value={blockValue}
+          onChange={onChange}
+          readOnly={readOnly}
+        />
+      )
+    }
+
     default:
       return (
         <View style={{ padding: 12, backgroundColor: colors.surface2, borderRadius: 12 }}>
