@@ -33,6 +33,7 @@ import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 import { renderBlock } from '@/components/practitioner/BlockRenderer'
+import { WorksheetStepView } from '@/components/practitioner/WorksheetStepView'
 import {
   fetchPractitioner,
   fetchSessions,
@@ -1534,9 +1535,29 @@ export default function PractitionerScreen() {
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <ActivityIndicator size="large" color={colors.bloom} />
             </View>
+          ) : fillResource && ['worksheet', 'exercise', 'assessment'].includes(activeResourceItem?.resourceType || '') ? (
+            /* Step-through card experience for worksheets/exercises */
+            <WorksheetStepView
+              blocks={(() => {
+                const blocks: any[] = Array.isArray(fillResource.blocks) ? fillResource.blocks
+                  : Array.isArray(fillResource.content?.blocks) ? fillResource.content.blocks : []
+                return blocks
+              })()}
+              responses={responses}
+              onResponseChange={(blockId, value) => setResponses(prev => ({ ...prev, [blockId]: value }))}
+              onSaveDraft={handleSaveDraft}
+              onSubmit={draftResponseId ? confirmAndSubmit : handleMarkComplete}
+              onClose={handleCloseFill}
+              saving={saving}
+              submitting={submitting}
+              isCompleted={activeResourceItem?.status === 'completed'}
+              t={t}
+              locale={locale}
+              draftResponseId={draftResponseId}
+            />
           ) : fillResource && (
             <>
-              {/* Header */}
+              {/* Header — for tables, shared resources, and other non-step types */}
               <View style={{
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                 paddingHorizontal: 24, paddingVertical: 16, backgroundColor: '#fff',
@@ -1557,7 +1578,7 @@ export default function PractitionerScreen() {
                 ) : <View style={{ width: 36 }} />}
               </View>
 
-              {/* Blocks */}
+              {/* Blocks — original scroll view for tables and other types */}
               <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 140 }} showsVerticalScrollIndicator={false}>
                 {/* Practitioner info */}
                 {practitioner && (
@@ -1580,15 +1601,10 @@ export default function PractitionerScreen() {
                     <Text style={{ fontSize: 11, color: colors.textTertiary }}>{t.practitioner.sharedBy}</Text>
                   </View>
                 )}
-                {/* Practitioner Notes Banner - show when reviewed or completed */}
                 {practitionerNotes && (responseStatus === 'reviewed' || activeResourceItem?.status === 'completed') && (
                   <View style={{
-                    backgroundColor: '#F0FAF5',
-                    borderRadius: 16,
-                    padding: 16,
-                    marginBottom: 24,
-                    borderWidth: 1,
-                    borderColor: '#D1F0E0',
+                    backgroundColor: '#F0FAF5', borderRadius: 16, padding: 16, marginBottom: 24,
+                    borderWidth: 1, borderColor: '#D1F0E0',
                   }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                       <Text style={{ fontSize: 16 }}>💬</Text>
@@ -1596,9 +1612,7 @@ export default function PractitionerScreen() {
                         {practitioner?.full_name ? t.practitioner.noteFrom.replace('{name}', practitioner.full_name) : t.practitioner.noteFromPractitioner}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 14, color: '#15803D', lineHeight: 20 }}>
-                      {practitionerNotes}
-                    </Text>
+                    <Text style={{ fontSize: 14, color: '#15803D', lineHeight: 20 }}>{practitionerNotes}</Text>
                   </View>
                 )}
                 {(() => {
@@ -1616,7 +1630,7 @@ export default function PractitionerScreen() {
                 })()}
               </ScrollView>
 
-              {/* Bottom action bar */}
+              {/* Bottom action bar — tables and other types */}
               <View style={{
                 position: 'absolute', bottom: 0, left: 0, right: 0,
                 backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#EBEBEB',
@@ -1638,25 +1652,6 @@ export default function PractitionerScreen() {
                       )}
                     </TouchableOpacity>
                   ) : null
-                ) : ['worksheet', 'exercise', 'assessment'].includes(activeResourceItem?.resourceType || '') ? (
-                  <>
-                    {draftResponseId && (
-                      <TouchableOpacity
-                        onPress={handleSaveDraft} disabled={saving}
-                        style={{ flex: 1, borderWidth: 1.5, borderColor: '#E5E5E5', borderRadius: 28, paddingVertical: 14, alignItems: 'center' }}
-                      >
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{saving ? t.common.saving : t.practitioner.saveDraft}</Text>
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      onPress={draftResponseId ? confirmAndSubmit : handleMarkComplete} disabled={submitting}
-                      style={{ flex: 1.5, backgroundColor: colors.primary, borderRadius: 28, paddingVertical: 14, alignItems: 'center' }}
-                    >
-                      {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
-                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t.practitioner.submit}</Text>
-                      )}
-                    </TouchableOpacity>
-                  </>
                 ) : (
                   <TouchableOpacity
                     onPress={handleMarkComplete} disabled={submitting}
@@ -1664,9 +1659,7 @@ export default function PractitionerScreen() {
                   >
                     {submitting ? <ActivityIndicator size="small" color="#fff" /> : (
                       <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>
-                        {activeResourceItem?.type === 'shared' ? t.practitioner.markAsRead
-                          : ['table', 'worksheet', 'exercise', 'assessment'].includes(activeResourceItem?.resourceType || '') ? t.practitioner.submit
-                          : t.practitioner.markComplete}
+                        {activeResourceItem?.type === 'shared' ? t.practitioner.markAsRead : t.practitioner.markComplete}
                       </Text>
                     )}
                   </TouchableOpacity>
