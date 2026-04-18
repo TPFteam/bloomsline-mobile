@@ -97,6 +97,7 @@ export function WorksheetStepView({
   const [currentStep, setCurrentStep] = useState(0)
   const fadeAnim = useRef(new Animated.Value(1)).current
   const scrollRef = useRef<ScrollView>(null)
+  const scrollViewHeight = useRef(0)
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false)
   const [contentMeasured, setContentMeasured] = useState(false)
   const [contentOverflows, setContentOverflows] = useState(false)
@@ -176,11 +177,18 @@ export function WorksheetStepView({
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 120, justifyContent: 'center', flexGrow: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 120, flexGrow: 1, justifyContent: 'center' }}
         showsVerticalScrollIndicator={false}
+        onLayout={(e) => {
+          // Store the visible scroll area height
+          scrollViewHeight.current = e.nativeEvent.layout.height
+        }}
         onContentSizeChange={(_w, contentH) => {
-          const visibleHeight = Dimensions.get('window').height - 140
-          const overflows = contentH > visibleHeight
+          // Compare actual content height against the visible scroll area
+          // Subtract paddingBottom (120) since that's empty space for buttons
+          const actualContentH = contentH - 120
+          const visibleH = scrollViewHeight.current || (Dimensions.get('window').height - 140)
+          const overflows = actualContentH > visibleH
           setContentOverflows(overflows)
           setIsScrolledToBottom(!overflows)
           setContentMeasured(true)
