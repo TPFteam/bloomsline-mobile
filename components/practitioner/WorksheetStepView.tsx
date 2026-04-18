@@ -98,6 +98,7 @@ export function WorksheetStepView({
   const fadeAnim = useRef(new Animated.Value(1)).current
   const scrollRef = useRef<ScrollView>(null)
   const scrollViewHeight = useRef(0)
+  const innerContentHeight = useRef(0)
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false)
   const [contentMeasured, setContentMeasured] = useState(false)
   const [contentOverflows, setContentOverflows] = useState(false)
@@ -180,18 +181,14 @@ export function WorksheetStepView({
         contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 120, flexGrow: 1, justifyContent: 'center' }}
         showsVerticalScrollIndicator={false}
         onLayout={(e) => {
-          // Store the visible scroll area height
           scrollViewHeight.current = e.nativeEvent.layout.height
-        }}
-        onContentSizeChange={(_w, contentH) => {
-          // Compare actual content height against the visible scroll area
-          // Subtract paddingBottom (120) since that's empty space for buttons
-          const actualContentH = contentH - 120
-          const visibleH = scrollViewHeight.current || (Dimensions.get('window').height - 140)
-          const overflows = actualContentH > visibleH
-          setContentOverflows(overflows)
-          setIsScrolledToBottom(!overflows)
-          setContentMeasured(true)
+          // Re-check overflow when scroll view size is known
+          if (innerContentHeight.current > 0) {
+            const overflows = innerContentHeight.current > scrollViewHeight.current - 80
+            setContentOverflows(overflows)
+            setIsScrolledToBottom(!overflows)
+            setContentMeasured(true)
+          }
         }}
         onScroll={(e) => {
           const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent
@@ -201,7 +198,18 @@ export function WorksheetStepView({
         }}
         scrollEventThrottle={16}
       >
-        <Animated.View style={{ opacity: fadeAnim }}>
+        <Animated.View
+          style={{ opacity: fadeAnim }}
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height
+            innerContentHeight.current = h
+            const visibleH = scrollViewHeight.current || (Dimensions.get('window').height - 140)
+            const overflows = h > visibleH - 80
+            setContentOverflows(overflows)
+            setIsScrolledToBottom(!overflows)
+            setContentMeasured(true)
+          }}
+        >
           {/* Context blocks (heading, paragraph, tip) — white text on color */}
           {step.contextBlocks.map((block, i) => (
             <View key={block.id || i} style={{ marginBottom: 16 }}>
