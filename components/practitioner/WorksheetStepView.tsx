@@ -167,12 +167,54 @@ export function WorksheetStepView({
               <Save size={18} color={saving ? 'rgba(255,255,255,0.4)' : '#fff'} />
             </TouchableOpacity>
           ) : (
-            <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>
-              {currentStep + 1}/{totalSteps}
+            <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>
+              {currentStep + 1} {locale === 'fr' ? 'sur' : 'of'} {totalSteps}
             </Text>
           )}
         </View>
       </View>
+
+      {/* Previous answer chip — shows last answered question for context */}
+      {currentStep > 0 && (() => {
+        const prevStep = steps[currentStep - 1]
+        if (!prevStep?.questionBlock) return null
+        const prevVal = responses[prevStep.questionBlock.id]
+        if (prevVal === undefined || prevVal === null || prevVal === '') return null
+
+        // Format the answer for display
+        let answerText = ''
+        if (Array.isArray(prevVal)) {
+          answerText = prevVal.join(', ')
+        } else if (typeof prevVal === 'object') {
+          answerText = JSON.stringify(prevVal)
+        } else {
+          answerText = String(prevVal)
+        }
+        if (answerText.length > 40) answerText = answerText.slice(0, 38) + '...'
+
+        return (
+          <TouchableOpacity
+            onPress={goBack}
+            style={{
+              marginHorizontal: 20,
+              marginBottom: 4,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 6,
+              backgroundColor: 'rgba(0,0,0,0.12)',
+              borderRadius: 16,
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              alignSelf: 'flex-start',
+            }}
+          >
+            <ChevronLeft size={12} color="rgba(255,255,255,0.7)" />
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '500' }} numberOfLines={1}>
+              {answerText}
+            </Text>
+          </TouchableOpacity>
+        )
+      })()}
 
       {/* Step content — on colored background */}
       <ScrollView
