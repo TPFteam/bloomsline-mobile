@@ -103,6 +103,7 @@ export function WorksheetStepView({
   const [contentMeasured, setContentMeasured] = useState(false)
   const [contentOverflows, setContentOverflows] = useState(false)
   const [showScrollHint, setShowScrollHint] = useState(false)
+  const [peekIndex, setPeekIndex] = useState<number | null>(null)
 
   const step = steps[currentStep]
   if (!step) return null
@@ -130,6 +131,7 @@ export function WorksheetStepView({
       setContentOverflows(false)
       setContentMeasured(false)
       setShowScrollHint(false)
+      setPeekIndex(null)
       Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start()
     })
   }, [fadeAnim])
@@ -174,45 +176,94 @@ export function WorksheetStepView({
         </View>
       </View>
 
-      {/* Previous answer chip — shows last answered question for context */}
+      {/* Previous answer chip — tap to open peek overlay */}
       {currentStep > 0 && (() => {
         const prevStep = steps[currentStep - 1]
         if (!prevStep?.questionBlock) return null
         const prevVal = responses[prevStep.questionBlock.id]
         if (prevVal === undefined || prevVal === null || prevVal === '') return null
 
-        // Format the answer for display
         let answerText = ''
-        if (Array.isArray(prevVal)) {
-          answerText = prevVal.join(', ')
-        } else if (typeof prevVal === 'object') {
-          answerText = JSON.stringify(prevVal)
-        } else {
-          answerText = String(prevVal)
-        }
+        if (Array.isArray(prevVal)) answerText = prevVal.join(', ')
+        else if (typeof prevVal === 'object') answerText = JSON.stringify(prevVal)
+        else answerText = String(prevVal)
         if (answerText.length > 40) answerText = answerText.slice(0, 38) + '...'
 
         return (
           <TouchableOpacity
-            onPress={goBack}
+            onPress={() => setPeekIndex(currentStep - 1)}
             style={{
-              marginHorizontal: 20,
-              marginBottom: 4,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-              backgroundColor: 'rgba(0,0,0,0.12)',
-              borderRadius: 16,
-              paddingHorizontal: 12,
-              paddingVertical: 7,
-              alignSelf: 'flex-start',
+              marginHorizontal: 20, marginBottom: 4,
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              backgroundColor: 'rgba(0,0,0,0.12)', borderRadius: 16,
+              paddingHorizontal: 12, paddingVertical: 7, alignSelf: 'flex-start',
             }}
           >
             <ChevronLeft size={12} color="rgba(255,255,255,0.7)" />
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '500' }} numberOfLines={1}>
-              {answerText}
-            </Text>
+            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '500' }} numberOfLines={1}>{answerText}</Text>
           </TouchableOpacity>
+        )
+      })()}
+
+      {/* Peek overlay — shows previous Q&A with navigation */}
+      {peekIndex !== null && (() => {
+        const pStep = steps[peekIndex]
+        if (!pStep?.questionBlock) { setPeekIndex(null); return null }
+        const qBlock = pStep.questionBlock
+        const qText = typeof qBlock.content === 'string' ? qBlock.content : (qBlock.content?.fr || qBlock.content?.en || '')
+        const val = responses[qBlock.id]
+        let aText = ''
+        if (Array.isArray(val)) aText = val.join(', ')
+        else if (typeof val === 'object' && val) aText = JSON.stringify(val)
+        else if (val !== undefined && val !== null) aText = String(val)
+
+        // Find navigable range (only past steps with questions)
+        const answeredSteps = steps.slice(0, currentStep).map((s, i) => ({ ...s, idx: i })).filter(s => s.questionBlock && responses[s.questionBlock.id] !== undefined)
+        const peekPos = answeredSteps.findIndex(s => s.idx === peekIndex)
+
+        return (
+          <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 }}>
+            <TouchableOpacity activeOpacity={1} onPress={() => setPeekIndex(null)} style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} />
+            <View style={{
+              position: 'absolute', top: 80, left: 16, right: 16,
+              backgroundColor: '#fff', borderRadius: 20, padding: 20,
+              shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 10,
+            }}>
+              {/* Nav header */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <TouchableOpacity
+                  disabled={peekPos <= 0}
+                  onPress={() => { if (peekPos > 0) setPeekIndex(answeredSteps[peekPos - 1].idx) }}
+                  style={{ opacity: peekPos > 0 ? 1 : 0.3, padding: 4 }}
+                >
+                  <ChevronLeft size={20} color="#374151" />
+                </TouchableOpacity>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: '#9CA3AF' }}>
+                  {locale === 'fr' ? `Question ${peekIndex + 1}` : `Question ${peekIndex + 1}`}
+                </Text>
+                <TouchableOpacity
+                  disabled={peekPos >= answeredSteps.length - 1}
+                  onPress={() => { if (peekPos < answeredSteps.length - 1) setPeekIndex(answeredSteps[peekPos + 1].idx) }}
+                  style={{ opacity: peekPos < answeredSteps.length - 1 ? 1 : 0.3, padding: 4 }}
+                >
+                  <ChevronRight size={20} color="#374151" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Question */}
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 12, lineHeight: 21 }}>{qText}</Text>
+
+              {/* Answer */}
+              <View style={{ backgroundColor: '#F3F4F6', borderRadius: 12, padding: 14 }}>
+                <Text style={{ fontSize: 14, color: '#374151', lineHeight: 20 }}>{aText || (locale === 'fr' ? 'Pas de réponse' : 'No answer')}</Text>
+              </View>
+
+              {/* Close */}
+              <TouchableOpacity onPress={() => setPeekIndex(null)} style={{ alignSelf: 'center', marginTop: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#9CA3AF' }}>{locale === 'fr' ? 'Fermer' : 'Close'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )
       })()}
 
