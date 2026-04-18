@@ -271,7 +271,7 @@ export function WorksheetStepView({
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 40, paddingBottom: 120, flexGrow: 1, justifyContent: 'center' }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 40, paddingBottom: 120, flexGrow: 1, justifyContent: 'center' }}
         showsVerticalScrollIndicator={false}
         onLayout={(e) => {
           scrollViewHeight.current = e.nativeEvent.layout.height
@@ -315,8 +315,10 @@ export function WorksheetStepView({
             <View style={{
               backgroundColor: 'rgba(255,255,255,0.12)',
               borderRadius: 24,
-              padding: 24,
+              padding: 20,
               marginTop: step.contextBlocks.length > 0 ? 8 : 0,
+              overflow: 'hidden',
+              width: '100%',
             }}>
               {renderBlock(
                 step.questionBlock,
