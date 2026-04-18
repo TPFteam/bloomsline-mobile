@@ -836,7 +836,7 @@ export function renderBlock(
         return (
           <View>
             <Text style={LABEL}>{content}{Star}</Text>
-            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}>
               {moods.map((m) => {
                 const sel = blockValue === m.value
                 return (
@@ -918,7 +918,7 @@ export function renderBlock(
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
-          <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 }}>
             {moodOpts.map((m, i) => {
               const val = m.value ?? i + 1
               const sel = blockValue === val
