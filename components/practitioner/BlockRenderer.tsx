@@ -577,6 +577,7 @@ export function renderBlock(
   readOnly?: boolean,
   t?: any,
   locale?: string,
+  onOpenPdf?: (url: string, name: string) => void,
 ) {
   const content = typeof block.content === 'string' ? block.content : extractLocalized(block.content, locale)
   const isRequired = !!block.required
@@ -1701,6 +1702,7 @@ export function renderBlock(
           content={content}
           url={block.mediaFile || block.url || ''}
           fileName={block.fileName}
+          onOpenPdf={onOpenPdf}
         />
       )
     }

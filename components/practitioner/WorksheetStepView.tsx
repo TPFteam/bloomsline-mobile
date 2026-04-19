@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions, ActivityIndicator } from 'react-native'
-import { ChevronLeft, ChevronRight, ChevronDown, Check, Save, X } from 'lucide-react-native'
+import { View, Text, ScrollView, TouchableOpacity, Animated, Dimensions, ActivityIndicator, Platform } from 'react-native'
+import { ChevronLeft, ChevronRight, ChevronDown, Check, Save, X, FileText, ExternalLink } from 'lucide-react-native'
 import { renderBlock } from './BlockRenderer'
 import { colors } from '@/lib/theme'
+import { ContainedModal } from '@/components/ContainedModal'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -104,6 +105,9 @@ export function WorksheetStepView({
   const [contentOverflows, setContentOverflows] = useState(false)
   const [showScrollHint, setShowScrollHint] = useState(false)
   const [peekIndex, setPeekIndex] = useState<number | null>(null)
+  const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null)
+  const [pdfViewerName, setPdfViewerName] = useState('')
+  const [pdfLoading, setPdfLoading] = useState(true)
 
   const step = steps[currentStep]
   if (!step) return null
@@ -306,7 +310,11 @@ export function WorksheetStepView({
           {/* Context blocks (heading, paragraph, tip) */}
           {step.contextBlocks.map((block, i) => (
             <View key={block.id || i} style={{ marginBottom: 16, maxWidth: '100%', overflow: 'hidden' }}>
-              {renderBlock(block, undefined, () => {}, undefined, true, t, locale)}
+              {renderBlock(block, undefined, () => {}, undefined, true, t, locale, (url, name) => {
+                setPdfLoading(true)
+                setPdfViewerName(name)
+                setPdfViewerUrl(url)
+              })}
             </View>
           ))}
 
@@ -328,6 +336,11 @@ export function WorksheetStepView({
                 isCompleted,
                 t,
                 locale,
+                (url, name) => {
+                  setPdfLoading(true)
+                  setPdfViewerName(name)
+                  setPdfViewerUrl(url)
+                },
               )}
             </View>
           )}
@@ -502,6 +515,69 @@ export function WorksheetStepView({
           )}
         </View>
       )}
+
+      {/* PDF Viewer — rendered outside ScrollView so it covers everything */}
+      <ContainedModal visible={!!pdfViewerUrl} transparent animationType="slide">
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+          {/* Header */}
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+            paddingHorizontal: 16, paddingVertical: 10,
+            backgroundColor: '#1F2937',
+          }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: '#fff', flex: 1, marginRight: 12 }} numberOfLines={1}>
+              {pdfViewerName || 'PDF'}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => {
+                  if (Platform.OS === 'web' && typeof window !== 'undefined' && pdfViewerUrl) window.open(pdfViewerUrl, '_blank')
+                }}
+                style={{ padding: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.15)' }}
+              >
+                <ExternalLink size={16} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setPdfViewerUrl(null)}
+                style={{ padding: 8, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.15)' }}
+              >
+                <X size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Loading skeleton */}
+          {pdfLoading && (
+            <View style={{
+              position: 'absolute', top: 50, left: 0, right: 0, bottom: 0,
+              backgroundColor: '#F9FAFB', zIndex: 5,
+              justifyContent: 'center', alignItems: 'center', gap: 12,
+            }}>
+              <View style={{ width: '80%', gap: 12 }}>
+                <View style={{ height: 14, backgroundColor: '#E5E7EB', borderRadius: 8, width: '60%' }} />
+                <View style={{ height: 14, backgroundColor: '#E5E7EB', borderRadius: 8, width: '100%' }} />
+                <View style={{ height: 14, backgroundColor: '#E5E7EB', borderRadius: 8, width: '90%' }} />
+                <View style={{ height: 14, backgroundColor: '#E5E7EB', borderRadius: 8, width: '75%' }} />
+                <View style={{ height: 24 }} />
+                <View style={{ height: 14, backgroundColor: '#E5E7EB', borderRadius: 8, width: '100%' }} />
+                <View style={{ height: 14, backgroundColor: '#E5E7EB', borderRadius: 8, width: '85%' }} />
+              </View>
+              <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 12 }}>Loading document...</Text>
+            </View>
+          )}
+
+          {/* PDF iframe */}
+          {Platform.OS === 'web' && pdfViewerUrl && (
+            // @ts-ignore — HTML iframe for web
+            <iframe
+              src={`https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfViewerUrl)}`}
+              onLoad={() => setPdfLoading(false)}
+              style={{ flex: 1, width: '100%', border: 'none', backgroundColor: '#fff' }}
+              title="PDF Document"
+            />
+          )}
+        </View>
+      </ContainedModal>
     </View>
   )
 }
