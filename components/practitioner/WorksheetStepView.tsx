@@ -33,6 +33,7 @@ interface Step {
   contextBlocks: any[] // heading, paragraph, tip, etc.
   questionBlock: any | null // the actual question
   color: string
+  pdfBlock: any | null // most recent pdf_document block for this step
 }
 
 interface WorksheetStepViewProps {
@@ -53,15 +54,20 @@ interface WorksheetStepViewProps {
 function groupBlocksIntoSteps(blocks: any[]): Step[] {
   const steps: Step[] = []
   let pendingContext: any[] = []
+  let lastPdfBlock: any | null = null
 
   for (const block of blocks) {
     if (CONTENT_TYPES.has(block.type)) {
+      if (block.type === 'pdf_document') {
+        lastPdfBlock = block
+      }
       pendingContext.push(block)
     } else {
       // This is a question block
       steps.push({
         contextBlocks: pendingContext,
         questionBlock: block,
+        pdfBlock: lastPdfBlock,
         color: STEP_COLORS[steps.length % STEP_COLORS.length],
       })
       pendingContext = []
@@ -73,6 +79,7 @@ function groupBlocksIntoSteps(blocks: any[]): Step[] {
     steps.push({
       contextBlocks: pendingContext,
       questionBlock: null,
+      pdfBlock: lastPdfBlock,
       color: STEP_COLORS[steps.length % STEP_COLORS.length],
     })
   }
@@ -307,8 +314,39 @@ export function WorksheetStepView({
             setContentMeasured(true)
           }}
         >
-          {/* Context blocks (heading, paragraph, tip) */}
-          {step.contextBlocks.map((block, i) => (
+          {/* PDF reference pill — tap to open the relevant PDF section */}
+          {step.pdfBlock && step.questionBlock && (
+            <TouchableOpacity
+              onPress={() => {
+                const url = step.pdfBlock.mediaFile || step.pdfBlock.url || ''
+                const name = step.pdfBlock.content || step.pdfBlock.fileName || 'PDF'
+                if (url) {
+                  setPdfLoading(true)
+                  setPdfViewerName(name)
+                  setPdfViewerUrl(url)
+                }
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                backgroundColor: 'rgba(255,255,255,0.15)',
+                borderRadius: 20,
+                paddingHorizontal: 14,
+                paddingVertical: 8,
+                alignSelf: 'flex-start',
+                marginBottom: 16,
+              }}
+            >
+              <FileText size={14} color="rgba(255,255,255,0.8)" />
+              <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)' }} numberOfLines={1}>
+                {step.pdfBlock.content || 'PDF'}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Context blocks (heading, paragraph, tip — excluding pdf_document since we show the pill above) */}
+          {step.contextBlocks.filter((b: any) => b.type !== 'pdf_document').map((block: any, i: number) => (
             <View key={block.id || i} style={{ marginBottom: 16, maxWidth: '100%', overflow: 'hidden' }}>
               {renderBlock(block, undefined, () => {}, undefined, true, t, locale, (url, name) => {
                 setPdfLoading(true)
