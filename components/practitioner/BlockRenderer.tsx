@@ -1693,6 +1693,18 @@ export function renderBlock(
       )
     }
 
+    // ─── PDF document viewer ──────────────────────────
+    case 'pdf_document': {
+      const { PdfViewer } = require('./interactive/PdfViewer')
+      return (
+        <PdfViewer
+          content={content}
+          url={block.mediaFile || block.url || ''}
+          fileName={block.fileName}
+        />
+      )
+    }
+
     // ─── Interactive block types ────────────────────────
     case 'matching_pairs': {
       const { MatchingPairs } = require('./interactive/MatchingPairs')
