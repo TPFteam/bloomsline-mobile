@@ -314,36 +314,82 @@ export function WorksheetStepView({
             setContentMeasured(true)
           }}
         >
-          {/* PDF reference pill — tap to open the relevant PDF section */}
-          {step.pdfBlock && step.questionBlock && (
-            <TouchableOpacity
-              onPress={() => {
-                const url = step.pdfBlock.mediaFile || step.pdfBlock.url || ''
-                const name = step.pdfBlock.content || step.pdfBlock.fileName || 'PDF'
-                if (url) {
-                  setPdfLoading(true)
-                  setPdfViewerName(name)
-                  setPdfViewerUrl(url)
-                }
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 8,
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                borderRadius: 20,
-                paddingHorizontal: 14,
-                paddingVertical: 8,
-                alignSelf: 'flex-start',
-                marginBottom: 16,
-              }}
-            >
-              <FileText size={14} color="rgba(255,255,255,0.8)" />
-              <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)' }} numberOfLines={1}>
-                {step.pdfBlock.content || 'PDF'}
-              </Text>
-            </TouchableOpacity>
-          )}
+          {/* PDF reference — big card on first encounter of a PDF section, small pill for repeat */}
+          {step.pdfBlock && step.questionBlock && (() => {
+            const prevStep = currentStep > 0 ? steps[currentStep - 1] : null
+            const isFirstEncounter = !prevStep?.pdfBlock || prevStep.pdfBlock.id !== step.pdfBlock.id
+
+            const openPdf = () => {
+              const url = step.pdfBlock.mediaFile || step.pdfBlock.url || ''
+              const name = step.pdfBlock.content || step.pdfBlock.fileName || 'PDF'
+              if (url) {
+                setPdfLoading(true)
+                setPdfViewerName(name)
+                setPdfViewerUrl(url)
+              }
+            }
+
+            if (isFirstEncounter) {
+              // Big card — first time seeing this PDF section
+              return (
+                <TouchableOpacity
+                  onPress={openPdf}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 14,
+                    backgroundColor: 'rgba(255,255,255,0.95)',
+                    borderRadius: 16,
+                    padding: 16,
+                    marginBottom: 20,
+                    alignSelf: 'stretch',
+                  }}
+                >
+                  <View style={{
+                    width: 44, height: 44, borderRadius: 12,
+                    backgroundColor: '#FEF2F2',
+                    justifyContent: 'center', alignItems: 'center',
+                  }}>
+                    <FileText size={22} color="#EF4444" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#111' }}>
+                      {step.pdfBlock.content || 'PDF'}
+                    </Text>
+                    <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 2 }}>
+                      {locale === 'fr' ? 'Lire avant de répondre' : 'Read before answering'}
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: '#4A9A86' }}>
+                    {locale === 'fr' ? 'Ouvrir' : 'View'}
+                  </Text>
+                </TouchableOpacity>
+              )
+            }
+
+            // Small pill — already seen this PDF section
+            return (
+              <TouchableOpacity
+                onPress={openPdf}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 8,
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  borderRadius: 20,
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  alignSelf: 'flex-start',
+                  marginBottom: 16,
+                }}
+              >
+                <FileText size={14} color="rgba(255,255,255,0.8)" />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)' }} numberOfLines={1}>
+                  {step.pdfBlock.content || 'PDF'}
+                </Text>
+              </TouchableOpacity>
+            )
+          })()}
 
           {/* Context blocks (heading, paragraph, tip — excluding pdf_document since we show the pill above) */}
           {step.contextBlocks.filter((b: any) => b.type !== 'pdf_document').map((block: any, i: number) => (
