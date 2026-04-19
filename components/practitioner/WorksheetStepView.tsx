@@ -271,7 +271,7 @@ export function WorksheetStepView({
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 120 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 40, paddingBottom: 120, flexGrow: 1, justifyContent: 'center' }}
         showsVerticalScrollIndicator={false}
         onLayout={(e) => {
           scrollViewHeight.current = e.nativeEvent.layout.height
@@ -370,8 +370,8 @@ export function WorksheetStepView({
         </View>
       )}
 
-      {/* Bottom navigation — shown only after measurement confirms no overflow, or user scrolled to bottom */}
-      {!isCompleted && contentMeasured && (!contentOverflows || isScrolledToBottom) && (
+      {/* Bottom navigation — always visible unless content overflows and user hasn't scrolled down */}
+      {!isCompleted && !(contentMeasured && contentOverflows && !isScrolledToBottom) && (
         <View style={{
           position: 'absolute',
           bottom: 0,
