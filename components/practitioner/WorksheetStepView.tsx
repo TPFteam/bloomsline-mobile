@@ -20,7 +20,7 @@ const STEP_COLORS = [
 // Content-only block types (not questions)
 const CONTENT_TYPES = new Set([
   'heading', 'paragraph', 'quote', 'tip', 'divider', 'key_points',
-  'callout', 'image', 'video', 'audio', 'link',
+  'callout', 'image', 'video', 'audio', 'link', 'pdf_document',
 ])
 
 // Immersive blocks that should be full-screen (bypass card)
@@ -271,7 +271,7 @@ export function WorksheetStepView({
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 40, paddingBottom: 120, flexGrow: 1, justifyContent: 'center' }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
         onLayout={(e) => {
           scrollViewHeight.current = e.nativeEvent.layout.height
@@ -344,7 +344,7 @@ export function WorksheetStepView({
       </ScrollView>
 
       {/* Scroll hint + arrow when content overflows */}
-      {!isCompleted && (!contentMeasured || (contentOverflows && !isScrolledToBottom)) && (
+      {!isCompleted && contentMeasured && contentOverflows && !isScrolledToBottom && (
         <View style={{ position: 'absolute', bottom: 24, left: 0, right: 0, alignItems: 'center' }}>
           {showScrollHint ? (
             <View style={{
