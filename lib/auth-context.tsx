@@ -161,9 +161,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           || enriched[0]
         setMember(active)
         identifyUser(userId, {
-          $email: user?.email,
-          $name: `${active.first_name || ''} ${active.last_name || ''}`.trim() || user?.email,
           email: user?.email,
+          name: `${active.first_name || ''} ${active.last_name || ''}`.trim() || user?.email,
           member_id: active.id,
           first_name: active.first_name,
           last_name: active.last_name,
