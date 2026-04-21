@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, Check, Save, X, FileText, Exter
 import { renderBlock } from './BlockRenderer'
 import { colors } from '@/lib/theme'
 import { ContainedModal } from '@/components/ContainedModal'
+import { trackEvent } from '@/lib/analytics'
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window')
 
@@ -323,6 +324,7 @@ export function WorksheetStepView({
               const url = step.pdfBlock.mediaFile || step.pdfBlock.url || ''
               const name = step.pdfBlock.content || step.pdfBlock.fileName || 'PDF'
               if (url) {
+                trackEvent('pdf_opened', { label: name })
                 setPdfLoading(true)
                 setPdfViewerName(name)
                 setPdfViewerUrl(url)

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, ScrollView, ActivityIndicator,
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { createMoment } from '@/lib/services/moments'
+import { trackEvent } from '@/lib/analytics'
 import * as ImagePicker from 'expo-image-picker'
 import { Audio } from 'expo-av'
 import { Camera, ImageIcon, X, Plus, Check, Mic, Play, Pause, Trash2, RotateCcw, Leaf, Heart, Sparkles, HeartHandshake, Trophy, Sun, Wind, Waves, Moon, CloudRain, Laugh, TreePalm, Zap, CloudDrizzle, Flame, UserX } from 'lucide-react-native'
@@ -348,6 +349,7 @@ export default function Capture() {
         setSaving(false)
         return
       }
+      trackEvent('moment_captured', { moods: selectedMoods.length, media: mediaItems.length })
       setSaving(false)
       router.back()
     } catch (err) {

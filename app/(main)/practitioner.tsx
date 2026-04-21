@@ -21,6 +21,7 @@ import { useFocusEffect, useRouter, useLocalSearchParams } from 'expo-router'
 import { getGreetingKey } from '@/components/DayNav'
 import * as Clipboard from 'expo-clipboard'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
+import { trackEvent } from '@/lib/analytics'
 import { BackButton } from '@/components/ui/BackButton'
 import { BloomLogo } from '@/components/BloomLogo'
 import { BloomFullScreen } from '@/components/BloomFullScreen'
@@ -548,6 +549,7 @@ export default function PractitionerScreen() {
 
   async function handleSubmit() {
     if (!activeResourceItem) return
+    trackEvent('worksheet_completed', { resource_id: activeResourceItem.id, type: activeResourceItem.type })
     setSubmitting(true)
     try {
       if (activeResourceItem.type === 'assignment' && draftResponseId) {

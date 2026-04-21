@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { trackEvent } from '@/lib/analytics'
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -270,6 +271,7 @@ export default function BookingScreen() {
     setSubmitting(false)
 
     if (result.success) {
+      trackEvent('booking_created', { session_type: selectedService.id, practitioner_id: practitionerId })
       setRequiresApproval(!!result.requiresApproval)
       setSubmitted(true)
     } else {

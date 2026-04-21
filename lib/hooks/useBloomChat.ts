@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { sendMessage, getGreeting } from '@/lib/services/bloom'
+import { trackEvent } from '@/lib/analytics'
 
 export interface BloomMessage {
   id: string
@@ -66,6 +67,7 @@ export function useBloomChat(options: UseBloomChatOptions = {}): UseBloomChatRet
     }
 
     setMessages((prev) => [...prev, tempUserMessage])
+    trackEvent('bloom_chat_sent', { entry_point: entryPoint })
 
     try {
       const response = await sendMessage({

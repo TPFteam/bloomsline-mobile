@@ -1,3 +1,4 @@
+import { Platform } from 'react-native'
 import PostHog from 'posthog-react-native'
 import * as Sentry from '@sentry/react-native'
 
@@ -6,7 +7,17 @@ const POSTHOG_KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY || ''
 const POSTHOG_HOST = process.env.EXPO_PUBLIC_POSTHOG_HOST || 'https://eu.i.posthog.com'
 
 export const posthog = POSTHOG_KEY
-  ? new PostHog(POSTHOG_KEY, { host: POSTHOG_HOST })
+  ? new PostHog(POSTHOG_KEY, {
+      host: POSTHOG_HOST,
+      // Enable session recording on web (PWA)
+      ...(Platform.OS === 'web' ? {
+        enableSessionReplay: true,
+        sessionReplayConfig: {
+          maskAllTextInputs: false,
+          maskAllImages: false,
+        },
+      } : {}),
+    })
   : null
 
 // Sentry
