@@ -41,7 +41,14 @@
         }
       ],
       "expo-localization",
-      "@sentry/react-native/expo"
+      "@sentry/react-native/expo",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#4A9A86"
+        }
+      ]
     ]
   }
 }

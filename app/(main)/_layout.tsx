@@ -5,6 +5,7 @@ import { useI18n } from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { getHomeScreen } from '@/lib/nav-order'
 import { ConsentModal } from '@/components/ConsentModal'
+import { registerForPushNotifications } from '@/lib/notifications'
 
 export default function MainLayout() {
   const { session, member, loading, user } = useAuth()
@@ -44,6 +45,14 @@ export default function MainLayout() {
       }
     }
   }, [session, member, loading])
+
+  // Register push notifications after auth is confirmed
+  const pushRegistered = useRef(false)
+  useEffect(() => {
+    if (!member?.id || pushRegistered.current) return
+    pushRegistered.current = true
+    registerForPushNotifications(member.id)
+  }, [member?.id])
 
   const handleConsent = async () => {
     if (!user?.id) return

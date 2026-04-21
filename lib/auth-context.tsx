@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 import { supabase } from './supabase'
 import { identifyUser, resetUser, trackEvent } from './analytics'
+import { clearPushToken } from './notifications'
 
 const ACTIVE_MEMBER_KEY = 'bloomsline_active_member_id'
 
@@ -350,6 +351,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
+    // Clear push token before signing out
+    const currentMember = allMembers.find(m => m.id === member?.id)
+    if (currentMember?.id) clearPushToken(currentMember.id)
     trackEvent('signed_out')
     resetUser()
     await supabase.auth.signOut()
