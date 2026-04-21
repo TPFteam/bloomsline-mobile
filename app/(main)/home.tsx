@@ -820,7 +820,7 @@ export default function Home() {
             {getNavOrder(member as any).map((key) => {
               const isActive = key === 'moments'
               const config = {
-                moments: { icon: Heart, label: t.home?.moments || 'Moments', route: null },
+                moments: { icon: Heart, label: (t.home as any)?.moments || 'Moments', route: null },
                 practitioner: { icon: User, label: locale === 'fr' ? 'Mon Suivi' : 'My Care', route: '/(main)/practitioner' },
                 stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: '/(main)/stories' },
               }[key] as { icon: any; label: string; route: string | null }

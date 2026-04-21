@@ -8,7 +8,7 @@ export type Locale = 'en' | 'fr'
 
 type Translations = typeof en
 
-const dictionaries: Record<Locale, Translations> = { en, fr }
+const dictionaries: Record<Locale, Translations> = { en, fr: fr as unknown as Translations }
 
 interface I18nContextType {
   locale: Locale

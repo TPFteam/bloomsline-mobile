@@ -520,7 +520,7 @@ export default function PractitionerScreen() {
     const ok = await saveDraft(draftResponseId, responses)
     setSaving(false)
     if (ok) {
-      showAlert(t.practitioner?.saved || 'Saved', t.practitioner?.draftSaved || 'Your progress has been saved.')
+      showAlert(t.practitioner?.saved || 'Saved', (t.practitioner as any)?.draftSaved || 'Your progress has been saved.')
     } else {
       showAlert(t.common?.error || 'Error', t.practitioner?.errorFailedSave || 'Failed to save.')
     }
@@ -1887,7 +1887,7 @@ export default function PractitionerScreen() {
             {getNavOrder(member as any).map((key) => {
               const isActive = key === 'practitioner'
               const config = {
-                moments: { icon: Heart, label: t.home?.moments || 'Moments', route: '/(main)/home' },
+                moments: { icon: Heart, label: (t.home as any)?.moments || 'Moments', route: '/(main)/home' },
                 practitioner: { icon: User, label: locale === 'fr' ? 'Mon Suivi' : 'My Care', route: null },
                 stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: '/(main)/stories' },
               }[key] as { icon: any; label: string; route: string | null }

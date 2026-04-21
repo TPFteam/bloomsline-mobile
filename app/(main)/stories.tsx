@@ -1239,10 +1239,10 @@ export default function StoriesScreen() {
     const url = getShareUrl(story)
     const shareIntro = locale === 'fr'
       ? 'J\'ai ecrit quelque chose et je voulais le partager avec toi.'
-      : locale === 'es'
+      : (locale as string) === 'es'
         ? 'Escribi algo y queria compartirlo contigo.'
         : 'I wrote something and wanted to share it with you.'
-    const shareCode = locale === 'fr' ? 'Code secret' : locale === 'es' ? 'Codigo secreto' : 'Secret code'
+    const shareCode = locale === 'fr' ? 'Code secret' : (locale as string) === 'es' ? 'Codigo secreto' : 'Secret code'
     const message = story.secret_code
       ? `${shareIntro}\n\n${url}\n\n${shareCode}: ${story.secret_code}`
       : `${shareIntro}\n\n${url}`
@@ -1994,7 +1994,7 @@ export default function StoriesScreen() {
             {getNavOrder(member as any).map((key) => {
               const isActive = key === 'stories'
               const config = {
-                moments: { icon: Heart, label: t.home?.moments || 'Moments', route: '/(main)/home' },
+                moments: { icon: Heart, label: (t.home as any)?.moments || 'Moments', route: '/(main)/home' },
                 practitioner: { icon: User, label: locale === 'fr' ? 'Mon Suivi' : 'My Care', route: '/(main)/practitioner' },
                 stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: null },
               }[key] as { icon: any; label: string; route: string | null }
@@ -2570,7 +2570,7 @@ export default function StoriesScreen() {
                             backgroundColor: selected ? `${mood.color}10` : '#fff',
                           }}
                         >
-                          <Text style={{ fontSize: 16 }}>{mood.emoji}</Text>
+                          <Text style={{ fontSize: 16 }}>{(mood as any).emoji}</Text>
                           <Text style={{ fontSize: 13, fontWeight: '600', color: selected ? mood.color : colors.textSecondary }}>
                             {t.moods[mood.key as keyof typeof t.moods] || mood.label}
                           </Text>

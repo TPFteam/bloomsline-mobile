@@ -79,7 +79,6 @@ export const MOOD_SCORES: Record<string, number> = {
   lonely: 25,
   // Legacy keys for backward compatibility with old moments
   joyful: 95,
-  peaceful: 80,
   tender: 55,
   restless: 48,
   uncertain: 45,
