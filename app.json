@@ -18,7 +18,10 @@
       "associatedDomains": [
         "applinks:app.bloomsline.com",
         "webcredentials:app.bloomsline.com"
-      ]
+      ],
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.bloomsline.app",
