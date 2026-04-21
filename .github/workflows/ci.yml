@@ -47,3 +47,4 @@ jobs:
 
       - name: Build preview
         run: eas build --platform all --profile preview --non-interactive
+
