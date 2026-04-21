@@ -14,10 +14,28 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.bloomsline.app"
+      "bundleIdentifier": "com.bloomsline.app",
+      "associatedDomains": [
+        "applinks:app.bloomsline.com",
+        "webcredentials:app.bloomsline.com"
+      ]
     },
     "android": {
       "package": "com.bloomsline.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "app.bloomsline.com",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
