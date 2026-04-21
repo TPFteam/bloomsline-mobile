@@ -40,7 +40,8 @@
           "cameraPermission": "Allow Bloomsline to use your camera to capture moments."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "@sentry/react-native/expo"
     ]
   }
 }

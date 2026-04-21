@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import Constants from 'expo-constants'
 import { supabase } from './supabase'
+import { identifyUser, resetUser, trackEvent } from './analytics'
 
 const ACTIVE_MEMBER_KEY = 'bloomsline_active_member_id'
 
@@ -158,6 +159,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           || enriched.find(m => m.practitioner_id)
           || enriched[0]
         setMember(active)
+        identifyUser(userId, { email: user?.email, member_id: active.id })
+        trackEvent('session_started')
         setLoading(false)
         return
       }
@@ -347,6 +350,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
+    trackEvent('signed_out')
+    resetUser()
     await supabase.auth.signOut()
     setMember(null)
     setAllMembers([])
