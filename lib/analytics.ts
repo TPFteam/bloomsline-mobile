@@ -36,11 +36,18 @@ export function initSentry() {
 export function identifyUser(userId: string, properties?: Record<string, any>) {
   posthog?.identify(userId, properties)
   Sentry.setUser({ id: userId, ...properties })
+  // Also identify in the web JS snippet (separate instance for recordings)
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && (window as any).posthog) {
+    (window as any).posthog.identify(userId, properties)
+  }
 }
 
 export function resetUser() {
   posthog?.reset()
   Sentry.setUser(null)
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && (window as any).posthog) {
+    (window as any).posthog.reset()
+  }
 }
 
 export function trackEvent(event: string, properties?: Record<string, any>) {
