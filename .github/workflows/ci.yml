@@ -25,26 +25,3 @@ jobs:
       - name: Audit vulnerabilities
         run: npm audit --audit-level=high
         continue-on-error: true
-
-  build-preview:
-    needs: lint-and-typecheck
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
-
-      - run: npm ci
-
-      - name: Build preview (Android)
-        run: eas build --platform android --profile preview --non-interactive
-
