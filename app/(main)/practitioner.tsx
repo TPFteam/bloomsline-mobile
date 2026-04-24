@@ -1914,6 +1914,8 @@ export default function PractitionerScreen() {
               )
             })}
           </View>
+          {/* Spacer to match Moments tab layout (where + button exists) */}
+          <View style={{ width: 56 }} />
         </View>
       )}
     </View>
