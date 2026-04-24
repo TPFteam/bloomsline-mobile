@@ -2021,8 +2021,6 @@ export default function StoriesScreen() {
               )
             })}
           </View>
-          {/* Capture circle */}
-          <FloatingCapture inline />
         </View>
       )}
 

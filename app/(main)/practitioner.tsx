@@ -1914,8 +1914,6 @@ export default function PractitionerScreen() {
               )
             })}
           </View>
-          {/* Capture circle */}
-          <FloatingCapture inline />
         </View>
       )}
     </View>
