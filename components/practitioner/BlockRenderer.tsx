@@ -512,7 +512,47 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
         />
       </View>
 
-      {/* Column navigation via dots above — no duplicate buttons needed */}
+      {/* Column navigation */}
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
+        <TouchableOpacity
+          onPress={() => setCurrentCol(Math.max(0, safeCol - 1))}
+          disabled={safeCol === 0}
+          style={{
+            paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
+            backgroundColor: safeCol === 0 ? 'transparent' : 'rgba(255,255,255,0.15)',
+          }}
+        >
+          <Text style={{ fontSize: 14, fontWeight: '600', color: safeCol === 0 ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)' }}>
+            ← {locale === 'fr' ? 'Précédent' : 'Back'}
+          </Text>
+        </TouchableOpacity>
+
+        {safeCol < columns.length - 1 ? (
+          <TouchableOpacity
+            onPress={() => setCurrentCol(safeCol + 1)}
+            style={{
+              paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+              {locale === 'fr' ? 'Suivant' : 'Next'} →
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => setShowReview(true)}
+            style={{
+              paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
+              backgroundColor: 'rgba(255,255,255,0.2)',
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+              {locale === 'fr' ? 'Vérifier' : 'Review'} ✓
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
       </>
       )}
     </View>
