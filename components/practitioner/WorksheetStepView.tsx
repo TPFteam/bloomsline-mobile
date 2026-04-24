@@ -169,9 +169,16 @@ export function WorksheetStepView({
       {/* Header: progress bar + save draft — on colored background */}
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <TouchableOpacity onPress={onClose} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'center', alignItems: 'center' }}>
-            <X size={16} color="#fff" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity onPress={onClose} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'center', alignItems: 'center' }}>
+              <X size={16} color="#fff" />
+            </TouchableOpacity>
+            {step.questionBlock?.type === 'table_exercise' && !isFirst && (
+              <TouchableOpacity onPress={goBack} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'center', alignItems: 'center' }}>
+                <ChevronLeft size={16} color="#fff" />
+              </TouchableOpacity>
+            )}
+          </View>
           {/* Progress bar (flex center) */}
           <View style={{ flex: 1, marginHorizontal: 16, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2 }}>
             <View style={{ height: 4, borderRadius: 2, backgroundColor: '#fff', width: `${((currentStep + 1) / totalSteps) * 100}%` }} />
@@ -469,8 +476,8 @@ export function WorksheetStepView({
         </View>
       )}
 
-      {/* Bottom navigation — always visible unless content overflows and user hasn't scrolled down */}
-      {!isCompleted && !(contentMeasured && contentOverflows && !isScrolledToBottom) && (
+      {/* Bottom navigation — hidden for table_exercise (has its own inner nav) */}
+      {!isCompleted && step.questionBlock?.type !== 'table_exercise' && !(contentMeasured && contentOverflows && !isScrolledToBottom) && (
         <View style={{
           position: 'absolute',
           bottom: 0,
