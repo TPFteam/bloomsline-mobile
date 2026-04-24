@@ -21,7 +21,7 @@ export default {
   // ─── Home ───
   home: {
     greetingMorning: 'Bonjour',
-    greetingAfternoon: 'Bon après-midi',
+    greetingAfternoon: 'Bonjour',
     greetingEvening: 'Bonsoir',
     greetingPrompt: 'Comment vous sentez-vous en ce moment ?',
     emptyTitle: 'Capturez votre premier moment',
