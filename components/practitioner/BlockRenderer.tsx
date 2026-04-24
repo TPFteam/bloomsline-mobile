@@ -214,7 +214,11 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
   block: any; content: string; blockValue: unknown; onBlockChange: (v: unknown) => void; onReviewStateChange?: (inReview: boolean) => void
 }) {
   const { t, locale } = useI18n()
-  const columns: any[] = Array.isArray(block.columns) ? block.columns : []
+  const exampleRow: Record<string, string> = (block.exampleRow && typeof block.exampleRow === 'object') ? block.exampleRow : {}
+  const columns: any[] = Array.isArray(block.columns) ? block.columns.map((c: any) => ({
+    ...c,
+    description: c.description || exampleRow[c.id] || '',
+  })) : []
   const instr = extractLocalized(block.instructions, locale) || null
   // Decide row count once on mount (stable during editing)
   const [rowCount] = useState(() => {
