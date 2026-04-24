@@ -512,57 +512,7 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
         />
       </View>
 
-      {/* Navigation */}
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-        {returnToCol !== null ? (
-          <TouchableOpacity
-            onPress={() => { setCurrentCol(returnToCol); setReturnToCol(null) }}
-            style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24, backgroundColor: colors.primary + '10' }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{t.blocks.backToCurrent}</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={() => setCurrentCol(Math.max(0, safeCol - 1))}
-            disabled={safeCol === 0}
-            style={{
-              paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
-              backgroundColor: safeCol === 0 ? colors.surface2 : colors.primary + '10',
-            }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: safeCol === 0 ? '#CCC' : colors.primary }}>← Back</Text>
-          </TouchableOpacity>
-        )}
-
-        {returnToCol !== null ? (
-          <TouchableOpacity
-            onPress={() => { setCurrentCol(returnToCol); setReturnToCol(null) }}
-            style={{ paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24, backgroundColor: colors.primary }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t.blocks.doneEditing}</Text>
-          </TouchableOpacity>
-        ) : safeCol < columns.length - 1 ? (
-          <TouchableOpacity
-            onPress={() => setCurrentCol(safeCol + 1)}
-            style={{
-              paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
-              backgroundColor: colors.primary,
-            }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t.blocks.nextArrow}</Text>
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            onPress={() => setShowReview(true)}
-            style={{
-              paddingHorizontal: 20, paddingVertical: 12, borderRadius: 24,
-              backgroundColor: colors.primary,
-            }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{t.blocks.continueArrow}</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      {/* Column navigation via dots above — no duplicate buttons needed */}
       </>
       )}
     </View>
