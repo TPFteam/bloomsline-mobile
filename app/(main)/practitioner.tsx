@@ -1537,7 +1537,7 @@ export default function PractitionerScreen() {
             <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
               <ActivityIndicator size="large" color={colors.bloom} />
             </View>
-          ) : fillResource && ['worksheet', 'exercise', 'assessment'].includes(activeResourceItem?.resourceType || '') ? (
+          ) : fillResource && ['worksheet', 'exercise', 'assessment', 'table'].includes(activeResourceItem?.resourceType || '') ? (
             /* Step-through card experience for worksheets/exercises */
             <WorksheetStepView
               blocks={(() => {
