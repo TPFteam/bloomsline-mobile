@@ -491,6 +491,37 @@ export function WorksheetStepView({
           flexDirection: 'row',
           gap: 12,
         }}>
+          {/* Table exercise in review: single submit button */}
+          {tableInReview && step.questionBlock?.type === 'table_exercise' ? (
+            <TouchableOpacity
+              onPress={onSubmit}
+              disabled={submitting}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                backgroundColor: '#fff',
+                borderRadius: 28,
+                paddingVertical: 14,
+              }}
+            >
+              {submitting ? (
+                <Text style={{ fontSize: 14, fontWeight: '700', color: step.color }}>
+                  {locale === 'fr' ? 'Envoi...' : 'Submitting...'}
+                </Text>
+              ) : (
+                <>
+                  <Check size={16} color={step.color} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: step.color }}>
+                    {locale === 'fr' ? 'Soumettre' : 'Submit'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          ) : (
+          <>
           <TouchableOpacity
             onPress={goBack}
             style={{
@@ -539,6 +570,8 @@ export function WorksheetStepView({
               </>
             )}
           </TouchableOpacity>
+          </>
+          )}
         </View>
       )}
 
