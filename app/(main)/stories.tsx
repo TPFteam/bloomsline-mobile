@@ -2606,7 +2606,7 @@ export default function StoriesScreen() {
                     <Text style={{ fontSize: 13, color: colors.textTertiary }}>Skip</Text>
                   </TouchableOpacity>
                 </View>
-              ) : (publishStep === 'choose' || publishStep === 'enter-code') ? (
+              ) : (
                 <View style={{ gap: 16 }}>
                   <View style={{
                     backgroundColor: '#f5f3ff', borderRadius: 14, padding: 14,
@@ -2657,16 +2657,7 @@ export default function StoriesScreen() {
                     )}
                   </View>
 
-                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-                    <TouchableOpacity
-                      onPress={() => { setPublishStep('choose'); setSecretCode(''); setConfirmCode('') }}
-                      style={{
-                        flex: 1, paddingVertical: 14, borderRadius: radii.button,
-                        backgroundColor: colors.surface1, alignItems: 'center',
-                      }}
-                    >
-                      <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>Back</Text>
-                    </TouchableOpacity>
+                  <View style={{ marginTop: 4 }}>
                     <TouchableOpacity
                       onPress={handlePrivatePublish}
                       disabled={secretCode.trim().length < 4 || secretCode !== confirmCode}
