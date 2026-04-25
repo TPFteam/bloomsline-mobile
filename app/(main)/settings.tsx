@@ -229,6 +229,25 @@ export default function Settings() {
           <Text style={{ fontSize: 17, color: '#999' }}>›</Text>
         </TouchableOpacity>
 
+        {/* WhatsApp */}
+        <TouchableOpacity
+          onPress={() => {
+            const url = 'https://wa.me/33671482004?text=' + encodeURIComponent(locale === 'fr' ? 'Bonjour Bloomsline 👋' : 'Hi Bloomsline 👋')
+            if (Platform.OS === 'web' && typeof window !== 'undefined') {
+              window.open(url, '_blank')
+            } else {
+              import('expo-linking').then(Linking => Linking.openURL(url)).catch(() => {})
+            }
+          }}
+          style={{ paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={{ fontSize: 20 }}>💬</Text>
+            <Text style={{ fontSize: 17, color: '#333' }}>{locale === 'fr' ? 'Parler avec Bloomsline' : 'Talk with Bloomsline'}</Text>
+          </View>
+          <Text style={{ fontSize: 12, color: '#25D366', fontWeight: '600' }}>WhatsApp</Text>
+        </TouchableOpacity>
+
         {/* Sign out */}
         <TouchableOpacity
           onPress={handleSignOut}
