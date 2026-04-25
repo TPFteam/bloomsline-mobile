@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { View, Text, TouchableOpacity, Alert, Platform, TextInput, Modal, ScrollView, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Heart, User, PenLine, MessageCircleQuestion, X, Bug, Lightbulb, HelpCircle, Send } from 'lucide-react-native'
+import { Heart, User, PenLine, MessageCircleQuestion, X, Bug, Lightbulb, HelpCircle, Send, MessageCircle } from 'lucide-react-native'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
@@ -242,7 +242,7 @@ export default function Settings() {
           style={{ paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <Text style={{ fontSize: 20 }}>💬</Text>
+            <MessageCircle size={20} color="#25D366" strokeWidth={1.8} />
             <Text style={{ fontSize: 17, color: '#333' }}>{locale === 'fr' ? 'Parler avec Bloomsline' : 'Talk with Bloomsline'}</Text>
           </View>
           <Text style={{ fontSize: 12, color: '#25D366', fontWeight: '600' }}>WhatsApp</Text>
