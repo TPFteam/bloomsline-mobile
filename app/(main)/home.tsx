@@ -657,7 +657,7 @@ export default function Home() {
                   </TouchableOpacity>
 
                   {/* Bloom — only for self-onboarded users (signup_source = waitlist) */}
-                  {(member as any)?.signup_source !== 'practitioner_invite' && <TouchableOpacity
+                  {(member as any)?.signup_source === 'waitlist' && <TouchableOpacity
                     onPress={() => setBloomOpen(true)}
                     activeOpacity={0.85}
                     style={{
