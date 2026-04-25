@@ -110,6 +110,7 @@ export function WorksheetStepView({
   const innerContentHeight = useRef(0)
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false)
   const [contentMeasured, setContentMeasured] = useState(false)
+  const [tableInReview, setTableInReview] = useState(false)
   const [contentOverflows, setContentOverflows] = useState(false)
   const [showScrollHint, setShowScrollHint] = useState(false)
   const [peekIndex, setPeekIndex] = useState<number | null>(null)
@@ -144,6 +145,7 @@ export function WorksheetStepView({
       setContentMeasured(false)
       setShowScrollHint(false)
       setPeekIndex(null)
+      setTableInReview(false)
       Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start()
     })
   }, [fadeAnim])
@@ -425,7 +427,7 @@ export function WorksheetStepView({
                 step.questionBlock,
                 responses[step.questionBlock.id],
                 (v) => onResponseChange(step.questionBlock.id, v),
-                undefined,
+                step.questionBlock.type === 'table_exercise' ? setTableInReview : undefined,
                 isCompleted,
                 t,
                 locale,
@@ -476,8 +478,8 @@ export function WorksheetStepView({
         </View>
       )}
 
-      {/* Bottom navigation — hidden for table_exercise (has its own inner nav) */}
-      {!isCompleted && step.questionBlock?.type !== 'table_exercise' && !(contentMeasured && contentOverflows && !isScrolledToBottom) && (
+      {/* Bottom navigation — hidden for table_exercise unless in review mode */}
+      {!isCompleted && (step.questionBlock?.type !== 'table_exercise' || tableInReview) && !(contentMeasured && contentOverflows && !isScrolledToBottom) && (
         <View style={{
           position: 'absolute',
           bottom: 0,
