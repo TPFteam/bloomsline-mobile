@@ -239,13 +239,11 @@ export default function Settings() {
               import('expo-linking').then(Linking => Linking.openURL(url)).catch(() => {})
             }
           }}
-          style={{ paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}
+          style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}
         >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <MessageCircle size={20} color="#25D366" strokeWidth={1.8} />
-            <Text style={{ fontSize: 17, color: '#333' }}>{locale === 'fr' ? 'Parler avec Bloomsline' : 'Talk with Bloomsline'}</Text>
-          </View>
-          <Text style={{ fontSize: 12, color: '#25D366', fontWeight: '600' }}>WhatsApp</Text>
+          <MessageCircle size={20} color="#999" strokeWidth={1.8} />
+          <Text style={{ fontSize: 17, color: '#333' }}>WhatsApp</Text>
+          <Text style={{ fontSize: 17, color: '#999', marginLeft: 'auto' }}>›</Text>
         </TouchableOpacity>
 
         {/* Sign out */}
