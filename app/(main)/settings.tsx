@@ -242,8 +242,11 @@ export default function Settings() {
           style={{ paddingVertical: 16, flexDirection: 'row', alignItems: 'center', gap: 10 }}
         >
           <MessageCircle size={20} color="#999" strokeWidth={1.8} />
-          <Text style={{ fontSize: 17, color: '#333' }}>WhatsApp</Text>
-          <Text style={{ fontSize: 17, color: '#999', marginLeft: 'auto' }}>›</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 17, color: '#333' }}>{locale === 'fr' ? 'Nous contacter' : 'Contact us'}</Text>
+            <Text style={{ fontSize: 12, color: '#999' }}>{locale === 'fr' ? 'Réponse rapide via WhatsApp' : 'Quick response via WhatsApp'}</Text>
+          </View>
+          <Text style={{ fontSize: 17, color: '#999' }}>›</Text>
         </TouchableOpacity>
 
         {/* Sign out */}
