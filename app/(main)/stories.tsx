@@ -972,7 +972,7 @@ export default function StoriesScreen() {
 
   // Publish modal
   const [publishModalVisible, setPublishModalVisible] = useState(false)
-  const [publishStep, setPublishStep] = useState<'choose' | 'enter-code' | 'mood'>('choose')
+  const [publishStep, setPublishStep] = useState<'choose' | 'enter-code' | 'mood'>('enter-code')
   const [secretCode, setSecretCode] = useState('')
   const [confirmCode, setConfirmCode] = useState('')
   const [publishTarget, setPublishTarget] = useState<'editor' | 'story'>('editor')
@@ -1169,7 +1169,7 @@ export default function StoriesScreen() {
 
   // Publish modal helpers
   function openPublishModal(target: 'editor' | 'story', story?: Story) {
-    setPublishStep('choose')
+    setPublishStep('enter-code')
     setSecretCode('')
     setConfirmCode('')
     setPublishMoods([])
@@ -2537,7 +2537,7 @@ export default function StoriesScreen() {
               <View>
                 <Text style={{ fontSize: 20, fontWeight: '800', color: colors.primary }}>Publish Your Story</Text>
                 <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
-                  {publishStep === 'choose' ? 'Choose how you want to share' : publishStep === 'mood' ? 'How does this story make you feel?' : 'Create your secret code'}
+                  {publishStep === 'mood' ? 'How does this story make you feel?' : 'Create your secret code'}
                 </Text>
               </View>
               <TouchableOpacity onPress={closePublishModal} style={{ padding: 6 }}>
@@ -2606,55 +2606,7 @@ export default function StoriesScreen() {
                     <Text style={{ fontSize: 13, color: colors.textTertiary }}>Skip</Text>
                   </TouchableOpacity>
                 </View>
-              ) : publishStep === 'choose' ? (
-                <View style={{ gap: 12 }}>
-                  <TouchableOpacity
-                    onPress={handlePublicPublish}
-                    style={{
-                      flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16,
-                      borderRadius: radii.card, borderWidth: 1, borderColor: '#EBEBEB', backgroundColor: '#fff',
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{
-                      width: 48, height: 48, borderRadius: 14, backgroundColor: '#ecfdf5',
-                      alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <Globe size={24} color="#059669" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>Share Openly</Text>
-                      <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
-                        Anyone with the link can view your story.
-                      </Text>
-                    </View>
-                    <ArrowRight size={18} color={colors.textMuted} />
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    onPress={() => setPublishStep('enter-code')}
-                    style={{
-                      flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16,
-                      borderRadius: radii.card, borderWidth: 1, borderColor: '#EBEBEB', backgroundColor: '#fff',
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={{
-                      width: 48, height: 48, borderRadius: 14, backgroundColor: '#f5f3ff',
-                      alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <Lock size={24} color="#7c3aed" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 2 }}>Keep It Private</Text>
-                      <Text style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 17 }}>
-                        Only people with your secret code can view.
-                      </Text>
-                    </View>
-                    <ArrowRight size={18} color={colors.textMuted} />
-                  </TouchableOpacity>
-                </View>
-              ) : (
+              ) : (publishStep === 'choose' || publishStep === 'enter-code') ? (
                 <View style={{ gap: 16 }}>
                   <View style={{
                     backgroundColor: '#f5f3ff', borderRadius: 14, padding: 14,
