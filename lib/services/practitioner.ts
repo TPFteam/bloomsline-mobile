@@ -129,32 +129,38 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
       .limit(20),
   ])
 
-  // Also fetch from bookings table — match by member_id (members table ID) OR client_email
+  // Also fetch from bookings table — match by member_id OR client_email
+  // Use separate queries instead of .or() string interpolation to prevent injection
   const { data: { user: authUser } } = await supabase.auth.getUser()
   const userEmail = authUser?.email || null
 
-  // Build OR filter: memberId is the members-table UUID (used when booking from app),
-  // userEmail matches bookings made from the web booking page
-  const orParts: string[] = []
-  if (memberId) orParts.push(`member_id.eq.${memberId}`)
-  if (userEmail) orParts.push(`client_email.eq.${userEmail}`)
-  const bookingFilter = orParts.length > 0 ? orParts.join(',') : null
-
-  const buildBookingQuery = (statusFilter: string[], order: 'asc' | 'desc', timeOp: 'gte' | 'lte', limit: number) => {
+  const buildBookingQuery = (matchField: 'member_id' | 'client_email', matchValue: string, statusFilter: string[], order: 'asc' | 'desc', timeOp: 'gte' | 'lte', limit: number) => {
     let q = supabase
       .from('bookings')
       .select('id, start_time, end_time, session_type, status, notes, practitioner_id, client_name')
-      .or(bookingFilter!)
+      .eq(matchField, matchValue)
       .in('status', statusFilter)
     if (practitionerId) q = q.eq('practitioner_id', practitionerId)
     if (timeOp === 'gte') q = q.gte('start_time', now)
     return q.order('start_time', { ascending: order === 'asc' }).limit(limit)
   }
 
-  const bookingQueries = bookingFilter ? await Promise.all([
-    buildBookingQuery(['confirmed', 'pending'], 'asc', 'gte', 10),
-    buildBookingQuery(['completed', 'cancelled', 'no_show'], 'desc', 'lte', 20),
-  ]) : [{ data: null }, { data: null }]
+  // Run separate parameterized queries for each match field, then merge results
+  const bookingQueryPromises: Promise<{ data: any[] | null }>[] = []
+  if (memberId) {
+    bookingQueryPromises.push(buildBookingQuery('member_id', memberId, ['confirmed', 'pending'], 'asc', 'gte', 10))
+    bookingQueryPromises.push(buildBookingQuery('member_id', memberId, ['completed', 'cancelled', 'no_show'], 'desc', 'lte', 20))
+  }
+  if (userEmail) {
+    bookingQueryPromises.push(buildBookingQuery('client_email', userEmail, ['confirmed', 'pending'], 'asc', 'gte', 10))
+    bookingQueryPromises.push(buildBookingQuery('client_email', userEmail, ['completed', 'cancelled', 'no_show'], 'desc', 'lte', 20))
+  }
+  const bookingResults = bookingQueryPromises.length > 0 ? await Promise.all(bookingQueryPromises) : []
+  // Merge into the same shape as before: [upcoming, past]
+  const bookingQueries = [
+    { data: bookingResults.filter((_, i) => i % 2 === 0).flatMap(r => r.data || []) },
+    { data: bookingResults.filter((_, i) => i % 2 === 1).flatMap(r => r.data || []) },
+  ]
 
   // Map bookings to the same UpcomingSession shape
   const mapBooking = (b: any): any => {
