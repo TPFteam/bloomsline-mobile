@@ -286,13 +286,17 @@ export async function createBooking(input: {
 }): Promise<{ success: boolean; requiresApproval?: boolean; error?: string }> {
   const { data: { session } } = await supabase.auth.getSession()
 
+  if (!session?.access_token) {
+    return { success: false, error: 'Authentication required. Please sign in and try again.' }
+  }
+
   // Use the care app API so notifications, emails, and calendar sync all fire
   try {
     const res = await fetch(`${API_URL}/api/bookings`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        Authorization: `Bearer ${session.access_token}`,
       },
       body: JSON.stringify(input),
     })
