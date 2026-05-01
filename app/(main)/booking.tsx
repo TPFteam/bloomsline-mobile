@@ -381,9 +381,6 @@ export default function BookingScreen() {
                     <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary }}>{st.name}</Text>
                     <View style={{ flexDirection: 'row', gap: 16, marginTop: 6 }}>
                       <Text style={{ fontSize: 13, color: '#8A8A8A' }}>{st.duration} {t.booking.minutes}</Text>
-                      {st.price != null && st.price > 0 && (
-                        <Text style={{ fontSize: 13, color: '#8A8A8A' }}>${st.price}</Text>
-                      )}
                     </View>
                   </TouchableOpacity>
                 )
@@ -685,9 +682,6 @@ export default function BookingScreen() {
                   />
                 )}
                 <SummaryRow label={t.booking.duration} value={`${selectedService.duration} min`} />
-                {selectedService.price != null && selectedService.price > 0 && (
-                  <SummaryRow label={t.booking.price} value={`$${selectedService.price}`} />
-                )}
                 <View style={{ height: 1, backgroundColor: '#EBEBEB' }} />
                 <SummaryRow
                   label={t.booking.dateLabel}
