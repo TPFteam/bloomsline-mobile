@@ -13,8 +13,8 @@ export const posthog = POSTHOG_KEY
       ...(Platform.OS === 'web' ? {
         enableSessionReplay: true,
         sessionReplayConfig: {
-          maskAllTextInputs: false,
-          maskAllImages: false,
+          maskAllTextInputs: true,
+          maskAllImages: true,
         },
       } : {}),
     })
