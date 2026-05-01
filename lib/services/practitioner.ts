@@ -13,6 +13,7 @@ export interface PractitionerProfile {
   credentials: string[]
   specialties: string[]
   bookingUrl: string | null
+  allowPatientBook: boolean
   slug: string | null
 }
 
@@ -79,7 +80,7 @@ export async function fetchPractitioner(practitionerId: string): Promise<Practit
   // Fetch booking settings for external booking URL
   const { data: bookingSettings } = await supabase
     .from('booking_settings')
-    .select('external_booking_url, booking_page_enabled')
+    .select('external_booking_url, booking_page_enabled, allow_patient_book')
     .eq('user_id', practitionerId)
     .maybeSingle()
 
@@ -100,6 +101,7 @@ export async function fetchPractitioner(practitionerId: string): Promise<Practit
     credentials: profile?.credentials || [],
     specialties: profile?.specialties || [],
     bookingUrl,
+    allowPatientBook: bookingSettings?.allow_patient_book !== false,
     slug: profile?.slug || null,
   }
 }

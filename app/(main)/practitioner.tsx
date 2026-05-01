@@ -881,7 +881,7 @@ export default function PractitionerScreen() {
         {/* ═══════════════════════════════════════════════ */}
         {/* BOOK APPOINTMENT + VIEW PROFILE */}
         {/* ═══════════════════════════════════════════════ */}
-        {practitioner.bookingUrl && (
+        {practitioner.allowPatientBook && (
         <View style={{ gap: 10, marginBottom: 32 }}>
           <TouchableOpacity
             activeOpacity={0.85}
