@@ -148,14 +148,15 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
   }
 
   // Run separate parameterized queries for each match field, then merge results
+  const exec = (q: any): Promise<{ data: any[] | null }> => q.then((r: any) => r)
   const bookingQueryPromises: Promise<{ data: any[] | null }>[] = []
   if (memberId) {
-    bookingQueryPromises.push(buildBookingQuery('member_id', memberId, ['confirmed', 'pending'], 'asc', 'gte', 10))
-    bookingQueryPromises.push(buildBookingQuery('member_id', memberId, ['completed', 'cancelled', 'no_show'], 'desc', 'lte', 20))
+    bookingQueryPromises.push(exec(buildBookingQuery('member_id', memberId, ['confirmed', 'pending'], 'asc', 'gte', 10)))
+    bookingQueryPromises.push(exec(buildBookingQuery('member_id', memberId, ['completed', 'cancelled', 'no_show'], 'desc', 'lte', 20)))
   }
   if (userEmail) {
-    bookingQueryPromises.push(buildBookingQuery('client_email', userEmail, ['confirmed', 'pending'], 'asc', 'gte', 10))
-    bookingQueryPromises.push(buildBookingQuery('client_email', userEmail, ['completed', 'cancelled', 'no_show'], 'desc', 'lte', 20))
+    bookingQueryPromises.push(exec(buildBookingQuery('client_email', userEmail, ['confirmed', 'pending'], 'asc', 'gte', 10)))
+    bookingQueryPromises.push(exec(buildBookingQuery('client_email', userEmail, ['completed', 'cancelled', 'no_show'], 'desc', 'lte', 20)))
   }
   const bookingResults = bookingQueryPromises.length > 0 ? await Promise.all(bookingQueryPromises) : []
   // Merge into the same shape as before: [upcoming, past]
