@@ -48,6 +48,7 @@ export default function BookingScreen() {
   const [slots, setSlots] = useState<TimeSlot[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
   const [practitionerTz, setPractitionerTz] = useState<string | null>(null)
+  const [practAddress, setPractAddress] = useState<string | null>(null)
 
   // Client details
   const [clientName, setClientName] = useState('')
@@ -76,6 +77,15 @@ export default function BookingScreen() {
       setSettings(s)
       setLoading(false)
     })
+    // Fetch practitioner address
+    supabase
+      .from('practitioner_profiles')
+      .select('address, city, country')
+      .eq('user_id', practitionerId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setPractAddress([data.address, data.city, data.country].filter(Boolean).join(', ') || null)
+      })
     // Fetch available days of week
     supabase
       .from('availability_schedules')
@@ -411,7 +421,7 @@ export default function BookingScreen() {
                     {locale === 'fr' ? 'En personne' : 'In person'}
                   </Text>
                   <Text style={{ fontSize: 13, color: '#8A8A8A', marginTop: 4 }}>
-                    {locale === 'fr' ? 'Au cabinet du praticien' : "At the practitioner's office"}
+                    {practAddress || (locale === 'fr' ? 'Au cabinet du praticien' : "At the practitioner's office")}
                   </Text>
                 </TouchableOpacity>
               )}
