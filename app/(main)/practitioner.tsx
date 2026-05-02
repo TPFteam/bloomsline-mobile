@@ -27,6 +27,7 @@ import { BackButton } from '@/components/ui/BackButton'
 import { BloomLogo } from '@/components/BloomLogo'
 import { BloomFullScreen } from '@/components/BloomFullScreen'
 import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
+import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { InlineGuide } from '@/components/InlineGuide'
 import { FloatingCapture } from '@/components/FloatingCapture'
 import { PageLoader } from '@/components/PageLoader'
@@ -104,7 +105,8 @@ export default function PractitionerScreen() {
   const { member, allMembers, setActiveMemberId } = useAuth()
   const { t, locale } = useI18n()
 
-  const isHome = getHomeScreen(member as any) === 'practitioner'
+  const mobileFeatures = useMobileFeatures(member?.practitioner_id)
+  const isHome = getHomeScreen(member as any, mobileFeatures) === 'practitioner'
   const [bloomOpen, setBloomOpen] = useState(false)
   const firstName = member?.first_name || ''
 
@@ -1893,7 +1895,8 @@ export default function PractitionerScreen() {
           gap: 10,
           zIndex: 10,
         }}>
-          {/* Nav bubble */}
+          {/* Nav bubble — only show if more than 1 tab */}
+          {getNavOrder(member as any, mobileFeatures).length > 1 && (
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 16,
             backgroundColor: '#fff',
@@ -1907,7 +1910,7 @@ export default function PractitionerScreen() {
             shadowRadius: 20,
             elevation: 8,
           }}>
-            {getNavOrder(member as any).map((key) => {
+            {getNavOrder(member as any, mobileFeatures).map((key) => {
               const isActive = key === 'practitioner'
               const config = {
                 moments: { icon: Heart, label: (t.home as any)?.moments || 'Moments', route: '/(main)/home' },
@@ -1937,6 +1940,7 @@ export default function PractitionerScreen() {
               )
             })}
           </View>
+          )}
           {/* Spacer to match Moments tab layout (where + button exists) */}
           <View style={{ width: 56 }} />
         </View>

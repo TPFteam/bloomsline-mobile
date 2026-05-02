@@ -75,6 +75,7 @@ import {
 import NotificationBell from '@/components/NotificationBell'
 import { BackButton } from '@/components/ui/BackButton'
 import { getNavOrder } from '@/lib/nav-order'
+import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { InlineGuide } from '@/components/InlineGuide'
 import { FloatingCapture } from '@/components/FloatingCapture'
 import { PageLoader } from '@/components/PageLoader'
@@ -944,6 +945,7 @@ function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, upload
 
 export default function StoriesScreen() {
   const { user, member } = useAuth()
+  const mobileFeatures = useMobileFeatures(member?.practitioner_id)
   const { t, locale } = useI18n()
   const router = useRouter()
   const { openStoryId } = useLocalSearchParams<{ openStoryId?: string }>()
@@ -1977,7 +1979,8 @@ export default function StoriesScreen() {
           gap: 10,
           zIndex: 10,
         }}>
-          {/* Nav bubble */}
+          {/* Nav bubble — only show if more than 1 tab */}
+          {getNavOrder(member as any, mobileFeatures).length > 1 && (
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 16,
             backgroundColor: '#fff',
@@ -1991,7 +1994,7 @@ export default function StoriesScreen() {
             shadowRadius: 20,
             elevation: 8,
           }}>
-            {getNavOrder(member as any).map((key) => {
+            {getNavOrder(member as any, mobileFeatures).map((key) => {
               const isActive = key === 'stories'
               const config = {
                 moments: { icon: Heart, label: (t.home as any)?.moments || 'Moments', route: '/(main)/home' },
@@ -2021,6 +2024,7 @@ export default function StoriesScreen() {
               )
             })}
           </View>
+          )}
           {/* Spacer to match Moments tab layout (where + button exists) */}
           <View style={{ width: 56 }} />
         </View>

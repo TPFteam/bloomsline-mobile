@@ -9,6 +9,7 @@ import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
 import { Camera, Video, Mic, PenLine, Settings, Heart, User, Plus, Lightbulb } from 'lucide-react-native'
 import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
+import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { InlineGuide } from '@/components/InlineGuide'
 import { WelcomeGuide } from '@/components/WelcomeGuide'
 import { colors, CAPTURE_TYPE_COLORS } from '@/lib/theme'
@@ -162,6 +163,7 @@ export default function Home() {
   const captureHighlightPulse = useRef(new Animated.Value(0)).current
   const walkthroughActive = useRef(false)
   const [practitionerName, setPractitionerName] = useState<string | undefined>(undefined)
+  const mobileFeatures = useMobileFeatures(member?.practitioner_id)
   const walkthroughFade = useRef(new Animated.Value(0)).current
   const finalFade = useRef(new Animated.Value(0)).current
   const revealScale = useRef(new Animated.Value(0)).current
@@ -803,7 +805,8 @@ export default function Home() {
           gap: 10,
           zIndex: 10,
         }}>
-          {/* Nav bubble — 3 tabs */}
+          {/* Nav bubble — only show if more than 1 tab */}
+          {getNavOrder(member as any, mobileFeatures).length > 1 && (
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 16,
             backgroundColor: '#fff',
@@ -817,7 +820,7 @@ export default function Home() {
             shadowRadius: 20,
             elevation: 8,
           }}>
-            {getNavOrder(member as any).map((key) => {
+            {getNavOrder(member as any, mobileFeatures).map((key) => {
               const isActive = key === 'moments'
               const config = {
                 moments: { icon: Heart, label: (t.home as any)?.moments || 'Moments', route: null },
@@ -847,6 +850,7 @@ export default function Home() {
               )
             })}
           </View>
+          )}
           {/* Capture — standalone circle */}
           <View style={{ alignItems: 'center' }}>
             {/* Tooltip */}

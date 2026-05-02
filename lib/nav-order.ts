@@ -1,15 +1,44 @@
-// Get the nav bar order for a member
-// Returns ['moments', 'practitioner', 'stories'] or similar
-export function getNavOrder(member: { practitioner_id?: string; nav_order?: string[] | null } | null): string[] {
+export type MobileFeatures = {
+  moments?: boolean
+  stories?: boolean
+  my_care?: boolean
+}
+
+// Map nav keys to mobile_features keys
+const NAV_TO_FEATURE: Record<string, keyof MobileFeatures> = {
+  moments: 'moments',
+  practitioner: 'my_care',
+  stories: 'stories',
+}
+
+// Get the nav bar order for a member, filtered by practitioner's mobile_features
+export function getNavOrder(
+  member: { practitioner_id?: string; nav_order?: string[] | null } | null,
+  mobileFeatures?: MobileFeatures | null,
+): string[] {
+  let order: string[]
   if (member?.nav_order && Array.isArray(member.nav_order) && member.nav_order.length === 3) {
-    return member.nav_order
+    order = member.nav_order
+  } else {
+    order = ['moments', 'practitioner', 'stories']
   }
-  // Default: always moments first
-  return ['moments', 'practitioner', 'stories']
+
+  // Filter by practitioner's mobile_features (if provided)
+  if (mobileFeatures) {
+    order = order.filter(key => {
+      const featureKey = NAV_TO_FEATURE[key]
+      return !featureKey || mobileFeatures[featureKey] !== false
+    })
+  }
+
+  return order
 }
 
 // Get which screen should be the home (first in order)
-export function getHomeScreen(member: { practitioner_id?: string; nav_order?: string[] | null } | null): string {
-  const order = getNavOrder(member)
-  return order[0]
+export function getHomeScreen(
+  member: { practitioner_id?: string; nav_order?: string[] | null } | null,
+  mobileFeatures?: MobileFeatures | null,
+): string {
+  const order = getNavOrder(member, mobileFeatures)
+  return order[0] || 'moments'
 }
