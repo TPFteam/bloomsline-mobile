@@ -15,6 +15,8 @@ export interface PractitionerProfile {
   bookingUrl: string | null
   allowPatientBook: boolean
   slug: string | null
+  address: string | null
+  google_maps_url: string | null
 }
 
 export interface UpcomingSession {
@@ -73,7 +75,7 @@ export async function fetchPractitioner(practitionerId: string): Promise<Practit
 
   const { data: profile } = await supabase
     .from('practitioner_profiles')
-    .select('headline, credentials, specialties, slug')
+    .select('headline, credentials, specialties, slug, city, country, address, google_maps_url')
     .eq('user_id', practitionerId)
     .maybeSingle()
 
@@ -103,6 +105,8 @@ export async function fetchPractitioner(practitionerId: string): Promise<Practit
     bookingUrl,
     allowPatientBook: bookingSettings?.allow_patient_book !== false,
     slug: profile?.slug || null,
+    address: profile?.address || (profile?.city ? [profile.city, profile.country].filter(Boolean).join(', ') : null),
+    google_maps_url: profile?.google_maps_url || null,
   }
 }
 

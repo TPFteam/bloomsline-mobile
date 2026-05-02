@@ -778,6 +778,11 @@ export default function PractitionerScreen() {
                     {practitioner.headline}
                   </Text>
                 )}
+                {practitioner.address && (
+                  <Text style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
+                    {practitioner.address}
+                  </Text>
+                )}
                 {practitioner.specialties.length > 0 && (
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
                     {practitioner.specialties.slice(0, 3).map((s, i) => (
