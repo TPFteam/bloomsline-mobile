@@ -61,6 +61,8 @@ export interface PractitionerPublicProfile {
   fee_currency: string | null
   offers_sliding_scale: boolean
   is_verified: boolean
+  address: string | null
+  google_maps_url: string | null
   bookingUrl: string | null
   booking_page_enabled: boolean
 }
@@ -125,6 +127,8 @@ export async function fetchPublicProfile(practitionerId: string): Promise<Practi
     fee_currency: profile?.fee_currency || null,
     offers_sliding_scale: profile?.offers_sliding_scale ?? false,
     is_verified: profile?.is_verified ?? false,
+    address: profile?.address || (profile?.city ? [profile.city, profile.country].filter(Boolean).join(', ') : null),
+    google_maps_url: profile?.google_maps_url || null,
     bookingUrl,
     booking_page_enabled: bookingSettings?.booking_page_enabled ?? false,
   }

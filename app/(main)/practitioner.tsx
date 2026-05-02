@@ -14,6 +14,7 @@ import {
   Platform,
   Share,
   useWindowDimensions,
+  Linking,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import RenderHtml from 'react-native-render-html'
@@ -779,9 +780,16 @@ export default function PractitionerScreen() {
                   </Text>
                 )}
                 {practitioner.address && (
-                  <Text style={{ fontSize: 12, color: '#999', marginTop: 4 }}>
-                    {practitioner.address}
-                  </Text>
+                  <View style={{ marginTop: 4 }}>
+                    <Text style={{ fontSize: 12, color: '#999' }}>
+                      📍 {practitioner.address}
+                    </Text>
+                    {practitioner.google_maps_url && (
+                      <TouchableOpacity onPress={() => Linking.openURL(practitioner.google_maps_url!)} style={{ marginTop: 2 }}>
+                        <Text style={{ fontSize: 11, fontWeight: '600', color: colors.bloom }}>View on Map →</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
                 {practitioner.specialties.length > 0 && (
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>

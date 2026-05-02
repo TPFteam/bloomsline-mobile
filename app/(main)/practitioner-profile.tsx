@@ -176,6 +176,21 @@ export default function PractitionerProfileScreen() {
             </Section>
           )}
 
+          {/* ─── Address ─── */}
+          {profile.address && (
+            <Section title={t.profile.location || 'Location'}>
+              <Text style={{ fontSize: 15, color: colors.primary, lineHeight: 22 }}>📍 {profile.address}</Text>
+              {profile.google_maps_url && (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(profile.google_maps_url!)}
+                  style={{ marginTop: 8 }}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: colors.bloom }}>{'View on Map →'}</Text>
+                </TouchableOpacity>
+              )}
+            </Section>
+          )}
+
           {/* ─── Specialties ─── */}
           {profile.specialties.length > 0 && (
             <Section title={t.profile.specialties}>
