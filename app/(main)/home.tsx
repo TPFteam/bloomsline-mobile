@@ -164,6 +164,16 @@ export default function Home() {
   const walkthroughActive = useRef(false)
   const [practitionerName, setPractitionerName] = useState<string | undefined>(undefined)
   const mobileFeatures = useMobileFeatures(member?.practitioner_id)
+
+  // Redirect away from moments if it's disabled
+  useEffect(() => {
+    if (mobileFeatures && mobileFeatures.moments === false) {
+      const home = getHomeScreen(member as any, mobileFeatures)
+      if (home === 'practitioner') router.replace('/(main)/practitioner')
+      else if (home === 'stories') router.replace('/(main)/stories')
+    }
+  }, [mobileFeatures])
+
   const walkthroughFade = useRef(new Animated.Value(0)).current
   const finalFade = useRef(new Animated.Value(0)).current
   const revealScale = useRef(new Animated.Value(0)).current

@@ -5,12 +5,14 @@ import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { getHomeScreen } from '@/lib/nav-order'
+import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { ConsentModal } from '@/components/ConsentModal'
 import { registerForPushNotifications } from '@/lib/notifications'
 import { useInactivityTimeout } from '@/lib/hooks/useInactivityTimeout'
 
 export default function MainLayout() {
   const { session, member, loading, user, signOut } = useAuth()
+  const mobileFeatures = useMobileFeatures(member?.practitioner_id)
   const { locale } = useI18n()
   const router = useRouter()
   const hasRedirected = useRef(false)
@@ -36,17 +38,18 @@ export default function MainLayout() {
       router.replace('/(auth)/welcome')
       return
     }
-    // Redirect to preferred home screen (once)
-    if (!hasRedirected.current) {
-      const home = getHomeScreen(member as any)
+    // Redirect to preferred home screen (once, after mobile_features loaded)
+    if (!hasRedirected.current && mobileFeatures !== null) {
+      const home = getHomeScreen(member as any, mobileFeatures)
       hasRedirected.current = true
       if (home === 'practitioner') {
         router.replace('/(main)/practitioner')
       } else if (home === 'stories') {
         router.replace('/(main)/stories')
       }
+      // If home === 'moments', we're already on home.tsx — no redirect needed
     }
-  }, [session, member, loading])
+  }, [session, member, loading, mobileFeatures])
 
   // Register push notifications after auth is confirmed
   const pushRegistered = useRef(false)
