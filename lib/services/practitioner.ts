@@ -38,6 +38,7 @@ export interface UpcomingSession {
   } | null
   source?: 'session' | 'booking'
   booking_id?: string
+  meet_link?: string | null
 }
 
 export interface ResourceItem {
@@ -143,7 +144,7 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
   const buildBookingQuery = (matchField: 'member_id' | 'client_email', matchValue: string, statusFilter: string[], order: 'asc' | 'desc', timeOp: 'gte' | 'lte', limit: number) => {
     let q = supabase
       .from('bookings')
-      .select('id, start_time, end_time, session_type, status, notes, practitioner_id, client_name')
+      .select('id, start_time, end_time, session_type, session_format, status, notes, practitioner_id, client_name, meet_link')
       .eq(matchField, matchValue)
       .in('status', statusFilter)
     if (practitionerId) q = q.eq('practitioner_id', practitionerId)
@@ -179,7 +180,7 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
       scheduled_at: b.start_time,
       duration_minutes: durationMinutes,
       session_type: b.session_type,
-      session_format: 'telehealth',
+      session_format: b.session_format || 'video',
       status: b.status === 'confirmed' ? 'scheduled' : b.status,
       member_confirmed: b.status === 'confirmed',
       reschedule_requested: false,
@@ -190,6 +191,7 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
       _source: 'booking',
       source: 'booking' as const,
       booking_id: b.id,
+      meet_link: b.meet_link || null,
     }
   }
 

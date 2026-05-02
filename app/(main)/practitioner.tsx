@@ -977,6 +977,7 @@ export default function PractitionerScreen() {
                   canModify={canModifySession(session)}
                   onCancel={canModifySession(session) && modificationSettings.allowCancel ? () => { setCancelBookingId(session.booking_id || session.id); setCancelReason('') } : undefined}
                   onRescheduleBooking={canModifySession(session) && modificationSettings.allowReschedule ? () => { setRescheduleBookingId(session.booking_id || session.id); setRescheduleBookingReason(''); setRescheduleBookingDate(''); setRescheduleBookingTime(''); setRescheduleBookingSlots([]) } : undefined}
+                  practitioner={practitioner ? { address: practitioner.address, google_maps_url: practitioner.google_maps_url } : null}
                 />
               ))}
             </View>
@@ -2021,13 +2022,14 @@ function ResourceCard({ item, onPress }: { item: ResourceItem; onPress: () => vo
 
 function UpcomingSessionCard({
   session, actionLoading, onConfirm, onReschedule, onAcceptProposed, onDeclineProposed,
-  onCancel, onRescheduleBooking, canModify,
+  onCancel, onRescheduleBooking, canModify, practitioner,
 }: {
   session: UpcomingSession; actionLoading: string | null
   onConfirm: () => void; onReschedule: () => void
   onAcceptProposed: () => void; onDeclineProposed: () => void
   onCancel?: () => void; onRescheduleBooking?: () => void
   canModify?: boolean
+  practitioner?: { address: string | null; google_maps_url: string | null } | null
 }) {
   const { t, locale } = useI18n()
   const sessionDate = new Date(session.scheduled_at)
@@ -2122,6 +2124,21 @@ function UpcomingSessionCard({
               {t.practitioner.with} <Text style={{ fontWeight: '600', color: colors.primary }}>{session.practitioner.full_name}</Text>
             </Text>
           )}
+          {/* Join / Location link */}
+          {session.session_format === 'video' || session.session_format === 'telehealth' ? (
+            session.meet_link ? (
+              <TouchableOpacity onPress={() => Linking.openURL(session.meet_link!)} style={{ marginTop: 6 }}>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#2563EB' }}>🎥 Join Google Meet →</Text>
+              </TouchableOpacity>
+            ) : null
+          ) : session.session_format === 'in_person' && practitioner?.address ? (
+            <TouchableOpacity
+              onPress={() => practitioner?.google_maps_url ? Linking.openURL(practitioner.google_maps_url) : null}
+              style={{ marginTop: 6 }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom }}>📍 {practitioner.address}</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
       </View>
 
