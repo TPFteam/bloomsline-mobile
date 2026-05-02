@@ -258,6 +258,7 @@ export default function BookingScreen() {
     const result = await createBooking({
       practitioner_id: practitionerId,
       session_type: selectedService.id,
+      session_format: selectedFormat || 'video',
       start_time: selectedSlot.slot_start,
       end_time: selectedSlot.slot_end,
       timezone: clientTz,

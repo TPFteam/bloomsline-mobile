@@ -275,6 +275,7 @@ async function fetchAvailableSlotsFallback(
 export async function createBooking(input: {
   practitioner_id: string
   session_type: string
+  session_format?: string
   start_time: string
   end_time: string
   timezone: string
