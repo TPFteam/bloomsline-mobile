@@ -1772,6 +1772,13 @@ export default function PractitionerScreen() {
                   </View>
                 )}
 
+                {/* Address */}
+                {practitioner.address && (
+                  <Text style={{ fontSize: 13, color: '#8A8A8A', marginBottom: 16 }}>
+                    📍 {practitioner.address}
+                  </Text>
+                )}
+
                 {/* Stats */}
                 <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
                   {[
