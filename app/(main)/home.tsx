@@ -668,8 +668,8 @@ export default function Home() {
                     </View>
                   </TouchableOpacity>
 
-                  {/* Bloom — only for self-onboarded users (signup_source = waitlist) */}
-                  {(member as any)?.signup_source === 'waitlist' && <TouchableOpacity
+                  {/* Bloom — controlled by practitioner's mobile_features.talk_to_bloom */}
+                  {(mobileFeatures?.talk_to_bloom === true || (!member?.practitioner_id && (member as any)?.signup_source === 'waitlist')) && <TouchableOpacity
                     onPress={() => setBloomOpen(true)}
                     activeOpacity={0.85}
                     style={{

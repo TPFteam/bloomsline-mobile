@@ -3,6 +3,7 @@ export type MobileFeatures = {
   stories?: boolean
   my_care?: boolean
   stories_shareable?: boolean
+  talk_to_bloom?: boolean
 }
 
 // Map nav keys to mobile_features keys
