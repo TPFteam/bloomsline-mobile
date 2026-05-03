@@ -21,6 +21,9 @@ export function getNavOrder(
   let order: string[]
   if (member?.nav_order && Array.isArray(member.nav_order) && member.nav_order.length === 3) {
     order = member.nav_order
+  } else if (member?.practitioner_id) {
+    // Practitioner-invited users default to My Care first
+    order = ['practitioner', 'moments', 'stories']
   } else {
     order = ['moments', 'practitioner', 'stories']
   }
