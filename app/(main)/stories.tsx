@@ -1678,8 +1678,8 @@ export default function StoriesScreen() {
           })}
         </View>
 
-        {/* Filter pills (stories view only) */}
-        {viewMode === 'grid' && (
+        {/* Filter pills (stories view only, hidden when sharing off) */}
+        {viewMode === 'grid' && mobileFeatures?.stories_shareable !== false && (
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
             {([
               { key: 'all' as const, label: t.stories?.all || 'All' },
@@ -1781,8 +1781,8 @@ export default function StoriesScreen() {
                                 <View style={{ flex: 1 }}>
                                   <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }} numberOfLines={1}>{story.title}</Text>
                                   <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-                                    {story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}
-                                    {' · '}{formatDate(story.updated_at)}
+                                    {mobileFeatures?.stories_shareable !== false && (<>{story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}{' · '}</>)}
+                                    {formatDate(story.updated_at)}
                                   </Text>
                                 </View>
                                 <TouchableOpacity onPress={() => setMenuStoryId(story.id)} style={{ padding: 4 }}>
@@ -1875,6 +1875,7 @@ export default function StoriesScreen() {
                   >
                     {/* Top row: badges + menu */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      {mobileFeatures?.stories_shareable !== false && (
                       <View style={{ flexDirection: 'row', gap: 6 }}>
                         <View style={{
                           flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -1896,6 +1897,7 @@ export default function StoriesScreen() {
                           </View>
                         )}
                       </View>
+                      )}
                       <TouchableOpacity
                         onPress={() => setMenuStoryId(menuStoryId === story.id ? null : story.id)}
                         style={{ padding: 4 }}
@@ -2050,6 +2052,7 @@ export default function StoriesScreen() {
                     {viewingStory.title}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    {mobileFeatures?.stories_shareable !== false && (
                     <View style={{
                       flexDirection: 'row', alignItems: 'center', gap: 3,
                       backgroundColor: viewingStory.published ? '#ecfdf5' : colors.surface1,
@@ -2059,6 +2062,7 @@ export default function StoriesScreen() {
                         {viewingStory.published ? 'Published' : 'Draft'}
                       </Text>
                     </View>
+                    )}
                     <Text style={{ fontSize: 11, color: colors.textSecondary }}>{formatDate(viewingStory.updated_at)}</Text>
                   </View>
                 </View>
