@@ -2158,7 +2158,8 @@ export default function StoriesScreen() {
                     <Edit3 size={18} color={colors.primary} />
                     <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>Edit</Text>
                   </TouchableOpacity>
-                  {viewingStory.published ? (
+                  {mobileFeatures?.stories_shareable !== false && (
+                    viewingStory.published ? (
                     <TouchableOpacity
                       onPress={() => unpublishStory(viewingStory)}
                       style={{
@@ -2180,9 +2181,9 @@ export default function StoriesScreen() {
                       <Globe size={18} color="#fff" />
                       <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>Publish</Text>
                     </TouchableOpacity>
-                  )}
+                  ))}
                 </View>
-                {viewingStory.published && (
+                {viewingStory.published && mobileFeatures?.stories_shareable !== false && (
                   <TouchableOpacity
                     onPress={() => shareStory(viewingStory)}
                     style={{
@@ -2275,6 +2276,7 @@ export default function StoriesScreen() {
                   {editSaving ? t.stories.saving : t.stories.saveDraft}
                 </Text>
               </TouchableOpacity>
+              {mobileFeatures?.stories_shareable !== false && (
               <TouchableOpacity
                 onPress={() => {
                   // If already published, just save — no need to re-ask about code
@@ -2291,6 +2293,7 @@ export default function StoriesScreen() {
                   {editStory?.published ? (editSaving ? t.stories.saving : t.stories.save) : t.stories.publish}
                 </Text>
               </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -2404,6 +2407,7 @@ export default function StoriesScreen() {
                       <Edit3 size={20} color={colors.primary} />
                       <Text style={{ fontSize: 16, color: colors.primary }}>Edit</Text>
                     </TouchableOpacity>
+                    {mobileFeatures?.stories_shareable !== false && (
                     <TouchableOpacity
                       onPress={() => {
                         setMenuStoryId(null)
@@ -2415,7 +2419,8 @@ export default function StoriesScreen() {
                       {story.published ? <EyeOff size={20} color={colors.primary} /> : <Eye size={20} color={colors.primary} />}
                       <Text style={{ fontSize: 16, color: colors.primary }}>{story.published ? t.stories.unpublish : t.stories.publish}</Text>
                     </TouchableOpacity>
-                    {story.published && (
+                    )}
+                    {story.published && mobileFeatures?.stories_shareable !== false && (
                       <TouchableOpacity
                         onPress={() => { setMenuStoryId(null); shareStory(story) }}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }}
@@ -2424,7 +2429,7 @@ export default function StoriesScreen() {
                         <Text style={{ fontSize: 16, color: colors.primary }}>Share Link</Text>
                       </TouchableOpacity>
                     )}
-                    {story.published && (
+                    {story.published && mobileFeatures?.stories_shareable !== false && (
                       <TouchableOpacity
                         onPress={() => { setMenuStoryId(null); openCodeModal(story) }}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }}

@@ -2,6 +2,7 @@ export type MobileFeatures = {
   moments?: boolean
   stories?: boolean
   my_care?: boolean
+  stories_shareable?: boolean
 }
 
 // Map nav keys to mobile_features keys
