@@ -2093,8 +2093,8 @@ export default function StoriesScreen() {
                   </Text>
                 )}
 
-                {/* Share URL for published stories */}
-                {viewingStory.published && (
+                {/* Share URL for published stories (hidden when sharing off) */}
+                {viewingStory.published && mobileFeatures?.stories_shareable !== false && (
                   <View style={{
                     marginTop: 20, backgroundColor: '#f0fdf4', borderRadius: radii.card, padding: 16,
                     borderWidth: 1, borderColor: '#bbf7d0',
