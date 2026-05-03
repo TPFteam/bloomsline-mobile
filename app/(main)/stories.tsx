@@ -1900,7 +1900,7 @@ export default function StoriesScreen() {
                       )}
                       <TouchableOpacity
                         onPress={() => setMenuStoryId(menuStoryId === story.id ? null : story.id)}
-                        style={{ padding: 4 }}
+                        style={{ padding: 4, marginLeft: 'auto' }}
                       >
                         <MoreVertical size={18} color={colors.textSecondary} />
                       </TouchableOpacity>
