@@ -1873,43 +1873,53 @@ export default function StoriesScreen() {
                       borderWidth: 1, borderColor: '#EBEBEB',
                     }}
                   >
-                    {/* Top row: badges + menu */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      {mobileFeatures?.stories_shareable !== false && (
-                      <View style={{ flexDirection: 'row', gap: 6 }}>
-                        <View style={{
-                          flexDirection: 'row', alignItems: 'center', gap: 4,
-                          backgroundColor: story.published ? '#ecfdf5' : colors.surface1,
-                          borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-                        }}>
-                          {story.published ? <Globe size={11} color="#059669" /> : <FileText size={11} color={colors.textSecondary} />}
-                          <Text style={{ fontSize: 11, fontWeight: '600', color: story.published ? '#059669' : colors.textSecondary }}>
-                            {story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}
-                          </Text>
-                        </View>
-                        {!!story.secret_code && (
+                    {/* Top row: badges + menu (or title + menu when sharing off) */}
+                    {mobileFeatures?.stories_shareable !== false ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                        <View style={{ flexDirection: 'row', gap: 6 }}>
                           <View style={{
-                            flexDirection: 'row', alignItems: 'center', gap: 3,
-                            backgroundColor: '#f5f3ff', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3,
+                            flexDirection: 'row', alignItems: 'center', gap: 4,
+                            backgroundColor: story.published ? '#ecfdf5' : colors.surface1,
+                            borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
                           }}>
-                            <Lock size={10} color="#7c3aed" />
-                            <Text style={{ fontSize: 10, fontWeight: '600', color: '#7c3aed' }}>Code</Text>
+                            {story.published ? <Globe size={11} color="#059669" /> : <FileText size={11} color={colors.textSecondary} />}
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: story.published ? '#059669' : colors.textSecondary }}>
+                              {story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}
+                            </Text>
                           </View>
-                        )}
+                          {!!story.secret_code && (
+                            <View style={{
+                              flexDirection: 'row', alignItems: 'center', gap: 3,
+                              backgroundColor: '#f5f3ff', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 3,
+                            }}>
+                              <Lock size={10} color="#7c3aed" />
+                              <Text style={{ fontSize: 10, fontWeight: '600', color: '#7c3aed' }}>Code</Text>
+                            </View>
+                          )}
+                        </View>
+                        <TouchableOpacity
+                          onPress={() => setMenuStoryId(menuStoryId === story.id ? null : story.id)}
+                          style={{ padding: 4 }}
+                        >
+                          <MoreVertical size={18} color={colors.textSecondary} />
+                        </TouchableOpacity>
                       </View>
-                      )}
-                      <TouchableOpacity
-                        onPress={() => setMenuStoryId(menuStoryId === story.id ? null : story.id)}
-                        style={{ padding: 4, marginLeft: 'auto' }}
-                      >
-                        <MoreVertical size={18} color={colors.textSecondary} />
-                      </TouchableOpacity>
-                    </View>
+                    ) : null}
 
-                    {/* Title */}
-                    <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, marginBottom: 4 }} numberOfLines={2}>
-                      {story.title}
-                    </Text>
+                    {/* Title row — when sharing off, include menu on same line */}
+                    <View style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, flex: 1 }} numberOfLines={2}>
+                        {story.title}
+                      </Text>
+                      {mobileFeatures?.stories_shareable === false && (
+                        <TouchableOpacity
+                          onPress={() => setMenuStoryId(menuStoryId === story.id ? null : story.id)}
+                          style={{ padding: 4 }}
+                        >
+                          <MoreVertical size={18} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
 
                     {/* Preview */}
                     {preview ? (
