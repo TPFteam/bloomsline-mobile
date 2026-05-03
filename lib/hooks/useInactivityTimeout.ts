@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { AppState, Platform } from 'react-native'
 
-const TIMEOUT_MS = parseInt(process.env.EXPO_PUBLIC_SESSION_TIMEOUT_MS || '900000') // 15 min
+const TIMEOUT_MS = parseInt(process.env.EXPO_PUBLIC_SESSION_TIMEOUT_MS || '172800000') // 2 days
 const WARNING_MS = 120000 // 2 min before timeout
 
 export function useInactivityTimeout(enabled: boolean) {
