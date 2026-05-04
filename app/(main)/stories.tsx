@@ -977,6 +977,7 @@ export default function StoriesScreen() {
   const [sharingToPract, setSharingToPract] = useState(false)
 
   // Story share + comments
+  const viewerScrollRef = useRef<ScrollView>(null)
   const [storyShareId, setStoryShareId] = useState<string | null>(null)
   const [storyComments, setStoryComments] = useState<Array<{ id: string; author_type: 'practitioner' | 'member'; content: string; created_at: string }>>([])
   const [newComment, setNewComment] = useState('')
@@ -1087,6 +1088,16 @@ export default function StoriesScreen() {
     })()
     return () => { cancelled = true }
   }, [viewingStory?.id, member?.id, member?.practitioner_id])
+
+  // Scroll to latest comment when navigated from notification
+  useEffect(() => {
+    if (highlightLatestComment && storyComments.length > 0 && viewerScrollRef.current) {
+      const t = setTimeout(() => {
+        viewerScrollRef.current?.scrollToEnd({ animated: true })
+      }, 400)
+      return () => clearTimeout(t)
+    }
+  }, [highlightLatestComment, storyComments.length])
 
   async function postComment() {
     if (!storyShareId || !newComment.trim() || !user?.id) return
@@ -2204,7 +2215,7 @@ export default function StoriesScreen() {
               </View>
 
               {/* Content */}
-              <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 14 }}>
+              <ScrollView ref={viewerScrollRef} contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 14 }}>
                 {Array.isArray(viewingStory.content) && viewingStory.content.length > 0 ? (
                   viewingStory.content
                     .sort((a, b) => (a.order || 0) - (b.order || 0))
