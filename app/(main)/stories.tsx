@@ -950,7 +950,7 @@ export default function StoriesScreen() {
   const mobileFeatures = useMobileFeatures(member?.practitioner_id)
   const { t, locale } = useI18n()
   const router = useRouter()
-  const { openStoryId } = useLocalSearchParams<{ openStoryId?: string }>()
+  const { openStoryId, highlightLatestComment } = useLocalSearchParams<{ openStoryId?: string; highlightLatestComment?: string }>()
   const insets = useSafeAreaInsets()
 
   const [stories, setStories] = useState<Story[]>([])
@@ -1119,6 +1119,8 @@ export default function StoriesScreen() {
                 memberName: `${(member as any).first_name || ''} ${(member as any).last_name || ''}`.trim(),
                 storyTitle: viewingStory.title || 'Untitled',
                 memberId: member.id,
+                storyId: viewingStory.id,
+                shareId: storyShareId,
               },
             }),
           }).catch(() => {})
@@ -2291,12 +2293,17 @@ export default function StoriesScreen() {
                       </Text>
                     ) : (
                       <View style={{ gap: 8, marginBottom: 12 }}>
-                        {storyComments.map(c => (
+                        {storyComments.map((c, i) => {
+                          const isLast = i === storyComments.length - 1
+                          const shouldHighlight = isLast && !!highlightLatestComment && c.author_type === 'practitioner'
+                          return (
                           <View key={c.id} style={{
                             alignSelf: c.author_type === 'member' ? 'flex-end' : 'flex-start',
                             maxWidth: '85%',
                             backgroundColor: c.author_type === 'member' ? colors.bloom : '#F3F4F6',
                             borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10,
+                            borderWidth: shouldHighlight ? 2 : 0,
+                            borderColor: shouldHighlight ? '#fbbf24' : 'transparent',
                           }}>
                             <Text style={{ fontSize: 14, color: c.author_type === 'member' ? '#fff' : colors.textPrimary }}>
                               {c.content}
@@ -2305,7 +2312,8 @@ export default function StoriesScreen() {
                               {new Date(c.created_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                             </Text>
                           </View>
-                        ))}
+                          )
+                        })}
                       </View>
                     )}
 

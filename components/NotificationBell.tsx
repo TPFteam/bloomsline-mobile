@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, Modal, Pressable, ScrollView, ActivityIndicator,
 } from 'react-native'
 import { Bell, X, BookOpen, Calendar, CheckCircle, MessageSquare, Clock, FileText } from 'lucide-react-native'
+import { useRouter } from 'expo-router'
 import { useAuth } from '@/lib/auth-context'
 import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
@@ -68,6 +69,7 @@ function timeAgo(dateStr: string, locale: string): string {
 
 export default function NotificationBell({ onOpenResource }: { onOpenResource?: (resourceId: string) => void }) {
   const { user } = useAuth()
+  const router = useRouter()
   const { locale } = useI18n()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -229,8 +231,13 @@ export default function NotificationBell({ onOpenResource }: { onOpenResource?: 
                       key={notif.id}
                       onPress={() => {
                         if (!notif.read) markAsRead(notif.id)
-                        const resourceId = (notif.metadata as any)?.resourceId
-                        if (resourceId && onOpenResource) {
+                        const md: any = notif.metadata || {}
+                        const storyId = md.storyId
+                        const resourceId = md.resourceId
+                        if (storyId) {
+                          setIsOpen(false)
+                          router.push(`/(main)/stories?openStoryId=${storyId}&highlightLatestComment=1`)
+                        } else if (resourceId && onOpenResource) {
                           setIsOpen(false)
                           onOpenResource(resourceId)
                         }
