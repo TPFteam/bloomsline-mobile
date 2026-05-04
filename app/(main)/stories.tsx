@@ -41,6 +41,7 @@ import {
   Lock,
   Copy,
   Share2,
+  Send,
   ArrowRight,
   ImageIcon,
   Mic,
@@ -969,6 +970,11 @@ export default function StoriesScreen() {
   const [editBlocks, setEditBlocks] = useState<ContentBlock[]>([])
   const [editSaving, setEditSaving] = useState(false)
 
+  // Share to practitioner
+  const [showShareOptions, setShowShareOptions] = useState(false)
+  const [shareStoryTarget, setShareStoryTarget] = useState<Story | null>(null)
+  const [sharingToPract, setSharingToPract] = useState(false)
+
   // Action menu
   const [menuStoryId, setMenuStoryId] = useState<string | null>(null)
 
@@ -1235,6 +1241,43 @@ export default function StoriesScreen() {
     }
     setLinkCopied(true)
     setTimeout(() => setLinkCopied(false), 2000)
+  }
+
+  async function shareToPractitioner(story: Story) {
+    if (!member?.practitioner_id || !member?.id) return
+    setSharingToPract(true)
+    try {
+      const { error } = await supabase.from('story_shares').insert({
+        story_id: story.id,
+        member_id: member.id,
+        practitioner_id: member.practitioner_id,
+      })
+      if (error) {
+        if (error.code === '23505') {
+          Alert.alert(locale === 'fr' ? 'Déjà partagé' : 'Already shared', locale === 'fr' ? 'Cette histoire a déjà été envoyée.' : 'Already sent.')
+        } else throw error
+      } else {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
+          fetch(`${API_URL}/api/notifications/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({
+              userId: member.practitioner_id, userType: 'practitioner', type: 'story_shared',
+              entityType: 'story', entityId: story.id,
+              metadata: { memberName: `${(member as any).first_name || ''} ${(member as any).last_name || ''}`.trim(), storyTitle: story.title || 'Untitled' },
+            }),
+          }).catch(() => {})
+        }
+        Alert.alert(locale === 'fr' ? 'Envoyé !' : 'Sent!', locale === 'fr' ? 'Partagé avec votre praticien.' : 'Shared with your practitioner.')
+      }
+    } catch {
+      Alert.alert(locale === 'fr' ? 'Erreur' : 'Error', locale === 'fr' ? 'Impossible de partager.' : 'Failed to share.')
+    } finally {
+      setSharingToPract(false)
+      setShowShareOptions(false)
+    }
   }
 
   async function shareStory(story: Story) {
@@ -2197,18 +2240,42 @@ export default function StoriesScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                {viewingStory.published && mobileFeatures?.stories_shareable !== false && (
-                  <TouchableOpacity
-                    onPress={() => shareStory(viewingStory)}
-                    style={{
-                      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-                      paddingVertical: 14, borderRadius: radii.button,
-                      backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe',
-                    }}
-                  >
-                    <Share2 size={18} color="#2563eb" />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: '#2563eb' }}>Share Story</Text>
-                  </TouchableOpacity>
+                {viewingStory.published && (
+                  <View style={{ gap: 8 }}>
+                    {/* Send to practitioner */}
+                    {member?.practitioner_id && (
+                      <TouchableOpacity
+                        onPress={() => shareToPractitioner(viewingStory)}
+                        disabled={sharingToPract}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          paddingVertical: 14, borderRadius: radii.button,
+                          backgroundColor: colors.bloom, opacity: sharingToPract ? 0.6 : 1,
+                        }}
+                      >
+                        {sharingToPract ? <ActivityIndicator size="small" color="#fff" /> : <Send size={18} color="#fff" />}
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>
+                          {locale === 'fr' ? 'Envoyer à mon praticien' : 'Send to my practitioner'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {/* Share public link */}
+                    {mobileFeatures?.stories_shareable !== false && (
+                      <TouchableOpacity
+                        onPress={() => shareStory(viewingStory)}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          paddingVertical: 14, borderRadius: radii.button,
+                          backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe',
+                        }}
+                      >
+                        <Share2 size={18} color="#2563eb" />
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#2563eb' }}>
+                          {locale === 'fr' ? 'Partager le lien' : 'Share link'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 )}
               </View>
             </>
