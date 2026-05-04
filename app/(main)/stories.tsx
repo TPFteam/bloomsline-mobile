@@ -42,6 +42,7 @@ import {
   Copy,
   Share2,
   Send,
+  MessageCircle,
   ArrowRight,
   ImageIcon,
   Mic,
@@ -975,6 +976,12 @@ export default function StoriesScreen() {
   const [shareStoryTarget, setShareStoryTarget] = useState<Story | null>(null)
   const [sharingToPract, setSharingToPract] = useState(false)
 
+  // Story share + comments
+  const [storyShareId, setStoryShareId] = useState<string | null>(null)
+  const [storyComments, setStoryComments] = useState<Array<{ id: string; author_type: 'practitioner' | 'member'; content: string; created_at: string }>>([])
+  const [newComment, setNewComment] = useState('')
+  const [postingComment, setPostingComment] = useState(false)
+
   // Action menu
   const [menuStoryId, setMenuStoryId] = useState<string | null>(null)
 
@@ -1053,6 +1060,76 @@ export default function StoriesScreen() {
     setLoading(true)
     Promise.all([fetchStories(), fetchChapters()]).finally(() => setLoading(false))
   }, [fetchStories, fetchChapters]))
+
+  // Load share + comments when viewing a story
+  useEffect(() => {
+    if (!viewingStory || !member?.id || !member?.practitioner_id) {
+      setStoryShareId(null); setStoryComments([]); return
+    }
+    let cancelled = false
+    ;(async () => {
+      const { data: share } = await supabase
+        .from('story_shares')
+        .select('id')
+        .eq('story_id', viewingStory.id)
+        .eq('member_id', member.id)
+        .eq('practitioner_id', member.practitioner_id)
+        .maybeSingle()
+      if (cancelled) return
+      if (!share) { setStoryShareId(null); setStoryComments([]); return }
+      setStoryShareId(share.id)
+      const { data: comments } = await supabase
+        .from('story_share_comments')
+        .select('id, author_type, content, created_at')
+        .eq('share_id', share.id)
+        .order('created_at', { ascending: true })
+      if (!cancelled) setStoryComments((comments || []) as any)
+    })()
+    return () => { cancelled = true }
+  }, [viewingStory?.id, member?.id, member?.practitioner_id])
+
+  async function postComment() {
+    if (!storyShareId || !newComment.trim() || !user?.id) return
+    setPostingComment(true)
+    try {
+      const { data, error } = await supabase
+        .from('story_share_comments')
+        .insert({ share_id: storyShareId, author_id: user.id, author_type: 'member', content: newComment.trim() })
+        .select()
+        .single()
+      if (error) throw error
+      setStoryComments(prev => [...prev, data as any])
+      setNewComment('')
+
+      // Notify practitioner
+      if (member?.practitioner_id && viewingStory) {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
+          fetch(`${API_URL}/api/notifications/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({
+              userId: member.practitioner_id,
+              userType: 'practitioner',
+              type: 'story_comment',
+              entityType: 'story_share',
+              entityId: storyShareId,
+              metadata: {
+                memberName: `${(member as any).first_name || ''} ${(member as any).last_name || ''}`.trim(),
+                storyTitle: viewingStory.title || 'Untitled',
+                memberId: member.id,
+              },
+            }),
+          }).catch(() => {})
+        }
+      }
+    } catch {
+      Alert.alert(locale === 'fr' ? 'Erreur' : 'Error')
+    } finally {
+      setPostingComment(false)
+    }
+  }
 
   // Auto-open story when navigated with openStoryId param
   useEffect(() => {
@@ -2195,6 +2272,69 @@ export default function StoriesScreen() {
                         </Text>
                       </View>
                     )}
+                  </View>
+                )}
+
+                {/* Practitioner conversation thread */}
+                {storyShareId && (
+                  <View style={{ marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#EBEBEB' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                      <MessageCircle size={16} color={colors.bloom} />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {locale === 'fr' ? 'Conversation avec votre praticien' : 'Conversation with your practitioner'}
+                      </Text>
+                    </View>
+
+                    {storyComments.length === 0 ? (
+                      <Text style={{ fontSize: 13, color: colors.textSecondary, fontStyle: 'italic', marginBottom: 12 }}>
+                        {locale === 'fr' ? 'Aucun commentaire pour le moment' : 'No comments yet'}
+                      </Text>
+                    ) : (
+                      <View style={{ gap: 8, marginBottom: 12 }}>
+                        {storyComments.map(c => (
+                          <View key={c.id} style={{
+                            alignSelf: c.author_type === 'member' ? 'flex-end' : 'flex-start',
+                            maxWidth: '85%',
+                            backgroundColor: c.author_type === 'member' ? colors.bloom : '#F3F4F6',
+                            borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10,
+                          }}>
+                            <Text style={{ fontSize: 14, color: c.author_type === 'member' ? '#fff' : colors.textPrimary }}>
+                              {c.content}
+                            </Text>
+                            <Text style={{ fontSize: 10, marginTop: 4, color: c.author_type === 'member' ? 'rgba(255,255,255,0.7)' : colors.textSecondary }}>
+                              {new Date(c.created_at).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                      <TextInput
+                        value={newComment}
+                        onChangeText={setNewComment}
+                        placeholder={locale === 'fr' ? 'Écrire une réponse...' : 'Write a reply...'}
+                        placeholderTextColor={colors.textSecondary}
+                        multiline
+                        style={{
+                          flex: 1, fontSize: 14, color: colors.textPrimary,
+                          backgroundColor: '#fff', borderRadius: 12, padding: 12,
+                          borderWidth: 1, borderColor: '#EBEBEB', minHeight: 44, maxHeight: 100,
+                        }}
+                        editable={!postingComment}
+                      />
+                      <TouchableOpacity
+                        onPress={postComment}
+                        disabled={postingComment || !newComment.trim()}
+                        style={{
+                          width: 44, height: 44, borderRadius: 22,
+                          backgroundColor: !newComment.trim() || postingComment ? colors.surface1 : colors.bloom,
+                          alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        {postingComment ? <ActivityIndicator size="small" color="#fff" /> : <Send size={18} color={!newComment.trim() ? colors.textSecondary : '#fff'} />}
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
               </ScrollView>
