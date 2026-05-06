@@ -975,6 +975,7 @@ export default function StoriesScreen() {
   const [showShareOptions, setShowShareOptions] = useState(false)
   const [shareStoryTarget, setShareStoryTarget] = useState<Story | null>(null)
   const [sharingToPract, setSharingToPract] = useState(false)
+  const [practitionerName, setPractitionerName] = useState<string>('')
 
   // Story share + comments
   const viewerScrollRef = useRef<ScrollView>(null)
@@ -1061,6 +1062,16 @@ export default function StoriesScreen() {
     setLoading(true)
     Promise.all([fetchStories(), fetchChapters()]).finally(() => setLoading(false))
   }, [fetchStories, fetchChapters]))
+
+  // Fetch practitioner display name for share confirmation + button label
+  useEffect(() => {
+    if (!member?.practitioner_id) { setPractitionerName(''); return }
+    let cancelled = false
+    supabase.from('users').select('full_name').eq('id', member.practitioner_id).maybeSingle().then(({ data }) => {
+      if (!cancelled && data?.full_name) setPractitionerName(data.full_name)
+    })
+    return () => { cancelled = true }
+  }, [member?.practitioner_id])
 
   // Load share + comments when viewing a story
   useEffect(() => {
@@ -1333,6 +1344,24 @@ export default function StoriesScreen() {
     setTimeout(() => setLinkCopied(false), 2000)
   }
 
+  function confirmShareToPractitioner(story: Story) {
+    if (!member?.practitioner_id || !member?.id || sharingToPract) return
+    const display = practitionerName || (locale === 'fr' ? 'votre praticien' : 'your practitioner')
+    Alert.alert(
+      locale === 'fr' ? 'Envoyer à votre praticien ?' : 'Send to your practitioner?',
+      locale === 'fr'
+        ? `Cette histoire sera partagée avec ${display}.`
+        : `This story will be shared with ${display}.`,
+      [
+        { text: locale === 'fr' ? 'Annuler' : 'Cancel', style: 'cancel' },
+        {
+          text: locale === 'fr' ? 'Envoyer' : 'Send',
+          onPress: () => { shareToPractitioner(story) },
+        },
+      ]
+    )
+  }
+
   async function shareToPractitioner(story: Story) {
     if (!member?.practitioner_id || !member?.id) return
     setSharingToPract(true)
@@ -1360,7 +1389,13 @@ export default function StoriesScreen() {
             }),
           }).catch(() => {})
         }
-        Alert.alert(locale === 'fr' ? 'Envoyé !' : 'Sent!', locale === 'fr' ? 'Partagé avec votre praticien.' : 'Shared with your practitioner.')
+        const display = practitionerName || (locale === 'fr' ? 'votre praticien' : 'your practitioner')
+        Alert.alert(
+          locale === 'fr' ? 'Envoyé !' : 'Sent!',
+          locale === 'fr'
+            ? `Votre histoire a été partagée avec ${display}.`
+            : `Your story has been shared with ${display}.`
+        )
       }
     } catch {
       Alert.alert(locale === 'fr' ? 'Erreur' : 'Error', locale === 'fr' ? 'Impossible de partager.' : 'Failed to share.')
@@ -2404,7 +2439,7 @@ export default function StoriesScreen() {
                     {/* Send to practitioner */}
                     {member?.practitioner_id && (
                       <TouchableOpacity
-                        onPress={() => shareToPractitioner(viewingStory)}
+                        onPress={() => confirmShareToPractitioner(viewingStory)}
                         disabled={sharingToPract}
                         style={{
                           flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -2413,8 +2448,10 @@ export default function StoriesScreen() {
                         }}
                       >
                         {sharingToPract ? <ActivityIndicator size="small" color="#fff" /> : <Send size={18} color="#fff" />}
-                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>
-                          {locale === 'fr' ? 'Envoyer à mon praticien' : 'Send to my practitioner'}
+                        <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }} numberOfLines={1}>
+                          {practitionerName
+                            ? (locale === 'fr' ? `Envoyer à ${practitionerName}` : `Send to ${practitionerName}`)
+                            : (locale === 'fr' ? 'Envoyer à mon praticien' : 'Send to my practitioner')}
                         </Text>
                       </TouchableOpacity>
                     )}
