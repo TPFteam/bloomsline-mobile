@@ -404,12 +404,12 @@ export function WorksheetStepView({
 
           {/* Context blocks (heading, paragraph, tip — excluding pdf_document since we show the pill above) */}
           {step.contextBlocks.filter((b: any) => b.type !== 'pdf_document').map((block: any, i: number) => (
-            <View key={block.id || i} style={{ marginBottom: 16, maxWidth: '100%', overflow: 'hidden' }}>
+            <View key={block.id || i} style={{ marginBottom: 14, maxWidth: '100%', overflow: 'hidden' }}>
               {renderBlock(block, undefined, () => {}, undefined, true, t, locale, (url, name) => {
                 setPdfLoading(true)
                 setPdfViewerName(name)
                 setPdfViewerUrl(url)
-              })}
+              }, true /* lightText — context sits on the resource's tinted background */)}
             </View>
           ))}
 

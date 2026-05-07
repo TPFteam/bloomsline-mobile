@@ -572,6 +572,9 @@ export function renderBlock(
   t?: any,
   locale?: string,
   onOpenPdf?: (url: string, name: string) => void,
+  /** When true, headings and paragraphs render in white-on-colored-bg style (used inside the
+   *  worksheet step view where context sits directly on the resource's tinted background). */
+  lightText?: boolean,
 ) {
   const content = typeof block.content === 'string' ? block.content : extractLocalized(block.content, locale)
   const isRequired = !!block.required
@@ -581,13 +584,27 @@ export function renderBlock(
   switch (block.type) {
     case 'heading':
       return (
-        <View style={{ marginTop: 8 }}>
-          <Text style={{ fontSize: 24, fontWeight: '700', color: '#1A1A1A', letterSpacing: -0.5, lineHeight: 30 }}>{content}</Text>
+        <View style={{ marginTop: 4 }}>
+          <Text style={{
+            fontSize: 22,
+            fontWeight: '600',
+            color: lightText ? '#FFFFFF' : '#1A1A1A',
+            letterSpacing: -0.4,
+            lineHeight: 28,
+          }}>{content}</Text>
         </View>
       )
 
     case 'paragraph':
-      return <Text style={{ fontSize: 17, color: '#374151', lineHeight: 28 }}>{content}</Text>
+      return (
+        <Text style={{
+          fontSize: 16,
+          fontWeight: '300',
+          color: lightText ? 'rgba(255,255,255,0.88)' : '#374151',
+          lineHeight: 26,
+          letterSpacing: 0.1,
+        }}>{content}</Text>
+      )
 
     case 'quote':
       return (
