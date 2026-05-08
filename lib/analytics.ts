@@ -57,3 +57,37 @@ export function trackEvent(event: string, properties?: Record<string, any>) {
 export function trackScreen(screenName: string) {
   posthog?.screen(screenName)
 }
+
+/**
+ * Centralised error reporter — call from error boundaries (and any catch
+ * block worth capturing). Sends to both PostHog (queryable as a
+ * `client_error` event) and Sentry (full stack + breadcrumbs). Both calls
+ * are best-effort: failures are swallowed so the error UI still renders.
+ */
+export function captureError(
+  error: unknown,
+  context?: Record<string, unknown>,
+) {
+  const err =
+    error instanceof Error
+      ? error
+      : new Error(typeof error === 'string' ? error : 'Unknown error')
+
+  try {
+    posthog?.capture('client_error', {
+      error_name: err.name,
+      error_message: err.message,
+      error_stack: err.stack || null,
+      platform: Platform.OS,
+      ...context,
+    })
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    Sentry.captureException(err, context ? { extra: context } : undefined)
+  } catch {
+    /* ignore */
+  }
+}

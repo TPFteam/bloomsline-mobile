@@ -8,6 +8,7 @@ import { I18nProvider } from '@/lib/i18n'
 import { DesktopWrapper } from '@/components/DesktopWrapper'
 import { PostHogProvider } from 'posthog-react-native'
 import { posthog, initSentry } from '@/lib/analytics'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 // Inject PostHog web snippet for session recordings (web/PWA only)
 function usePostHogWeb() {
@@ -56,13 +57,15 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      {posthog ? (
-        <PostHogProvider client={posthog}>
+      <ErrorBoundary>
+        {posthog ? (
+          <PostHogProvider client={posthog}>
+            <AppContent />
+          </PostHogProvider>
+        ) : (
           <AppContent />
-        </PostHogProvider>
-      ) : (
-        <AppContent />
-      )}
+        )}
+      </ErrorBoundary>
     </GestureHandlerRootView>
   )
 }
