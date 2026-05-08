@@ -1574,6 +1574,7 @@ export default function PractitionerScreen() {
               t={t}
               locale={locale}
               draftResponseId={draftResponseId}
+              resourceId={fillResource?.id}
             />
           ) : fillResource && (
             <>
@@ -1643,7 +1644,10 @@ export default function PractitionerScreen() {
                     <View key={block.id || i} style={{ marginBottom: 36 }}>
                       {renderBlock(
                         resInstructions && block.type === 'table_exercise' ? { ...block, instructions: resInstructions } : block,
-                        responses[block.id], (v) => setResponses(prev => ({ ...prev, [block.id]: v })), (inReview) => setTableReviewReady(inReview), activeResourceItem?.status === 'completed', t, locale
+                        responses[block.id], (v) => setResponses(prev => ({ ...prev, [block.id]: v })), (inReview) => setTableReviewReady(inReview), activeResourceItem?.status === 'completed', t, locale,
+                        undefined,  // onOpenPdf
+                        undefined,  // lightText
+                        fillResource?.id,  // resourceId — for response uploads
                       )}
                     </View>
                   ))

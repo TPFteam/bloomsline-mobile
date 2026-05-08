@@ -575,6 +575,11 @@ export function renderBlock(
   /** When true, headings and paragraphs render in white-on-colored-bg style (used inside the
    *  worksheet step view where context sits directly on the resource's tinted background). */
   lightText?: boolean,
+  /** Required when the block can produce a response file (video_response,
+   *  audio_response, file_response). Used to scope the upload path to
+   *  `{user_id}/{resourceId}/{filename}` in the resource-responses bucket
+   *  so storage RLS can authorize practitioner reads. */
+  resourceId?: string,
 ) {
   const content = typeof block.content === 'string' ? block.content : extractLocalized(block.content, locale)
   const isRequired = !!block.required
@@ -1221,11 +1226,15 @@ export function renderBlock(
             let mimeType = result.assets[0].mimeType || 'video/mp4'
             if (mimeType === 'video/quicktime') mimeType = 'video/mp4'
             const ext = mimeType === 'video/mp4' ? 'mp4' : (mimeType.split('/')[1] || 'mp4')
-            const fileName = `${user.id}/video-responses/${Date.now()}.${ext}`
+            // Folder convention is {user_id}/{resource_id}/{filename} — the
+            // resource id segment is required so storage RLS can grant the
+            // practitioner read access via foldername[2].
+            const folder = resourceId || 'unattached'
+            const fileName = `${user.id}/${folder}/video-${Date.now()}.${ext}`
             const fetchResponse = await fetch(localUri)
             const blob = await fetchResponse.blob()
             const { data, error } = await supabase.storage
-              .from('resource-media')
+              .from('resource-responses')
               .upload(fileName, blob, { contentType: mimeType, upsert: true })
             if (error) {
               console.error('Video upload error:', error)
@@ -1237,8 +1246,13 @@ export function renderBlock(
                 Alert.alert('Upload failed', 'Video upload failed. Please try again.')
               }
             } else if (data) {
-              const { data: urlData } = supabase.storage.from('resource-media').getPublicUrl(data.path)
-              onChange(urlData.publicUrl)
+              // Bucket is private — issue a long-lived signed URL. Renderers
+              // that hit a 403 after expiry can re-sign via path.
+              const { data: signed } = await supabase.storage
+                .from('resource-responses')
+                .createSignedUrl(data.path, 60 * 60 * 24 * 365) // 1 year
+              if (signed?.signedUrl) onChange(signed.signedUrl)
+              else onChange('')
             }
           } catch (e) {
             console.error('Video upload failed:', e)
@@ -1337,18 +1351,22 @@ export function renderBlock(
             if (!user) return
             const mimeType = result.assets[0].mimeType || 'audio/mpeg'
             const ext = mimeType.split('/')[1] || 'mp3'
-            const fileName = `${user.id}/audio-responses/${Date.now()}.${ext}`
+            const folder = resourceId || 'unattached'
+            const fileName = `${user.id}/${folder}/audio-${Date.now()}.${ext}`
             const fetchResponse = await fetch(localUri)
             const blob = await fetchResponse.blob()
             const { data, error } = await supabase.storage
-              .from('resource-media')
+              .from('resource-responses')
               .upload(fileName, blob, { contentType: mimeType, upsert: true })
             if (error) {
               onChange('')
               Platform.OS === 'web' ? window.alert('Audio upload failed.') : Alert.alert('Upload failed', 'Please try again.')
             } else if (data) {
-              const { data: urlData } = supabase.storage.from('resource-media').getPublicUrl(data.path)
-              onChange(urlData.publicUrl)
+              const { data: signed } = await supabase.storage
+                .from('resource-responses')
+                .createSignedUrl(data.path, 60 * 60 * 24 * 365)
+              if (signed?.signedUrl) onChange(signed.signedUrl)
+              else onChange('')
             }
           } catch {
             onChange('')
@@ -1416,18 +1434,22 @@ export function renderBlock(
             const mimeType = result.assets[0].mimeType || 'application/octet-stream'
             const originalName = result.assets[0].name || `file-${Date.now()}`
             const ext = originalName.split('.').pop() || 'bin'
-            const filePath = `${user.id}/file-responses/${Date.now()}.${ext}`
+            const folder = resourceId || 'unattached'
+            const filePath = `${user.id}/${folder}/file-${Date.now()}.${ext}`
             const fetchResponse = await fetch(localUri)
             const blob = await fetchResponse.blob()
             const { data, error } = await supabase.storage
-              .from('resource-media')
+              .from('resource-responses')
               .upload(filePath, blob, { contentType: mimeType, upsert: true })
             if (error) {
               onChange('')
               Platform.OS === 'web' ? window.alert('File upload failed.') : Alert.alert('Upload failed', 'Please try again.')
             } else if (data) {
-              const { data: urlData } = supabase.storage.from('resource-media').getPublicUrl(data.path)
-              onChange(urlData.publicUrl)
+              const { data: signed } = await supabase.storage
+                .from('resource-responses')
+                .createSignedUrl(data.path, 60 * 60 * 24 * 365)
+              if (signed?.signedUrl) onChange(signed.signedUrl)
+              else onChange('')
             }
           } catch {
             onChange('')

@@ -50,6 +50,9 @@ interface WorksheetStepViewProps {
   t: any
   locale?: string
   draftResponseId?: string | null
+  /** Required when blocks include file/audio/video response types — used to
+   *  scope upload paths inside the resource-responses bucket. */
+  resourceId?: string
 }
 
 function groupBlocksIntoSteps(blocks: any[]): Step[] {
@@ -101,6 +104,7 @@ export function WorksheetStepView({
   t,
   locale,
   draftResponseId,
+  resourceId,
 }: WorksheetStepViewProps) {
   const steps = groupBlocksIntoSteps(blocks)
   const [currentStep, setCurrentStep] = useState(0)
@@ -436,6 +440,8 @@ export function WorksheetStepView({
                   setPdfViewerName(name)
                   setPdfViewerUrl(url)
                 },
+                undefined,    // lightText
+                resourceId,   // for file/audio/video response uploads
               )}
             </View>
           )}
