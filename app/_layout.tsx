@@ -85,7 +85,10 @@ function useWebCSP() {
     const directives = [
       "default-src 'self'",
       "script-src 'self' https://*.i.posthog.com https://*.posthog.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.i.posthog.com https://*.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+      // `blob:` is required because image/video pickers hand back blob:
+      // URLs that the upload code reads via fetch() before pushing to
+      // Supabase storage. Without it, every photo or video moment fails.
+      "connect-src 'self' blob: https://*.supabase.co wss://*.supabase.co https://*.i.posthog.com https://*.posthog.com https://*.sentry.io https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
