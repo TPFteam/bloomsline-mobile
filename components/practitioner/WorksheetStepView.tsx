@@ -497,11 +497,15 @@ export function WorksheetStepView({
           flexDirection: 'row',
           gap: 12,
         }}>
-          {/* Table exercise in review: single submit button */}
+          {/* Table exercise in review: forward button advances to the next
+              step like any other block — only collapses to a sole Submit
+              when this table is the final step. (Earlier this branch
+              always rendered Submit, swallowing any prompts that came
+              after a table.) */}
           {tableInReview && step.questionBlock?.type === 'table_exercise' ? (
             <TouchableOpacity
-              onPress={onSubmit}
-              disabled={submitting}
+              onPress={goNext}
+              disabled={isLast && submitting}
               style={{
                 flex: 1,
                 flexDirection: 'row',
@@ -511,18 +515,20 @@ export function WorksheetStepView({
                 backgroundColor: '#fff',
                 borderRadius: 28,
                 paddingVertical: 14,
+                opacity: (isLast && submitting) ? 0.6 : 1,
               }}
             >
-              {submitting ? (
-                <Text style={{ fontSize: 14, fontWeight: '700', color: step.color }}>
-                  {locale === 'fr' ? 'Envoi...' : 'Submitting...'}
-                </Text>
+              {isLast && submitting ? (
+                <ActivityIndicator size="small" color={step.color} />
               ) : (
                 <>
-                  <Check size={16} color={step.color} />
                   <Text style={{ fontSize: 14, fontWeight: '700', color: step.color }}>
-                    {locale === 'fr' ? 'Soumettre' : 'Submit'}
+                    {isLast
+                      ? (locale === 'fr' ? 'Soumettre' : 'Submit')
+                      : (locale === 'fr' ? 'Suivant' : 'Next')}
                   </Text>
+                  {!isLast && <ChevronRight size={16} color={step.color} />}
+                  {isLast && <Check size={16} color={step.color} />}
                 </>
               )}
             </TouchableOpacity>
