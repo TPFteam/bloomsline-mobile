@@ -1647,8 +1647,12 @@ export default function StoriesScreen() {
       const path = `${user.id}/${Date.now()}-${sanitized}`
       const { error } = await supabase.storage.from('story-media').upload(path, blob, { contentType: mimeType, upsert: false })
       if (error) throw error
-      const { data: urlData } = supabase.storage.from('story-media').getPublicUrl(path)
-      return urlData.publicUrl
+      // Bucket is private — issue a long-lived signed URL. Renderers
+      // hitting a 403 after expiry can re-sign via path.
+      const { data: signed } = await supabase.storage
+        .from('story-media')
+        .createSignedUrl(path, 60 * 60 * 24 * 365)  // 1 year
+      return signed?.signedUrl || null
     } catch (err) {
       console.error('Upload error:', err)
       showAlert('Upload Error', 'Failed to upload file.')

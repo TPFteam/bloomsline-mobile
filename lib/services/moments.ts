@@ -110,11 +110,16 @@ async function uploadMomentMedia(
     return { url: null, fileSize: null }
   }
 
-  const { data: urlData } = supabase.storage
+  // Bucket is private — issue a long-lived signed URL. Renderers that
+  // hit 403 after expiry can re-sign via path. Storing the signed URL
+  // directly keeps the existing data shape; if we need stricter
+  // re-authorization we can swap to storing the path and re-signing
+  // on each render in a follow-up.
+  const { data: signed } = await supabase.storage
     .from('moments_media')
-    .getPublicUrl(filePath)
+    .createSignedUrl(filePath, 60 * 60 * 24 * 365)  // 1 year
 
-  return { url: urlData.publicUrl, fileSize }
+  return { url: signed?.signedUrl || null, fileSize }
 }
 
 // ============================================
