@@ -106,6 +106,26 @@ function useWebCSP() {
   }, [])
 }
 
+// Suppress the browser's built-in pull-to-refresh on the PWA so our
+// custom Slack-style pull (in PullToRefreshScrollView) is the only thing
+// the user sees. Without this, Chrome on Android shows its own dark-
+// circle refresh chrome on top of ours.
+function useDisableNativePullRefresh() {
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return
+    const html = document.documentElement
+    const body = document.body
+    const prevHtml = html.style.overscrollBehaviorY
+    const prevBody = body.style.overscrollBehaviorY
+    html.style.overscrollBehaviorY = 'contain'
+    body.style.overscrollBehaviorY = 'contain'
+    return () => {
+      html.style.overscrollBehaviorY = prevHtml
+      body.style.overscrollBehaviorY = prevBody
+    }
+  }, [])
+}
+
 function AppContent() {
   return (
     <I18nProvider>
@@ -127,6 +147,7 @@ export default function RootLayout() {
     initSentry()
   }, [])
   useWebCSP()
+  useDisableNativePullRefresh()
   usePostHogWeb()
 
   return (

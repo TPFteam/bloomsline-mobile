@@ -39,7 +39,7 @@ function AffirmationLine({ message, opacity, top }: {
           fontSize: 14,
           fontWeight: '500',
           color: '#4A9A86',
-          opacity: 0.75,
+          opacity: 0.85,
           letterSpacing: 0.1,
         }}
       >
@@ -55,8 +55,7 @@ export function PullToRefreshScrollView({ onRefresh, children, ...scrollProps }:
   const { locale } = useI18n()
 
   // Native fade for the affirmation: 0 → 1 over 250ms when refresh starts,
-  // 1 → 0 over 400ms when refresh ends. Web uses pullY-driven opacity
-  // (defined further down) so it tracks the gesture instead.
+  // 1 → 0 over 400ms when refresh ends.
   const nativeFade = useRef(new Animated.Value(0)).current
 
   const handleRefresh = useCallback(async () => {
@@ -95,10 +94,25 @@ export function PullToRefreshScrollView({ onRefresh, children, ...scrollProps }:
     )
   }
 
-  // Web: custom pull-to-refresh
+  // ── Web: Slack-style pull-to-refresh ──────────────────────────────────
+  // Whole content slides down with the pull, only the muted affirmation
+  // shows at the top (no spinner, no dot). On release past the threshold
+  // we fire the refresh, hold the slid-down position briefly, then snap
+  // back. Browser's native pull-refresh is suppressed via
+  // overscroll-behavior set in app/_layout.tsx.
+
   const pullY = useRef(new Animated.Value(0)).current
   const startY = useRef(0)
   const pulling = useRef(false)
+  const scrollAtTop = useRef(true)
+
+  const PULL_TRIGGER = 70 // px to release a refresh
+  const PULL_MAX = 120     // visual cap on how far content slides
+
+  const onScroll = (e: any) => {
+    scrollAtTop.current = (e?.nativeEvent?.contentOffset?.y ?? 0) <= 0
+    scrollProps.onScroll?.(e)
+  }
 
   const onTouchStart = (e: any) => {
     const touch = e.nativeEvent?.touches?.[0] || e.nativeEvent
@@ -107,16 +121,17 @@ export function PullToRefreshScrollView({ onRefresh, children, ...scrollProps }:
 
   const onTouchMove = (e: any) => {
     if (refreshing) return
+    if (!scrollAtTop.current) return  // Only pull when the list is at the top.
     const touch = e.nativeEvent?.touches?.[0] || e.nativeEvent
     const y = (touch?.pageY || 0) - startY.current
-    if (y > 0 && y < 120) {
-      // Lazy-pick a message so it appears as soon as the pull begins,
-      // matching the Slack feel (text shows during pull, not just after).
+    if (y > 0 && y < PULL_MAX) {
       if (!pulling.current && !message) {
         setMessage(pickAffirmation(locale))
       }
       pulling.current = true
-      pullY.setValue(y)
+      // Light rubber-banding so longer pulls feel softer than 1:1.
+      const eased = Math.min(PULL_MAX, y * 0.6)
+      pullY.setValue(eased)
     }
   }
 
@@ -128,77 +143,49 @@ export function PullToRefreshScrollView({ onRefresh, children, ...scrollProps }:
     }
 
     const currentValue = (pullY as any).__getValue?.() || 0
-    if (currentValue > 60) {
-      Animated.timing(pullY, { toValue: 50, duration: 200, useNativeDriver: true }).start()
+    if (currentValue >= PULL_TRIGGER) {
+      // Hold the slid-down position briefly so the affirmation reads,
+      // then run the refresh, then snap back.
+      Animated.timing(pullY, { toValue: PULL_TRIGGER, duration: 160, useNativeDriver: true }).start()
       await handleRefresh()
     }
-    Animated.spring(pullY, { toValue: 0, useNativeDriver: true }).start()
+    Animated.spring(pullY, { toValue: 0, useNativeDriver: true, friction: 8 }).start()
     pulling.current = false
-    // Clear after the spring settles so the next pull picks a fresh phrase.
     setTimeout(() => { if (!pulling.current) setMessage('') }, 600)
   }
 
-  const spin = pullY.interpolate({
-    inputRange: [0, 60, 120],
-    outputRange: ['0deg', '360deg', '720deg'],
-  })
-
-  const indicatorOpacity = pullY.interpolate({
-    inputRange: [0, 30, 60],
-    outputRange: [0, 0.5, 1],
-  })
-
-  // Affirmation fades in faster than the indicator — already legible by
-  // the time the spinner appears.
-  const messageOpacity = pullY.interpolate({
-    inputRange: [0, 20, 60],
+  // Affirmation fades in early in the pull so it's already legible by the
+  // time the trigger threshold is reached. While refreshing it sticks at
+  // full opacity (driven by nativeFade).
+  const pullOpacity = pullY.interpolate({
+    inputRange: [0, 18, PULL_TRIGGER],
     outputRange: [0, 0.7, 1],
   })
 
   return (
-    <View style={{ flex: 1 }}>
-      {/* Affirmation text */}
+    <View style={{ flex: 1, overflow: 'hidden' }}>
       <AffirmationLine
         message={message}
-        opacity={refreshing ? nativeFade : messageOpacity}
+        opacity={refreshing ? nativeFade : pullOpacity}
         top={20}
       />
-
-      {/* Pull indicator */}
-      <Animated.View style={{
-        position: 'absolute',
-        top: 0, left: 0, right: 0,
-        alignItems: 'center',
-        zIndex: 10,
-        transform: [{ translateY: Animated.subtract(pullY, new Animated.Value(40)) }],
-        opacity: indicatorOpacity,
-      }}>
-        <Animated.View style={{
-          width: 28, height: 28, borderRadius: 14,
-          backgroundColor: '#4A9A86',
-          transform: [{ rotate: spin }],
-          opacity: refreshing ? 0.6 : 1,
-        }}>
-          {refreshing && (
-            <View style={{
-              position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-              justifyContent: 'center', alignItems: 'center',
-            }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />
-            </View>
-          )}
-        </Animated.View>
-      </Animated.View>
-
-      <ScrollView
-        {...scrollProps}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        scrollEventThrottle={16}
+      <Animated.View
+        style={{
+          flex: 1,
+          transform: [{ translateY: pullY }],
+        }}
       >
-        {children}
-      </ScrollView>
+        <ScrollView
+          {...scrollProps}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+        >
+          {children}
+        </ScrollView>
+      </Animated.View>
     </View>
   )
 }
