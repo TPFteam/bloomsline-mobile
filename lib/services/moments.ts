@@ -17,7 +17,9 @@ export interface MediaItem {
 export interface MomentMediaRow {
   id: string
   moment_id: string
+  /** @deprecated prefer media_path; sign at render time */
   media_url: string
+  media_path?: string | null
   mime_type: string
   duration_seconds: number | null
   file_size_bytes: number | null
@@ -29,8 +31,15 @@ export interface Moment {
   id: string
   user_id: string
   type: MomentType
+  /** @deprecated Prefer media_path. Will be dropped in a follow-up
+   *  migration once nothing reads it. */
   media_url: string | null
+  /** Storage path inside `moments_media`. Render code calls
+   *  createSignedUrl on this and uses the result for <Image>. */
+  media_path: string | null
+  /** @deprecated See media_url */
   thumbnail_url: string | null
+  thumbnail_path: string | null
   text_content: string | null
   caption: string | null
   moods: string[]
@@ -62,7 +71,7 @@ async function uploadMomentMedia(
   uri: string,
   mimeType: string,
   index: number = 0,
-): Promise<{ url: string | null; fileSize: number | null }> {
+): Promise<{ url: string | null; path: string | null; fileSize: number | null }> {
   // Determine file extension
   let extension = 'bin'
   if (mimeType.startsWith('image/')) {
@@ -107,19 +116,17 @@ async function uploadMomentMedia(
 
   if (error) {
     console.error('Error uploading moment media:', error)
-    return { url: null, fileSize: null }
+    return { url: null, path: null, fileSize: null }
   }
 
-  // Bucket is private — issue a long-lived signed URL. Renderers that
-  // hit 403 after expiry can re-sign via path. Storing the signed URL
-  // directly keeps the existing data shape; if we need stricter
-  // re-authorization we can swap to storing the path and re-signing
-  // on each render in a follow-up.
+  // Bucket is private. Return both the path (new source of truth — used
+  // by render code via useSignedUrl) and a 1-year signed URL (kept for
+  // backward compatibility during the migration window).
   const { data: signed } = await supabase.storage
     .from('moments_media')
-    .createSignedUrl(filePath, 60 * 60 * 24 * 365)  // 1 year
+    .createSignedUrl(filePath, 60 * 60 * 24 * 365)
 
-  return { url: signed?.signedUrl || null, fileSize }
+  return { url: signed?.signedUrl || null, path: filePath, fileSize }
 }
 
 // ============================================
@@ -177,6 +184,7 @@ export async function createMoment(input: CreateMomentInput): Promise<Moment | n
       user_id: user.id,
       type: momentType,
       media_url: firstUpload?.url || null,
+      media_path: firstUpload?.path || null,
       text_content: input.textContent || null,
       caption: input.caption || null,
       moods: input.moods,
@@ -198,6 +206,7 @@ export async function createMoment(input: CreateMomentInput): Promise<Moment | n
     const mediaRows = input.mediaItems.map((item, i) => ({
       moment_id: momentId,
       media_url: uploadResults[i]?.url || '',
+      media_path: uploadResults[i]?.path || null,
       mime_type: item.mimeType,
       duration_seconds: item.durationSeconds || null,
       file_size_bytes: uploadResults[i]?.fileSize || null,

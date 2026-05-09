@@ -3,10 +3,23 @@ import { View, Text, TouchableOpacity, Image } from 'react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
+import { useSignedUrl } from '@/lib/hooks/useSignedUrl'
 
 interface RememberThisCardProps {
     moments: Moment[]
     onPress: (m: Moment) => void
+}
+
+function MemoryThumb({ memory }: { memory: Moment }) {
+    const signed = useSignedUrl('moments_media', memory.thumbnail_path ?? memory.thumbnail_url ?? memory.media_path ?? memory.media_url)
+    if (!signed) return null
+    return (
+        <Image
+            source={{ uri: signed }}
+            style={{ width: '100%', height: 120, borderRadius: 12, marginBottom: 10 }}
+            resizeMode="cover"
+        />
+    )
 }
 
 export function RememberThisCard({ moments, onPress }: RememberThisCardProps) {
@@ -42,12 +55,8 @@ export function RememberThisCard({ moments, onPress }: RememberThisCardProps) {
 
                 {/* Mini moment preview */}
                 <View style={{ backgroundColor: colors.bg, borderRadius: 16, padding: 12, marginTop: 14 }}>
-                    {memory.media_url && (memory.type === 'photo' || memory.type === 'video' || memory.type === 'mixed') && (
-                        <Image
-                            source={{ uri: memory.thumbnail_url || memory.media_url }}
-                            style={{ width: '100%', height: 120, borderRadius: 12, marginBottom: 10 }}
-                            resizeMode="cover"
-                        />
+                    {(memory.media_path || memory.media_url) && (memory.type === 'photo' || memory.type === 'video' || memory.type === 'mixed') && (
+                        <MemoryThumb memory={memory} />
                     )}
                     {memory.text_content ? (
                         <Text style={{ fontSize: 14, color: '#374151', lineHeight: 20 }} numberOfLines={2}>

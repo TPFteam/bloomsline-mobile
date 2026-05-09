@@ -6,6 +6,7 @@ import { Mic, Play, Pause, Volume2, VolumeX, Maximize, Minimize, X, BookOpen } f
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
+import { useSignedUrl } from '@/lib/hooks/useSignedUrl'
 
 const { width: _sw, height: _sh } = Dimensions.get('window')
 const SCREEN_WIDTH = Math.min(_sw, 430)
@@ -212,13 +213,31 @@ function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compac
     return videoContent
 }
 
+function GalleryItem({ item, onPress }: {
+    item: { id?: string; media_url: string; media_path?: string | null; mime_type?: string }
+    onPress: (uri: string) => void
+}) {
+    const signed = useSignedUrl('moments_media', item.media_path ?? item.media_url)
+    const uri = signed || ''
+    if (!uri) return null
+    if (item.mime_type?.startsWith('video/')) {
+        return <VideoPlayer uri={uri} style={{ width: 140, height: 140, borderRadius: 16 }} compact />
+    }
+    return (
+        <TouchableOpacity activeOpacity={0.9} onPress={() => onPress(uri)}>
+            <Image source={{ uri }} style={{ width: 120, height: 120, borderRadius: 16 }} resizeMode="cover" />
+        </TouchableOpacity>
+    )
+}
+
 export function MomentDetail({ moment, onClose, onOpenStory }: MomentDetailProps) {
     const { t, locale } = useI18n()
     const insets = useSafeAreaInsets()
-    const hasMedia = moment.media_url && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
+    const hasMedia = (moment.media_path || moment.media_url) && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
     const isMainVideo = hasMedia && (moment.mime_type?.startsWith('video/') || moment.type === 'video')
     const isVoice = moment.type === 'voice'
     const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
+    const mainSignedUrl = useSignedUrl('moments_media', moment.media_path ?? moment.media_url)
 
     return (
         <Pressable
@@ -246,13 +265,13 @@ export function MomentDetail({ moment, onClose, onOpenStory }: MomentDetailProps
 
                 <ScrollView showsVerticalScrollIndicator={false}>
                     {/* Media */}
-                    {hasMedia && (
+                    {hasMedia && mainSignedUrl && (
                         isMainVideo ? (
-                            <VideoPlayer uri={moment.media_url!} style={{ width: '100%', height: 300, borderRadius: 0 }} />
+                            <VideoPlayer uri={mainSignedUrl} style={{ width: '100%', height: 300, borderRadius: 0 }} />
                         ) : (
-                            <TouchableOpacity activeOpacity={0.9} onPress={() => setFullscreenImage(moment.media_url!)}>
+                            <TouchableOpacity activeOpacity={0.9} onPress={() => setFullscreenImage(mainSignedUrl)}>
                                 <Image
-                                    source={{ uri: moment.media_url! }}
+                                    source={{ uri: mainSignedUrl }}
                                     style={{ width: '100%', height: 280 }}
                                     resizeMode="cover"
                                 />
@@ -316,22 +335,7 @@ export function MomentDetail({ moment, onClose, onOpenStory }: MomentDetailProps
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                                 <View style={{ flexDirection: 'row', gap: 8 }}>
                                     {moment.media_items.map((item, i) => (
-                                        item.mime_type?.startsWith('video/') ? (
-                                            <VideoPlayer
-                                                key={item.id || i}
-                                                uri={item.media_url}
-                                                style={{ width: 140, height: 140, borderRadius: 16 }}
-                                                compact
-                                            />
-                                        ) : (
-                                            <TouchableOpacity key={item.id || i} activeOpacity={0.9} onPress={() => setFullscreenImage(item.media_url)}>
-                                                <Image
-                                                    source={{ uri: item.media_url }}
-                                                    style={{ width: 120, height: 120, borderRadius: 16 }}
-                                                    resizeMode="cover"
-                                                />
-                                            </TouchableOpacity>
-                                        )
+                                        <GalleryItem key={item.id || i} item={item} onPress={setFullscreenImage} />
                                     ))}
                                 </View>
                             </ScrollView>

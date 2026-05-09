@@ -87,6 +87,7 @@ import { useI18n } from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { createMoment } from '@/lib/services/moments'
 import { MOODS } from '@/lib/theme'
+import { useSignedUrl } from '@/lib/hooks/useSignedUrl'
 
 const SHARE_BASE_URL = 'https://bloomsline.com/stories'
 
@@ -265,6 +266,64 @@ function AudioPlayer({ uri }: { uri: string }) {
 
 // ─── Block Renderer (view mode) ─────────────────────
 
+function ChapterPreviewThumb({ item }: { item: { url?: string; path?: string } }) {
+  const signed = useSignedUrl('story-media', item.path ?? item.url)
+  if (!signed) return null
+  return (
+    <Image
+      source={{ uri: signed }}
+      style={{ width: '100%', height: 200, borderRadius: 12, marginBottom: 8 }}
+      resizeMode="cover"
+    />
+  )
+}
+
+function StoryEditMediaPreview({ item }: { item: { url?: string; path?: string; fileType?: string } }) {
+  const signed = useSignedUrl('story-media', item.path ?? item.url)
+  const uri = signed || ''
+  if (!uri) return null
+  if (item.fileType === 'image') {
+    return (
+      <View>
+        <Image source={{ uri }}
+          style={{ width: '100%', height: undefined, aspectRatio: 4 / 3, borderRadius: 14, backgroundColor: colors.surface1 }}
+          resizeMode="cover"
+        />
+      </View>
+    )
+  }
+  if (item.fileType === 'audio') {
+    return <View><AudioPlayer uri={uri} /></View>
+  }
+  return null
+}
+
+function StoryMediaItem({ item, onImagePress }: {
+  item: { url?: string; path?: string; fileType?: string }
+  onImagePress?: (url: string) => void
+}) {
+  const signed = useSignedUrl('story-media', item.path ?? item.url)
+  const uri = signed || ''
+  if (!uri) return null
+  if (item.fileType === 'image') {
+    return (
+      <View>
+        <TouchableOpacity activeOpacity={0.9} onPress={() => onImagePress?.(uri)}>
+          <Image
+            source={{ uri }}
+            style={{ width: '100%', height: undefined, aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: colors.surface1 }}
+            resizeMode="cover"
+          />
+        </TouchableOpacity>
+      </View>
+    )
+  }
+  if (item.fileType === 'audio') {
+    return <View><AudioPlayer uri={uri} /></View>
+  }
+  return null
+}
+
 function RenderBlock({ block, onImagePress }: { block: ContentBlock; onImagePress?: (url: string) => void }) {
   switch (block.type) {
     case 'heading': {
@@ -300,26 +359,14 @@ function RenderBlock({ block, onImagePress }: { block: ContentBlock; onImagePres
     }
     case 'media': {
       const mediaItems = block.content?.items || (block.content?.url ? [{
-        url: block.content.url, fileType: block.content.fileType,
+        url: block.content.url, path: block.content.path, fileType: block.content.fileType,
         fileName: block.content.fileName, alt: block.content.alt,
       }] : [])
       if (mediaItems.length === 0) return null
       return (
         <View style={{ gap: 10 }}>
           {mediaItems.map((item: any, i: number) => (
-            <View key={i}>
-              {item.fileType === 'image' ? (
-                <TouchableOpacity activeOpacity={0.9} onPress={() => onImagePress?.(item.url)}>
-                  <Image
-                    source={{ uri: item.url }}
-                    style={{ width: '100%', height: undefined, aspectRatio: 4 / 3, borderRadius: 16, backgroundColor: colors.surface1 }}
-                    resizeMode="cover"
-                  />
-                </TouchableOpacity>
-              ) : item.fileType === 'audio' ? (
-                <AudioPlayer uri={item.url} />
-              ) : null}
-            </View>
+            <StoryMediaItem key={i} item={item} onImagePress={onImagePress} />
           ))}
           {block.content?.caption ? (
             <Text style={{ fontSize: 13, color: colors.textSecondary, fontStyle: 'italic', textAlign: 'center' }}>
@@ -541,16 +588,7 @@ function EditBlock({
       return (
         <View style={{ gap: 8 }}>
           {mediaItems.map((item: any, i: number) => (
-            <View key={i}>
-              {item.fileType === 'image' ? (
-                <Image source={{ uri: item.url }}
-                  style={{ width: '100%', height: undefined, aspectRatio: 4 / 3, borderRadius: 14, backgroundColor: colors.surface1 }}
-                  resizeMode="cover"
-                />
-              ) : item.fileType === 'audio' ? (
-                <AudioPlayer uri={item.url} />
-              ) : null}
-            </View>
+            <StoryEditMediaPreview key={i} item={item} />
           ))}
           <TextInput
             value={block.content?.caption || ''}
@@ -1195,10 +1233,24 @@ export default function StoriesScreen() {
       const orderedBlocks = editBlocks.map((b, i) => ({ ...b, order: i }))
       const now = new Date().toISOString()
 
+      // Collect storage paths from every media block. Render code prefers
+      // these over the URLs embedded in the block content. Mirrors media_urls
+      // for the migration window; will become the sole source after Phase 4.
+      const mediaPaths: string[] = []
+      for (const block of orderedBlocks) {
+        if (block.type !== 'media') continue
+        const items = block.content?.items
+        if (!Array.isArray(items)) continue
+        for (const item of items) {
+          if (typeof item?.path === 'string' && item.path) mediaPaths.push(item.path)
+        }
+      }
+
       if (editStory) {
         const updateData: any = {
           title: editTitle.trim(),
           content: orderedBlocks,
+          media_paths: mediaPaths,
           updated_at: now,
         }
         if (publish) {
@@ -1217,6 +1269,7 @@ export default function StoriesScreen() {
           user_id: user?.id,
           title: editTitle.trim(),
           content: orderedBlocks,
+          media_paths: mediaPaths,
           published: publish,
           unique_slug: slug,
           secret_code: storySecretCode ?? null,
@@ -1637,7 +1690,7 @@ export default function StoriesScreen() {
     setEditBlocks(newBlocks)
   }
 
-  async function uploadToStorage(uri: string, fileName: string, mimeType: string): Promise<string | null> {
+  async function uploadToStorage(uri: string, fileName: string, mimeType: string): Promise<{ url: string; path: string } | null> {
     if (!user?.id) return null
     setUploading(true)
     try {
@@ -1647,12 +1700,14 @@ export default function StoriesScreen() {
       const path = `${user.id}/${Date.now()}-${sanitized}`
       const { error } = await supabase.storage.from('story-media').upload(path, blob, { contentType: mimeType, upsert: false })
       if (error) throw error
-      // Bucket is private — issue a long-lived signed URL. Renderers
-      // hitting a 403 after expiry can re-sign via path.
+      // Bucket will be private after Phase 4. Return both:
+      //   - path  → new source of truth (block.items[].path), signed at render time via useSignedUrl
+      //   - url   → 1-year signed URL kept on block.items[].url for the migration window
       const { data: signed } = await supabase.storage
         .from('story-media')
-        .createSignedUrl(path, 60 * 60 * 24 * 365)  // 1 year
-      return signed?.signedUrl || null
+        .createSignedUrl(path, 60 * 60 * 24 * 365)
+      if (!signed?.signedUrl) return null
+      return { url: signed.signedUrl, path }
     } catch (err) {
       console.error('Upload error:', err)
       showAlert('Upload Error', 'Failed to upload file.')
@@ -1671,11 +1726,11 @@ export default function StoriesScreen() {
     if (result.canceled || !result.assets?.[0]) return
     const asset = result.assets[0]
     const fileName = asset.fileName || `image-${Date.now()}.jpg`
-    const publicUrl = await uploadToStorage(asset.uri, fileName, asset.mimeType || 'image/jpeg')
-    if (!publicUrl) return
+    const uploaded = await uploadToStorage(asset.uri, fileName, asset.mimeType || 'image/jpeg')
+    if (!uploaded) return
     const mediaBlock: ContentBlock = {
       id: genBlockId(), type: 'media',
-      content: { items: [{ url: publicUrl, fileType: 'image', fileName, alt: '' }], caption: '' },
+      content: { items: [{ url: uploaded.url, path: uploaded.path, fileType: 'image', fileName, alt: '' }], caption: '' },
       order: editBlocks.length,
     }
     setEditBlocks(prev => [...prev, mediaBlock])
@@ -1710,11 +1765,11 @@ export default function StoriesScreen() {
       setRecordingDuration(0)
       if (!uri) return
       const fileName = `voice-${Date.now()}.m4a`
-      const publicUrl = await uploadToStorage(uri, fileName, 'audio/m4a')
-      if (!publicUrl) return
+      const uploaded = await uploadToStorage(uri, fileName, 'audio/m4a')
+      if (!uploaded) return
       const mediaBlock: ContentBlock = {
         id: genBlockId(), type: 'media',
-        content: { items: [{ url: publicUrl, fileType: 'audio', fileName }], caption: '' },
+        content: { items: [{ url: uploaded.url, path: uploaded.path, fileType: 'audio', fileName }], caption: '' },
         order: editBlocks.length,
       }
       setEditBlocks(prev => [...prev, mediaBlock])
@@ -3316,14 +3371,7 @@ export default function StoriesScreen() {
                           if (block.type === 'media' && block.content?.items?.length > 0) {
                             const firstMedia = block.content.items[0]
                             if (firstMedia.fileType === 'image' || firstMedia.url?.match(/\.(jpg|jpeg|png|gif|webp)/i)) {
-                              return (
-                                <Image
-                                  key={block.id}
-                                  source={{ uri: firstMedia.url }}
-                                  style={{ width: '100%', height: 200, borderRadius: 12, marginBottom: 8 }}
-                                  resizeMode="cover"
-                                />
-                              )
+                              return <ChapterPreviewThumb key={block.id} item={firstMedia} />
                             }
                           }
                           return null

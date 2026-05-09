@@ -4,6 +4,7 @@ import { Mic } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
+import { useSignedUrl } from '@/lib/hooks/useSignedUrl'
 
 const { width: _screenW } = Dimensions.get('window')
 const width = Math.min(_screenW, 430)
@@ -56,9 +57,10 @@ function MomentRiverCard({ moment, cardWidth, onPress }: { moment: Moment; cardW
     const time = new Date(moment.created_at)
     const timeStr = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
-    const hasImage = moment.media_url && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
+    const hasImage = (moment.media_path || moment.media_url) && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
     const isVoice = moment.type === 'voice'
     const isWrite = moment.type === 'write'
+    const thumbSigned = useSignedUrl('moments_media', moment.thumbnail_path ?? moment.thumbnail_url ?? moment.media_path ?? moment.media_url)
 
     return (
         <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ width: cardWidth }}>
@@ -70,10 +72,10 @@ function MomentRiverCard({ moment, cardWidth, onPress }: { moment: Moment; cardW
                 overflow: 'hidden',
             }}>
                 {/* Photo/Video */}
-                {hasImage && (
+                {hasImage && thumbSigned && (
                     <View>
                         <Image
-                            source={{ uri: moment.thumbnail_url || moment.media_url! }}
+                            source={{ uri: thumbSigned }}
                             style={{ width: '100%', height: 140 }}
                             resizeMode="cover"
                         />
@@ -178,9 +180,10 @@ function GridCard({ moment, onPress }: { moment: Moment; onPress: () => void }) 
     const mood = moment.moods?.[0]
     const moodColor = MOOD_COLORS[mood] || '#94A3B8'
     const timeStr = new Date(moment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    const hasImage = moment.media_url && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
+    const hasImage = (moment.media_path || moment.media_url) && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
     const isVoice = moment.type === 'voice'
     const isWrite = moment.type === 'write'
+    const thumbSigned = useSignedUrl('moments_media', moment.thumbnail_path ?? moment.thumbnail_url ?? moment.media_path ?? moment.media_url)
 
     return (
         <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
@@ -191,10 +194,10 @@ function GridCard({ moment, onPress }: { moment: Moment; onPress: () => void }) 
                 borderColor: '#f0f0f0',
                 overflow: 'hidden',
             }}>
-                {hasImage && (
+                {hasImage && thumbSigned && (
                     <View>
                         <Image
-                            source={{ uri: moment.thumbnail_url || moment.media_url! }}
+                            source={{ uri: thumbSigned }}
                             style={{ width: '100%', height: 160 }}
                             resizeMode="cover"
                         />
