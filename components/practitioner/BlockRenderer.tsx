@@ -715,15 +715,29 @@ export function renderBlock(
 
     case 'multiple_choice': {
       const opts: any[] = Array.isArray(block.options) ? block.options : Array.isArray(block.choices) ? block.choices : []
+      const allowMultiple = !!(block as any).allowMultiple
+      // When allowMultiple is set the response is an array of selected
+      // indices and each option renders as a checkbox-style square.
+      // Otherwise it's a single index and we render the radio circle.
+      const isSel = (i: number) =>
+        allowMultiple
+          ? Array.isArray(blockValue) && (blockValue as number[]).includes(i)
+          : blockValue === i
+      const onPick = (i: number) => {
+        if (!allowMultiple) { onChange(i); return }
+        const current: number[] = Array.isArray(blockValue) ? (blockValue as number[]) : []
+        const next = current.includes(i) ? current.filter(v => v !== i) : [...current, i]
+        onChange(next)
+      }
       return (
         <View>
           <Text style={LABEL}>{content}{Star}</Text>
           <View style={{ gap: 8 }}>
             {opts.map((opt, i) => {
               const label = typeof opt === 'string' ? opt : opt.label
-              const sel = blockValue === i
+              const sel = isSel(i)
               return (
-                <TouchableOpacity key={i} onPress={() => onChange(i)} activeOpacity={readOnly ? 1 : 0.7} style={{
+                <TouchableOpacity key={i} onPress={() => onPick(i)} activeOpacity={readOnly ? 1 : 0.7} style={{
                   flexDirection: 'row', alignItems: 'center', gap: 12,
                   padding: 14, borderRadius: 16,
                   backgroundColor: sel ? SELECTED_BG : colors.surface2,
@@ -731,12 +745,17 @@ export function renderBlock(
                   opacity: readOnly && !sel ? 0.5 : 1,
                 }}>
                   <View style={{
-                    width: 20, height: 20, borderRadius: 10, borderWidth: 2,
+                    width: 20, height: 20,
+                    borderRadius: allowMultiple ? 4 : 10,
+                    borderWidth: 2,
                     borderColor: sel ? colors.primary : '#D4D4D4',
                     backgroundColor: sel ? colors.primary : 'transparent',
                     alignItems: 'center', justifyContent: 'center',
                   }}>
-                    {sel && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />}
+                    {sel && (allowMultiple
+                      ? <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700', lineHeight: 14 }}>✓</Text>
+                      : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />
+                    )}
                   </View>
                   <Text style={{ fontSize: 15, color: colors.primary, fontWeight: sel ? '600' : '400', flex: 1 }}>
                     {label || `Option ${i + 1}`}
