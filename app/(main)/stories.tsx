@@ -81,6 +81,7 @@ import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { InlineGuide } from '@/components/InlineGuide'
 import { FloatingCapture } from '@/components/FloatingCapture'
 import { PageLoader } from '@/components/PageLoader'
+import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { useAuth } from '@/lib/auth-context'
 import { colors, radii, spacing } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
@@ -994,7 +995,6 @@ export default function StoriesScreen() {
   const [stories, setStories] = useState<Story[]>([])
   const [guideVisible, setGuideVisible] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState<'all' | 'published' | 'draft'>('all')
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid')
 
@@ -1202,9 +1202,9 @@ export default function StoriesScreen() {
   }, [openStoryId, stories, loading])
 
   async function onRefresh() {
-    setRefreshing(true)
+    // PullToRefreshScrollView owns the refreshing state — we just run
+    // the fetches and let the wrapper handle the spinner + affirmation.
     await Promise.all([fetchStories(), fetchChapters()])
-    setRefreshing(false)
   }
 
   // ─── Editor Actions ───────────────────────────────
@@ -1837,7 +1837,10 @@ export default function StoriesScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: spacing.screenPadding, paddingTop: 0, paddingBottom: 120 }}>
+      <PullToRefreshScrollView
+        onRefresh={onRefresh}
+        contentContainerStyle={{ padding: spacing.screenPadding, paddingTop: 0, paddingBottom: 120 }}
+      >
         {/* Inline guide */}
         <InlineGuide
           guideKey="stories"
@@ -2204,7 +2207,7 @@ export default function StoriesScreen() {
         </TouchableOpacity>
         </>
         )}
-      </ScrollView>
+      </PullToRefreshScrollView>
 
       {/* Bottom floating nav bar */}
       {!editing && !viewingStory && (
