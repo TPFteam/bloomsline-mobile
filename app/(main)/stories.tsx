@@ -1800,47 +1800,49 @@ export default function StoriesScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff' }}>
-      {/* Header */}
-      <View style={{ paddingTop: insets.top + 20, paddingHorizontal: spacing.screenPadding, paddingBottom: 16, backgroundColor: '#fff' }}>
-        {/* Top row — notification + settings */}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <NotificationBell onOpenResource={() => {}} />
+      <PullToRefreshScrollView
+        onRefresh={onRefresh}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
+        {/* Header — inside the pull wrapper so it slides down with the content */}
+        <View style={{ paddingTop: insets.top + 20, paddingHorizontal: spacing.screenPadding, paddingBottom: 16, backgroundColor: '#fff' }}>
+          {/* Top row — notification + settings */}
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <NotificationBell onOpenResource={() => {}} />
+              <TouchableOpacity
+                onPress={() => router.push('/(main)/settings')}
+                activeOpacity={0.7}
+                style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}
+              >
+                <Settings size={18} color="#666" strokeWidth={1.8} />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Title + Create */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>
+              {t.stories?.title || 'Stories'}
+            </Text>
             <TouchableOpacity
-              onPress={() => router.push('/(main)/settings')}
-              activeOpacity={0.7}
-              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}
+              onPress={startCreate}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                backgroundColor: colors.bloom, borderRadius: radii.button,
+                paddingHorizontal: 16, paddingVertical: 10,
+              }}
             >
-              <Settings size={18} color="#666" strokeWidth={1.8} />
+              <Plus size={18} color="#fff" />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                {t.stories?.create || 'Create'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Title + Create */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 30, fontWeight: '700', color: colors.primary, letterSpacing: -0.8, lineHeight: 38 }}>
-            {t.stories?.title || 'Stories'}
-          </Text>
-          <TouchableOpacity
-            onPress={startCreate}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-              backgroundColor: colors.bloom, borderRadius: radii.button,
-              paddingHorizontal: 16, paddingVertical: 10,
-            }}
-          >
-            <Plus size={18} color="#fff" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
-              {t.stories?.create || 'Create'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <PullToRefreshScrollView
-        onRefresh={onRefresh}
-        contentContainerStyle={{ padding: spacing.screenPadding, paddingTop: 0, paddingBottom: 120 }}
-      >
+        {/* Body */}
+        <View style={{ paddingHorizontal: spacing.screenPadding }}>
         {/* Inline guide */}
         <InlineGuide
           guideKey="stories"
@@ -2207,6 +2209,7 @@ export default function StoriesScreen() {
         </TouchableOpacity>
         </>
         )}
+        </View>
       </PullToRefreshScrollView>
 
       {/* Bottom floating nav bar */}

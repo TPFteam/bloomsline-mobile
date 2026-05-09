@@ -8,113 +8,19 @@ interface Props extends ScrollViewProps {
   children: React.ReactNode
 }
 
-// On web we use `position: 'fixed'` so the affirmation + progress bar pin
-// to the viewport top regardless of where this scroll view sits in the
-// layout (some screens like Stories have a fixed header above us).
-// react-native-web supports `'fixed'` even though RN typings don't.
+// position: 'fixed' on web pins the affirmation to the viewport top
+// regardless of the scroll view's position in the layout. Native uses
+// the standard absolute fallback.
 const TOP_PIN_STYLE: any = Platform.OS === 'web'
   ? { position: 'fixed' }
   : { position: 'absolute' }
 
-/**
- * Slim teal progress strip at the very top of the screen. Grows during
- * the pull (gives the user a "you're getting close to triggering"
- * signal), then runs an indeterminate slide while the refresh is
- * actually happening, then fades.
- */
-function ProgressBar({ pullValue, pullTrigger, refreshing }: {
-  pullValue: Animated.Value
-  pullTrigger: number
-  refreshing: boolean
-}) {
-  // Indeterminate slide for the refreshing phase: a 35%-wide segment
-  // slides from -35% to 100% and loops.
-  const slide = useRef(new Animated.Value(-0.35)).current
-  const fade = useRef(new Animated.Value(0)).current
-
-  useEffect(() => {
-    if (refreshing) {
-      Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: false }).start()
-      const loop = Animated.loop(
-        Animated.timing(slide, {
-          toValue: 1,
-          duration: 1100,
-          useNativeDriver: false,
-        }),
-        { resetBeforeIteration: true },
-      )
-      loop.start()
-      return () => loop.stop()
-    } else {
-      Animated.timing(fade, { toValue: 0, duration: 350, useNativeDriver: false }).start()
-      slide.setValue(-0.35)
-    }
-  }, [refreshing, slide, fade])
-
-  const screenW = Dimensions.get('window').width
-
-  // While pulling: fixed-width fill that grows with pullValue.
-  const pullFillWidth = pullValue.interpolate({
-    inputRange: [0, pullTrigger],
-    outputRange: [0, screenW],
-    extrapolate: 'clamp',
-  })
-
-  // While refreshing: indeterminate segment that slides across.
-  const slideX = slide.interpolate({
-    inputRange: [-0.35, 1],
-    outputRange: [-screenW * 0.35, screenW],
-  })
-
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        ...TOP_PIN_STYLE,
-        top: 0,
-        left: 0,
-        right: 0,
-        height: 2,
-        backgroundColor: 'rgba(74, 154, 134, 0.12)',
-        overflow: 'hidden',
-        zIndex: 7,
-      }}
-    >
-      {/* Pull-progress fill (visible only when not refreshing) */}
-      {!refreshing && (
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            height: 2,
-            width: pullFillWidth,
-            backgroundColor: '#4A9A86',
-          }}
-        />
-      )}
-      {/* Indeterminate slide (visible only while refreshing) */}
-      {refreshing && (
-        <Animated.View
-          style={{
-            position: 'absolute',
-            top: 0,
-            height: 2,
-            width: screenW * 0.35,
-            backgroundColor: '#4A9A86',
-            opacity: fade,
-            transform: [{ translateX: slideX }],
-          }}
-        />
-      )}
-    </View>
-  )
-}
+const TEAL = '#4A9A86'
 
 /**
- * Tiny gentle one-liner shown below the progress strip while pulling /
- * refreshing, a la Slack's "If anyone can, it's you". Stays muted on
- * purpose so it never competes with the screen's actual content.
+ * Affirmation text rendered on top of the teal pull-band. Stays centered
+ * inside the band, so the white text reads against the teal as the band
+ * grows.
  */
 function AffirmationLine({ message, opacity, top }: {
   message: string
@@ -140,10 +46,9 @@ function AffirmationLine({ message, opacity, top }: {
         numberOfLines={1}
         style={{
           fontSize: 14,
-          fontWeight: '500',
-          color: '#4A9A86',
-          opacity: 0.9,
-          letterSpacing: 0.1,
+          fontWeight: '600',
+          color: '#fff',
+          letterSpacing: 0.2,
         }}
       >
         {message}
@@ -152,18 +57,65 @@ function AffirmationLine({ message, opacity, top }: {
   )
 }
 
+/**
+ * Shimmer band that slides across the teal pull-area while refresh is in
+ * flight. Gives the user a clear "yes, something is happening" signal
+ * beyond the static affirmation.
+ */
+function RefreshShimmer({ refreshing, height }: {
+  refreshing: boolean
+  height: number
+}) {
+  const slide = useRef(new Animated.Value(-0.4)).current
+  const fade = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    if (refreshing) {
+      Animated.timing(fade, { toValue: 1, duration: 200, useNativeDriver: false }).start()
+      const loop = Animated.loop(
+        Animated.timing(slide, { toValue: 1, duration: 1100, useNativeDriver: false }),
+        { resetBeforeIteration: true },
+      )
+      loop.start()
+      return () => loop.stop()
+    }
+    Animated.timing(fade, { toValue: 0, duration: 350, useNativeDriver: false }).start()
+    slide.setValue(-0.4)
+  }, [refreshing, slide, fade])
+
+  if (!refreshing && (fade as any).__getValue?.() === 0) return null
+
+  const screenW = Dimensions.get('window').width
+  const segW = screenW * 0.4
+  const x = slide.interpolate({
+    inputRange: [-0.4, 1],
+    outputRange: [-segW, screenW],
+  })
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        ...TOP_PIN_STYLE,
+        top: 0,
+        left: 0,
+        height,
+        width: segW,
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        opacity: fade,
+        zIndex: 7,
+        transform: [{ translateX: x }],
+      }}
+    />
+  )
+}
+
 export function PullToRefreshScrollView({ onRefresh, children, ...scrollProps }: Props) {
   const [refreshing, setRefreshing] = useState(false)
   const [message, setMessage] = useState<string>('')
   const { locale } = useI18n()
 
-  // Native fade for the affirmation: 0 → 1 over 250ms when refresh starts,
-  // 1 → 0 over 400ms when refresh ends.
   const nativeFade = useRef(new Animated.Value(0)).current
-
-  // pullY drives both the content slide AND the progress-bar growth.
-  // Defined here so both web and native handlers + the ProgressBar share
-  // the same underlying animated value.
   const pullY = useRef(new Animated.Value(0)).current
   const PULL_TRIGGER = 70
   const PULL_MAX = 120
@@ -186,7 +138,6 @@ export function PullToRefreshScrollView({ onRefresh, children, ...scrollProps }:
   if (Platform.OS !== 'web') {
     return (
       <View style={{ flex: 1 }}>
-        <ProgressBar pullValue={pullY} pullTrigger={PULL_TRIGGER} refreshing={refreshing} />
         <AffirmationLine message={message} opacity={nativeFade} top={56} />
         <ScrollView
           {...scrollProps}
@@ -194,8 +145,8 @@ export function PullToRefreshScrollView({ onRefresh, children, ...scrollProps }:
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor="#4A9A86"
-              colors={['#4A9A86']}
+              tintColor={TEAL}
+              colors={[TEAL]}
             />
           }
         >
@@ -206,10 +157,12 @@ export function PullToRefreshScrollView({ onRefresh, children, ...scrollProps }:
   }
 
   // ── Web: Slack-style pull-to-refresh ──────────────────────────────────
-  // Whole content slides down with the pull. The affirmation appears at
-  // the viewport top (position: fixed), with a slim progress strip just
-  // above it. Browser's native pull-refresh is suppressed in
-  // app/_layout.tsx via overscroll-behavior: contain.
+  // The wrapper has a teal background. The Animated.View (white) sits on
+  // top of it and translates downward as the user pulls — revealing the
+  // teal "gap" underneath. The teal area itself is the progress signal:
+  // bigger the pull, more teal visible. Affirmation is white text on top
+  // of the teal. While refresh is running, a faint white shimmer slides
+  // across the teal area.
 
   const startY = useRef(0)
   const pulling = useRef(false)
@@ -257,25 +210,44 @@ export function PullToRefreshScrollView({ onRefresh, children, ...scrollProps }:
     setTimeout(() => { if (!pulling.current) setMessage('') }, 600)
   }
 
-  // Affirmation fades in early in the pull so it's already legible by the
-  // time the trigger threshold is reached. While refreshing it sticks at
-  // full opacity (driven by nativeFade).
+  // Affirmation reads in early — already legible by the time the trigger
+  // is reached, so the user knows what they're going to release into.
   const pullOpacity = pullY.interpolate({
     inputRange: [0, 18, PULL_TRIGGER],
     outputRange: [0, 0.7, 1],
   })
 
+  // The affirmation should sit in the middle of the visible teal gap.
+  // While pulling, gap height = pullY → place text at pullY/2 - half of
+  // the line height so it's vertically centered. Clamp so it never goes
+  // negative (otherwise it would render above the viewport).
+  const affirmationTop = pullY.interpolate({
+    inputRange: [0, PULL_TRIGGER, PULL_MAX],
+    outputRange: [PULL_TRIGGER / 2 - 10, PULL_TRIGGER / 2 - 10, PULL_TRIGGER / 2 - 10],
+  })
+
   return (
-    <View style={{ flex: 1, overflow: 'hidden' }}>
-      <ProgressBar pullValue={pullY} pullTrigger={PULL_TRIGGER} refreshing={refreshing} />
+    <View style={{ flex: 1, overflow: 'hidden', backgroundColor: TEAL }}>
+      {/* The teal background of this View IS the progress band. As the
+          inner Animated.View (white) translates down, the gap exposes
+          the teal. Bigger pull = more teal = clearer "you're triggering
+          a refresh" cue. */}
+
+      <RefreshShimmer refreshing={refreshing} height={PULL_TRIGGER} />
+
+      {/* Affirmation centered in the visible teal band (~PULL_TRIGGER tall
+          during refresh; smaller while pulling, but the text stays at
+          the same screen position so it doesn't jump as the gap grows). */}
       <AffirmationLine
         message={message}
         opacity={refreshing ? nativeFade : pullOpacity}
-        top={12}
+        top={Math.round(PULL_TRIGGER / 2 - 10)}
       />
+
       <Animated.View
         style={{
           flex: 1,
+          backgroundColor: '#fff',
           transform: [{ translateY: pullY }],
         }}
       >
