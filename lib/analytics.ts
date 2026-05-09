@@ -1,6 +1,7 @@
 import { Platform } from 'react-native'
 import PostHog from 'posthog-react-native'
 import * as Sentry from '@sentry/react-native'
+import { scrubPII, scrubSentryEvent, scrubSentryBreadcrumb } from './analytics-scrub'
 
 // PostHog
 const POSTHOG_KEY = process.env.EXPO_PUBLIC_POSTHOG_KEY || ''
@@ -29,6 +30,11 @@ export function initSentry() {
     dsn: SENTRY_DSN,
     tracesSampleRate: 0.2,
     enabled: !__DEV__,
+    // Patient data (moment captions, journal text, emails) routinely sits
+    // in closures around throwing code. Scrub before the event leaves the
+    // device. See lib/analytics-scrub.ts for the redaction policy.
+    beforeSend: scrubSentryEvent,
+    beforeBreadcrumb: scrubSentryBreadcrumb,
   })
 }
 
@@ -73,20 +79,25 @@ export function captureError(
       ? error
       : new Error(typeof error === 'string' ? error : 'Unknown error')
 
+  // Caller-supplied context can carry whole domain objects; scrub before
+  // anything leaves the device. Sentry's beforeSend will scrub again as
+  // defense-in-depth, but PostHog events bypass that hook so we scrub here.
+  const safeContext = context ? (scrubPII(context) as Record<string, unknown>) : undefined
+
   try {
     posthog?.capture('client_error', {
       error_name: err.name,
-      error_message: err.message,
+      error_message: typeof err.message === 'string' ? (scrubPII(err.message) as string) : err.message,
       error_stack: err.stack || null,
       platform: Platform.OS,
-      ...context,
+      ...safeContext,
     })
   } catch {
     /* ignore */
   }
 
   try {
-    Sentry.captureException(err, context ? { extra: context } : undefined)
+    Sentry.captureException(err, safeContext ? { extra: safeContext } : undefined)
   } catch {
     /* ignore */
   }
