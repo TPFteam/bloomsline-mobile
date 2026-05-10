@@ -587,18 +587,35 @@ export function renderBlock(
   const onChange = readOnly ? () => {} : onBlockChange
 
   switch (block.type) {
-    case 'heading':
+    case 'heading': {
+      // Optional heading level — defaults to h2 to preserve historical
+      // resources that didn't carry the field.
+      const lvl = (block as any).headingLevel === 'h1' ? 'h1'
+        : (block as any).headingLevel === 'h3' ? 'h3'
+        : 'h2'
+      const fontSize = lvl === 'h1' ? 28 : lvl === 'h3' ? 18 : 22
+      const lineHeight = lvl === 'h1' ? 34 : lvl === 'h3' ? 24 : 28
+      const fontWeight = (lvl === 'h1' ? '700' : '600') as '600' | '700'
       return (
         <View style={{ marginTop: 4 }}>
           <Text style={{
-            fontSize: 22,
-            fontWeight: '600',
+            fontSize,
+            fontWeight,
             color: lightText ? '#FFFFFF' : '#1A1A1A',
             letterSpacing: -0.4,
-            lineHeight: 28,
+            lineHeight,
           }}>{content}</Text>
         </View>
       )
+    }
+
+    case 'spacer': {
+      // Vertical whitespace — small/medium/large.
+      const size = (block as any).spacerSize === 'sm' ? 12
+        : (block as any).spacerSize === 'lg' ? 48
+        : 24
+      return <View style={{ height: size }} aria-hidden />
+    }
 
     case 'paragraph':
       return (

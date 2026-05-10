@@ -23,6 +23,7 @@ const STEP_COLORS = [
 const CONTENT_TYPES = new Set([
   'heading', 'paragraph', 'quote', 'tip', 'divider', 'key_points',
   'callout', 'image', 'video', 'audio', 'link', 'pdf_document',
+  'spacer',
 ])
 
 // Immersive blocks that should be full-screen (bypass card)
