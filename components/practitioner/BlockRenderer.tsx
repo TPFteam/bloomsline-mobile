@@ -2378,9 +2378,12 @@ function ZonedCanvasBlock({
             <View
               key={zone.id}
               style={{
-                backgroundColor: colour.bgRgba,
-                borderColor: colour.stroke + '55',
-                borderWidth: 1,
+                // Faint card bg blended into the page's green theme — use
+                // an off-white instead so the card itself reads as a
+                // distinct surface regardless of page background.
+                backgroundColor: '#fafaf9',
+                borderColor: colour.stroke + '88',
+                borderWidth: 1.5,
                 borderRadius: 12,
                 padding: 12,
               }}
@@ -2411,9 +2414,14 @@ function ZonedCanvasBlock({
                       {!readOnly ? (
                         <TouchableOpacity
                           onPress={() => removeEntry(zone.id, entry.id)}
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                          style={{
+                            width: 22, height: 22, borderRadius: 11,
+                            backgroundColor: '#f3f4f6',
+                            alignItems: 'center', justifyContent: 'center',
+                          }}
                         >
-                          <XIcon size={14} color="#9ca3af" />
+                          <XIcon size={13} color="#374151" />
                         </TouchableOpacity>
                       ) : null}
                     </View>
