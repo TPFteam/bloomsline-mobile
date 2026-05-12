@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native'
-import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy, Plus, X as XIcon, Maximize2 } from 'lucide-react-native'
+import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy, Plus, X as XIcon, Maximize2, Minimize2 } from 'lucide-react-native'
 import { Video as ExpoVideo, ResizeMode } from 'expo-av'
 import { WebView } from 'react-native-webview'
 import Svg, { Rect, Circle as SvgCircle, Ellipse as SvgEllipse, Polygon as SvgPolygon, Text as SvgText, Image as SvgImage, G as SvgG } from 'react-native-svg'
@@ -2322,20 +2322,31 @@ function ZonedCanvasBlock({
         onRequestClose={() => setExpanded(false)}
       >
         <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 48, paddingBottom: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 48, paddingBottom: 12, gap: 12 }}>
             <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', flex: 1 }} numberOfLines={1}>
               {block.content || ''}
             </Text>
             <TouchableOpacity
               onPress={() => setExpanded(false)}
-              style={{ padding: 8, marginLeft: 12 }}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#fff', paddingVertical: 8, paddingHorizontal: 14, borderRadius: 999 }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityLabel={fr ? 'Réduire' : es ? 'Reducir' : 'Close expanded canvas'}
             >
-              <XIcon size={22} color="#fff" />
+              <Minimize2 size={16} color="#111827" />
+              <Text style={{ color: '#111827', fontSize: 14, fontWeight: '600' }}>
+                {fr ? 'Réduire' : es ? 'Cerrar' : 'Close'}
+              </Text>
             </TouchableOpacity>
           </View>
-          <View style={{ flex: 1, paddingHorizontal: 12, paddingBottom: 24, justifyContent: 'center' }}>
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12 }}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setExpanded(false)}
+            style={{ flex: 1, paddingHorizontal: 12, paddingBottom: 12, justifyContent: 'center' }}
+          >
+            <View
+              style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12 }}
+              onStartShouldSetResponder={() => true}
+            >
               <Svg viewBox={`0 0 ${canvas.width} ${canvas.height}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{ aspectRatio: canvas.width / canvas.height }}>
                 {canvas.backgroundImageUrl ? (
                   <SvgImage
@@ -2350,7 +2361,10 @@ function ZonedCanvasBlock({
                 {paintOrder.map(renderEntries)}
               </Svg>
             </View>
-          </View>
+          </TouchableOpacity>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, textAlign: 'center', paddingBottom: 18 }}>
+            {fr ? "Touchez à l'extérieur pour fermer" : es ? 'Toca afuera para cerrar' : 'Tap outside to close'}
+          </Text>
         </View>
       </Modal>
 
