@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native'
 import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy } from 'lucide-react-native'
 import { Video as ExpoVideo, ResizeMode } from 'expo-av'
+import { WebView } from 'react-native-webview'
 import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
@@ -1580,23 +1581,78 @@ export function renderBlock(
 
     // ─── Media blocks (psychoeducation) ────────────────────
     case 'video': {
-      const videoUrl = (block as any).mediaFile?.url || (block as any).url || content
-      return videoUrl ? (
+      const videoType: 'upload' | 'youtube' | 'vimeo' | undefined = (block as any).videoType
+      const externalUrl: string | undefined = (block as any).videoUrl
+      const uploadedUrl: string | undefined =
+        (block as any).mediaFile?.url || (block as any).url || content
+
+      // YouTube / Vimeo embeds — the worksheet creator stores the raw URL
+      // in block.videoUrl. The renderer previously only checked
+      // mediaFile.url, so external videos came back as an empty native
+      // <video> element with no source.
+      const externalEmbed = (() => {
+        if (!externalUrl) return null
+        if (videoType === 'youtube') {
+          const m = externalUrl.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)
+          return m ? `https://www.youtube.com/embed/${m[1]}` : null
+        }
+        if (videoType === 'vimeo') {
+          const m = externalUrl.match(/vimeo\.com\/(\d+)/)
+          return m ? `https://player.vimeo.com/video/${m[1]}` : null
+        }
+        return null
+      })()
+
+      const caption = (block as any).caption
+
+      if (externalEmbed) {
+        return (
+          <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: '#000' }}>
+            {Platform.OS === 'web' ? (
+              // @ts-ignore — iframe for web; allows YouTube/Vimeo controls
+              <iframe
+                src={externalEmbed}
+                style={{ width: '100%', height: 220, border: 0, backgroundColor: '#000' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            ) : (
+              <View style={{ width: '100%', height: 220 }}>
+                <WebView
+                  source={{ uri: externalEmbed }}
+                  style={{ flex: 1, backgroundColor: '#000' }}
+                  allowsFullscreenVideo
+                  javaScriptEnabled
+                  domStorageEnabled
+                  mediaPlaybackRequiresUserAction
+                />
+              </View>
+            )}
+            {caption && (
+              <View style={{ padding: 12, backgroundColor: colors.surface2 }}>
+                <Text style={{ fontSize: 12, color: MUTED }}>{caption}</Text>
+              </View>
+            )}
+          </View>
+        )
+      }
+
+      return uploadedUrl ? (
         <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: '#000' }}>
           {Platform.OS === 'web' ? (
             // @ts-ignore — HTML video element for web
-            <video controls src={videoUrl} style={{ width: '100%', height: 220, backgroundColor: '#000', objectFit: 'contain' }} />
+            <video controls src={uploadedUrl} style={{ width: '100%', height: 220, backgroundColor: '#000', objectFit: 'contain' }} />
           ) : (
             <ExpoVideo
-              source={{ uri: videoUrl }}
+              source={{ uri: uploadedUrl }}
               style={{ width: '100%', height: 220 }}
               useNativeControls
               resizeMode={ResizeMode.CONTAIN}
             />
           )}
-          {(block as any).caption && (
+          {caption && (
             <View style={{ padding: 12, backgroundColor: colors.surface2 }}>
-              <Text style={{ fontSize: 12, color: MUTED }}>{(block as any).caption}</Text>
+              <Text style={{ fontSize: 12, color: MUTED }}>{caption}</Text>
             </View>
           )}
         </View>
