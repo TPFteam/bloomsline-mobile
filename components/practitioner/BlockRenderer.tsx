@@ -2085,28 +2085,96 @@ function ZonedCanvasBlock({
     return null
   }
 
+  // Per-zone layout — returns the centre column + label baseline + the y
+  // where entry text should start stacking. Labels sit near the *top* of
+  // each shape (not the centre) so entries have room to stack below them
+  // and still fall inside the zone.
+  const zonePos = (z: ZCZone) => {
+    const s = z.shape
+    if (s.kind === 'rect') {
+      const cx = (s.x ?? 0) + (s.w ?? 0) / 2
+      const labelY = (s.y ?? 0) + 30
+      return { cx, labelY, entriesStartY: labelY + 30 }
+    }
+    if (s.kind === 'circle') {
+      const cx = s.cx ?? 0
+      const labelY = (s.cy ?? 0) - (s.r ?? 0) + 34
+      return { cx, labelY, entriesStartY: labelY + 30 }
+    }
+    if (s.kind === 'ellipse') {
+      const cx = s.cx ?? 0
+      const labelY = (s.cy ?? 0) - (s.ry ?? 0) + 34
+      return { cx, labelY, entriesStartY: labelY + 30 }
+    }
+    if (s.kind === 'polygon' && s.points && s.points.length) {
+      const cx = s.points.reduce((acc, [x]) => acc + x, 0) / s.points.length
+      const minY = Math.min(...s.points.map(p => p[1]))
+      const labelY = minY + 30
+      return { cx, labelY, entriesStartY: labelY + 30 }
+    }
+    return { cx: 0, labelY: 0, entriesStartY: 0 }
+  }
+
   const renderLabel = (z: ZCZone) => {
     const a = ZC_ACCENT[(z.accent ?? 'slate') as ZCAccent]
-    const s = z.shape
-    let cx = 0, cy = 0
-    if (s.kind === 'rect')         { cx = (s.x ?? 0) + (s.w ?? 0) / 2; cy = (s.y ?? 0) + 22 }
-    else if (s.kind === 'circle')  { cx = s.cx ?? 0; cy = s.cy ?? 0 }
-    else if (s.kind === 'ellipse') { cx = s.cx ?? 0; cy = s.cy ?? 0 }
-    else if (s.kind === 'polygon' && s.points && s.points.length) {
-      cx = s.points.reduce((acc, [x]) => acc + x, 0) / s.points.length
-      cy = s.points.reduce((acc, [, y]) => acc + y, 0) / s.points.length
-    }
+    const { cx, labelY } = zonePos(z)
     return (
       <SvgText
         key={`label-${z.id}`}
-        x={cx} y={cy}
+        x={cx} y={labelY}
         fill={a.text}
-        fontSize={14}
-        fontWeight="600"
+        fontSize={18}
+        fontWeight="700"
         textAnchor="middle"
       >
         {lt(z.label)}
       </SvgText>
+    )
+  }
+
+  // Paint each zone's entries as stacked text inside the shape itself —
+  // patient sees their answers placed in the canvas, not only in the
+  // list below. Capped + truncated so a runaway zone doesn't spill.
+  const renderEntries = (z: ZCZone) => {
+    const list = entries[z.id] ?? []
+    if (list.length === 0) return null
+    const a = ZC_ACCENT[(z.accent ?? 'slate') as ZCAccent]
+    const { cx, entriesStartY } = zonePos(z)
+    const max = 5
+    const visible = list.slice(0, max)
+    const truncate = (s: string) => (s.length > 30 ? s.slice(0, 28) + '…' : s)
+    return (
+      <>
+        {visible.map((entry, i) => (
+          <SvgText
+            key={`entry-${entry.id}`}
+            x={cx}
+            y={entriesStartY + i * 26}
+            fill={a.text}
+            fontSize={15}
+            fontWeight="500"
+            textAnchor="middle"
+            pointerEvents="none"
+          >
+            {`• ${truncate(entry.text || '')}`}
+          </SvgText>
+        ))}
+        {list.length > visible.length ? (
+          <SvgText
+            key={`more-${z.id}`}
+            x={cx}
+            y={entriesStartY + visible.length * 26}
+            fill={a.stroke}
+            fontSize={12}
+            fontStyle="italic"
+            textAnchor="middle"
+            opacity={0.75}
+            pointerEvents="none"
+          >
+            {fr ? `+${list.length - visible.length} de plus` : es ? `+${list.length - visible.length} más` : `+${list.length - visible.length} more`}
+          </SvgText>
+        ) : null}
+      </>
     )
   }
 
@@ -2129,6 +2197,7 @@ function ZonedCanvasBlock({
           ) : null}
           {paintOrder.map(renderShape)}
           {paintOrder.map(renderLabel)}
+          {paintOrder.map(renderEntries)}
         </Svg>
       </View>
 
@@ -2141,11 +2210,19 @@ function ZonedCanvasBlock({
           return (
             <View
               key={zone.id}
-              style={{ backgroundColor: colour.bgRgba, borderColor: colour.stroke + '33', borderWidth: 1, borderRadius: 12, padding: 12 }}
+              style={{
+                backgroundColor: '#fff',
+                borderColor: '#e5e7eb',
+                borderWidth: 1,
+                borderLeftColor: colour.stroke,
+                borderLeftWidth: 4,
+                borderRadius: 12,
+                padding: 12,
+              }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colour.text }}>{lt(zone.label)}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: colour.text }}>{lt(zone.label)}</Text>
                   {desc ? <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{desc}</Text> : null}
                 </View>
                 {!readOnly ? (
