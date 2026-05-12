@@ -2244,7 +2244,7 @@ function ZonedCanvasBlock({
     const placed = planEntries(z)
     const overflow = list.length - placed.length
     return (
-      <>
+      <SvgG key={`entries-${z.id}`}>
         {placed.map(p => (
           <SvgG key={`entry-${p.id}`} transform={`translate(${p.cx} ${p.cy}) rotate(${p.angle})`}>
             <Rect
@@ -2267,7 +2267,6 @@ function ZonedCanvasBlock({
         ))}
         {overflow > 0 ? (
           <SvgText
-            key={`more-${z.id}`}
             x={zonePos(z).cx}
             y={zonePos(z).labelY + 22}
             fill={a.stroke}
@@ -2280,7 +2279,7 @@ function ZonedCanvasBlock({
             {fr ? `+${overflow} de plus` : es ? `+${overflow} más` : `+${overflow} more`}
           </SvgText>
         ) : null}
-      </>
+      </SvgG>
     )
   }
 
