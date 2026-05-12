@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native'
-import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy } from 'lucide-react-native'
+import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy, Plus, X as XIcon } from 'lucide-react-native'
 import { Video as ExpoVideo, ResizeMode } from 'expo-av'
 import { WebView } from 'react-native-webview'
+import Svg, { Rect, Circle as SvgCircle, Ellipse as SvgEllipse, Polygon as SvgPolygon, Text as SvgText, Image as SvgImage } from 'react-native-svg'
+import { Modal } from 'react-native'
 import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
@@ -1887,6 +1889,18 @@ export function renderBlock(
       )
     }
 
+    case 'zoned_canvas': {
+      return (
+        <ZonedCanvasBlock
+          block={block as any}
+          value={blockValue as any}
+          onChange={onChange}
+          readOnly={readOnly}
+          locale={locale}
+        />
+      )
+    }
+
     default:
       return (
         <View style={{ padding: 12, backgroundColor: colors.surface2, borderRadius: 12 }}>
@@ -1894,4 +1908,310 @@ export function renderBlock(
         </View>
       )
   }
+}
+
+// ─── Zoned canvas (spatial-zone interactive exercise) ─────────────
+// Mobile counterpart to the web ZonedCanvasRenderer. Same data shape
+// (Record<zoneId, ZoneEntry[]>), same template library. Renders the
+// canvas via react-native-svg and a list-per-zone view below for
+// entry.
+
+type ZCAccent = 'teal' | 'amber' | 'rose' | 'violet' | 'sky' | 'emerald' | 'orange' | 'slate'
+const ZC_ACCENT: Record<ZCAccent, { fill: string; stroke: string; text: string; bgRgba: string }> = {
+  teal:    { fill: 'rgba(20, 184, 166, 0.10)', stroke: '#0d9488', text: '#0f766e', bgRgba: 'rgba(20, 184, 166, 0.08)' },
+  amber:   { fill: 'rgba(245, 158, 11, 0.10)', stroke: '#d97706', text: '#a16207', bgRgba: 'rgba(245, 158, 11, 0.08)' },
+  rose:    { fill: 'rgba(244, 63, 94, 0.10)',  stroke: '#e11d48', text: '#be123c', bgRgba: 'rgba(244, 63, 94, 0.08)' },
+  violet:  { fill: 'rgba(139, 92, 246, 0.10)', stroke: '#7c3aed', text: '#6d28d9', bgRgba: 'rgba(139, 92, 246, 0.08)' },
+  sky:     { fill: 'rgba(14, 165, 233, 0.10)', stroke: '#0284c7', text: '#0369a1', bgRgba: 'rgba(14, 165, 233, 0.08)' },
+  emerald: { fill: 'rgba(16, 185, 129, 0.10)', stroke: '#059669', text: '#047857', bgRgba: 'rgba(16, 185, 129, 0.08)' },
+  orange:  { fill: 'rgba(249, 115, 22, 0.10)', stroke: '#ea580c', text: '#c2410c', bgRgba: 'rgba(249, 115, 22, 0.08)' },
+  slate:   { fill: 'rgba(100, 116, 139, 0.06)', stroke: '#475569', text: '#334155', bgRgba: 'rgba(100, 116, 139, 0.06)' },
+}
+
+interface ZCShape {
+  kind: 'rect' | 'circle' | 'ellipse' | 'polygon'
+  x?: number; y?: number; w?: number; h?: number; rx?: number
+  cx?: number; cy?: number; r?: number; ry?: number
+  points?: [number, number][]
+}
+interface ZCZone {
+  id: string
+  label: { en: string; fr: string; es?: string }
+  description?: { en: string; fr: string; es?: string }
+  shape: ZCShape
+  accent?: ZCAccent
+  parentZoneId?: string | null
+}
+interface ZCBlock {
+  id: string
+  content?: string
+  canvas: { width: number; height: number; backgroundImageUrl?: string }
+  zones: ZCZone[]
+}
+interface ZCEntry { id: string; text: string; createdAt: string }
+
+function zoneArea(z: ZCZone): number {
+  const s = z.shape
+  if (s.kind === 'rect') return (s.w ?? 0) * (s.h ?? 0)
+  if (s.kind === 'circle') return Math.PI * (s.r ?? 0) ** 2
+  if (s.kind === 'ellipse') return Math.PI * (s.rx ?? 0) * (s.ry ?? 0)
+  if (s.kind === 'polygon' && s.points) {
+    let a = 0
+    for (let i = 0; i < s.points.length; i++) {
+      const [x1, y1] = s.points[i]
+      const [x2, y2] = s.points[(i + 1) % s.points.length]
+      a += x1 * y2 - x2 * y1
+    }
+    return Math.abs(a) / 2
+  }
+  return 0
+}
+
+function ZonedCanvasBlock({
+  block,
+  value,
+  onChange,
+  readOnly = false,
+  locale,
+}: {
+  block: ZCBlock
+  value: Record<string, ZCEntry[]> | undefined
+  onChange?: (v: Record<string, ZCEntry[]>) => void
+  readOnly?: boolean
+  locale?: string
+}) {
+  const fr = locale === 'fr'
+  const es = locale === 'es'
+  const lt = (l: { en: string; fr: string; es?: string }) =>
+    fr ? l.fr : es ? (l.es ?? l.en) : l.en
+
+  const entries = value ?? {}
+  const [editingZone, setEditingZone] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+
+  const startAdd = (zoneId: string) => {
+    if (readOnly) return
+    setEditingZone(zoneId)
+    setDraft('')
+  }
+  const commitAdd = () => {
+    if (!editingZone || !draft.trim()) { setEditingZone(null); return }
+    const next = { ...entries }
+    const list = next[editingZone] ? [...next[editingZone]] : []
+    list.push({
+      id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      text: draft.trim(),
+      createdAt: new Date().toISOString(),
+    })
+    next[editingZone] = list
+    onChange?.(next)
+    setEditingZone(null)
+    setDraft('')
+  }
+  const removeEntry = (zoneId: string, entryId: string) => {
+    const next = { ...entries }
+    next[zoneId] = (next[zoneId] || []).filter(e => e.id !== entryId)
+    if (next[zoneId].length === 0) delete next[zoneId]
+    onChange?.(next)
+  }
+
+  const paintOrder = [...block.zones].sort((a, b) => zoneArea(b) - zoneArea(a))
+
+  const renderShape = (z: ZCZone) => {
+    const a = ZC_ACCENT[(z.accent ?? 'slate') as ZCAccent]
+    const s = z.shape
+    if (s.kind === 'rect') {
+      return (
+        <Rect
+          key={z.id}
+          x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx ?? 0}
+          fill={a.fill} stroke={a.stroke} strokeWidth={2}
+          onPress={() => startAdd(z.id)}
+        />
+      )
+    }
+    if (s.kind === 'circle') {
+      return (
+        <SvgCircle
+          key={z.id}
+          cx={s.cx} cy={s.cy} r={s.r}
+          fill={a.fill} stroke={a.stroke} strokeWidth={2}
+          onPress={() => startAdd(z.id)}
+        />
+      )
+    }
+    if (s.kind === 'ellipse') {
+      return (
+        <SvgEllipse
+          key={z.id}
+          cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
+          fill={a.fill} stroke={a.stroke} strokeWidth={2}
+          onPress={() => startAdd(z.id)}
+        />
+      )
+    }
+    if (s.kind === 'polygon' && s.points) {
+      return (
+        <SvgPolygon
+          key={z.id}
+          points={s.points.map(([x, y]) => `${x},${y}`).join(' ')}
+          fill={a.fill} stroke={a.stroke} strokeWidth={2}
+          onPress={() => startAdd(z.id)}
+        />
+      )
+    }
+    return null
+  }
+
+  const renderLabel = (z: ZCZone) => {
+    const a = ZC_ACCENT[(z.accent ?? 'slate') as ZCAccent]
+    const s = z.shape
+    let cx = 0, cy = 0
+    if (s.kind === 'rect')         { cx = (s.x ?? 0) + (s.w ?? 0) / 2; cy = (s.y ?? 0) + 22 }
+    else if (s.kind === 'circle')  { cx = s.cx ?? 0; cy = s.cy ?? 0 }
+    else if (s.kind === 'ellipse') { cx = s.cx ?? 0; cy = s.cy ?? 0 }
+    else if (s.kind === 'polygon' && s.points && s.points.length) {
+      cx = s.points.reduce((acc, [x]) => acc + x, 0) / s.points.length
+      cy = s.points.reduce((acc, [, y]) => acc + y, 0) / s.points.length
+    }
+    return (
+      <SvgText
+        key={`label-${z.id}`}
+        x={cx} y={cy}
+        fill={a.text}
+        fontSize={14}
+        fontWeight="600"
+        textAnchor="middle"
+      >
+        {lt(z.label)}
+      </SvgText>
+    )
+  }
+
+  return (
+    <View>
+      {block.content ? (
+        <Text style={{ color: '#374151', fontSize: 15, lineHeight: 22, marginBottom: 16 }}>{block.content}</Text>
+      ) : null}
+
+      {/* Canvas */}
+      <View style={{ backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f3f4f6', padding: 8, marginBottom: 16 }}>
+        <Svg viewBox={`0 0 ${block.canvas.width} ${block.canvas.height}`} width="100%" height={280}>
+          {block.canvas.backgroundImageUrl ? (
+            <SvgImage
+              href={block.canvas.backgroundImageUrl as any}
+              x={0} y={0}
+              width={block.canvas.width} height={block.canvas.height}
+              preserveAspectRatio="xMidYMid meet"
+            />
+          ) : null}
+          {paintOrder.map(renderShape)}
+          {paintOrder.map(renderLabel)}
+        </Svg>
+      </View>
+
+      {/* Per-zone list — primary mobile input surface */}
+      <View style={{ gap: 12 }}>
+        {block.zones.map(zone => {
+          const colour = ZC_ACCENT[(zone.accent ?? 'slate') as ZCAccent]
+          const list = entries[zone.id] ?? []
+          const desc = zone.description ? lt(zone.description) : ''
+          return (
+            <View
+              key={zone.id}
+              style={{ backgroundColor: colour.bgRgba, borderColor: colour.stroke + '33', borderWidth: 1, borderRadius: 12, padding: 12 }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colour.text }}>{lt(zone.label)}</Text>
+                  {desc ? <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{desc}</Text> : null}
+                </View>
+                {!readOnly ? (
+                  <TouchableOpacity
+                    onPress={() => startAdd(zone.id)}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, backgroundColor: '#fff', borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' }}
+                  >
+                    <Plus size={12} color="#4b5563" />
+                    <Text style={{ fontSize: 12, fontWeight: '500', color: '#374151' }}>
+                      {fr ? 'Ajouter' : es ? 'Añadir' : 'Add'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+              {list.length > 0 ? (
+                <View style={{ gap: 6 }}>
+                  {list.map(entry => (
+                    <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                      <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 6, backgroundColor: colour.stroke }} />
+                      <Text style={{ flex: 1, fontSize: 14, color: '#1f2937', lineHeight: 20 }}>{entry.text}</Text>
+                      {!readOnly ? (
+                        <TouchableOpacity
+                          onPress={() => removeEntry(zone.id, entry.id)}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                          <XIcon size={14} color="#9ca3af" />
+                        </TouchableOpacity>
+                      ) : null}
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={{ fontSize: 12, color: '#9ca3af', fontStyle: 'italic' }}>
+                  {fr ? 'Aucune entrée pour le moment' : es ? 'Sin entradas todavía' : 'No entries yet'}
+                </Text>
+              )}
+            </View>
+          )
+        })}
+      </View>
+
+      {/* Bottom-sheet input */}
+      <Modal
+        visible={!!editingZone}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditingZone(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity activeOpacity={1} onPress={() => setEditingZone(null)} style={{ flex: 1 }} />
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 16, gap: 12 }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {fr ? 'Ajouter à' : es ? 'Añadir a' : 'Add to'}
+            </Text>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
+              {editingZone ? lt(block.zones.find(z => z.id === editingZone)!.label) : ''}
+            </Text>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              placeholder={fr ? 'Écrivez quelque chose…' : es ? 'Escribe algo…' : 'Write something…'}
+              multiline
+              numberOfLines={3}
+              autoFocus
+              style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, padding: 12, fontSize: 14, color: '#1f2937', minHeight: 80, textAlignVertical: 'top' }}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setEditingZone(null)}
+                style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
+              >
+                <Text style={{ fontSize: 14, color: '#4b5563' }}>
+                  {fr ? 'Annuler' : es ? 'Cancelar' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={commitAdd}
+                disabled={!draft.trim()}
+                style={{ paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, backgroundColor: draft.trim() ? '#111827' : '#d1d5db' }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '500', color: '#fff' }}>
+                  {fr ? 'Ajouter' : es ? 'Añadir' : 'Add'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  )
 }
