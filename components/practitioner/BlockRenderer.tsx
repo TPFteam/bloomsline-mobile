@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native'
-import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy, Plus, X as XIcon } from 'lucide-react-native'
+import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy, Plus, X as XIcon, Maximize2 } from 'lucide-react-native'
 import { Video as ExpoVideo, ResizeMode } from 'expo-av'
 import { WebView } from 'react-native-webview'
-import Svg, { Rect, Circle as SvgCircle, Ellipse as SvgEllipse, Polygon as SvgPolygon, Text as SvgText, Image as SvgImage } from 'react-native-svg'
+import Svg, { Rect, Circle as SvgCircle, Ellipse as SvgEllipse, Polygon as SvgPolygon, Text as SvgText, Image as SvgImage, G as SvgG } from 'react-native-svg'
 import { Modal } from 'react-native'
 import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
@@ -1988,6 +1988,7 @@ function ZonedCanvasBlock({
   const entries = value ?? {}
   const [editingZone, setEditingZone] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
+  const [expanded, setExpanded] = useState(false)
 
   const startAdd = (zoneId: string) => {
     if (readOnly) return
@@ -2132,46 +2133,151 @@ function ZonedCanvasBlock({
     )
   }
 
-  // Paint each zone's entries as stacked text inside the shape itself —
-  // patient sees their answers placed in the canvas, not only in the
-  // list below. Capped + truncated so a runaway zone doesn't spill.
+  // Scatter each entry as a small "tag" pill at a deterministic-but-
+  // varied position inside the zone. Pills avoid the label area, child
+  // zones (e.g. the inner circle for Circle of Control), and each other.
+  // Deterministic seeding keeps positions stable across re-renders so
+  // pills don't jiggle when the patient adds a new one.
+  const seededRand = (seed: string) => {
+    let h = 2166136261
+    for (let i = 0; i < seed.length; i++) {
+      h ^= seed.charCodeAt(i)
+      h = (h * 16777619) >>> 0
+    }
+    return () => {
+      h = (h * 1664525 + 1013904223) >>> 0
+      return h / 0xffffffff
+    }
+  }
+  const estimatePillWidth = (text: string, fontSize: number) =>
+    Math.max(50, text.length * fontSize * 0.58 + 24)
+  const insideShape = (x: number, y: number, s: ZCShape, pad = 0): boolean => {
+    if (s.kind === 'rect') {
+      return x >= (s.x ?? 0) + pad && x <= (s.x ?? 0) + (s.w ?? 0) - pad &&
+             y >= (s.y ?? 0) + pad && y <= (s.y ?? 0) + (s.h ?? 0) - pad
+    }
+    if (s.kind === 'circle') {
+      const dx = x - (s.cx ?? 0), dy = y - (s.cy ?? 0)
+      return Math.hypot(dx, dy) <= (s.r ?? 0) - pad
+    }
+    if (s.kind === 'ellipse') {
+      const dx = (x - (s.cx ?? 0)) / Math.max(1, (s.rx ?? 0) - pad)
+      const dy = (y - (s.cy ?? 0)) / Math.max(1, (s.ry ?? 0) - pad)
+      return dx * dx + dy * dy <= 1
+    }
+    return false
+  }
+
+  type Placed = { id: string; text: string; cx: number; cy: number; w: number; h: number; angle: number }
+
+  // Build the placement plan once per zone — used by renderEntries.
+  const planEntries = (z: ZCZone): Placed[] => {
+    const list = entries[z.id] ?? []
+    if (list.length === 0) return []
+    const maxVisible = 8
+    const visible = list.slice(0, maxVisible)
+    const children = zones.filter(c => c.parentZoneId === z.id)
+    const { labelY } = zonePos(z)
+    const fontSize = 13
+    const h = fontSize + 14
+    const placed: Placed[] = []
+    const margin = 12
+
+    for (const entry of visible) {
+      const text = (entry.text || '').length > 24 ? (entry.text || '').slice(0, 22) + '…' : (entry.text || '')
+      const w = estimatePillWidth(text, fontSize)
+      const rng = seededRand(z.id + entry.id)
+      let chosen: Placed | null = null
+      for (let t = 0; t < 60; t++) {
+        const s = z.shape
+        let cx = 0, cy = 0
+        if (s.kind === 'rect') {
+          cx = (s.x ?? 0) + w / 2 + margin + rng() * ((s.w ?? 0) - w - 2 * margin)
+          cy = labelY + 26 + h / 2 + rng() * ((s.y ?? 0) + (s.h ?? 0) - labelY - 26 - h - 2 * margin)
+        } else if (s.kind === 'circle') {
+          const angle = rng() * Math.PI * 2
+          const maxR = Math.max(0, (s.r ?? 0) - Math.max(w, h) / 2 - margin)
+          const radius = Math.sqrt(rng()) * maxR
+          cx = (s.cx ?? 0) + Math.cos(angle) * radius
+          cy = (s.cy ?? 0) + Math.sin(angle) * radius
+          if (cy < labelY + h / 2 + 8) continue
+        } else if (s.kind === 'ellipse') {
+          const angle = rng() * Math.PI * 2
+          const r = Math.sqrt(rng())
+          cx = (s.cx ?? 0) + r * Math.cos(angle) * Math.max(0, (s.rx ?? 0) - w / 2 - margin)
+          cy = (s.cy ?? 0) + r * Math.sin(angle) * Math.max(0, (s.ry ?? 0) - h / 2 - margin)
+          if (cy < labelY + h / 2 + 8) continue
+        } else if (s.kind === 'polygon' && s.points && s.points.length) {
+          const xs = s.points.map(p => p[0]), ys = s.points.map(p => p[1])
+          cx = Math.min(...xs) + margin + rng() * (Math.max(...xs) - Math.min(...xs) - 2 * margin)
+          cy = Math.min(...ys) + margin + rng() * (Math.max(...ys) - Math.min(...ys) - 2 * margin)
+        }
+        // Reject if pill centre lands inside a child zone (e.g. the
+        // inner circle for Circle of Control).
+        let insideChild = false
+        for (const c of children) {
+          if (insideShape(cx, cy, c.shape, -6)) { insideChild = true; break }
+        }
+        if (insideChild) continue
+        // Collision check against already-placed pills.
+        const angle = (rng() - 0.5) * 6
+        const candidate: Placed = { id: entry.id, text, cx, cy, w, h, angle }
+        let collides = false
+        for (const p of placed) {
+          if (Math.abs(p.cx - cx) < (p.w + w) / 2 + 6 && Math.abs(p.cy - cy) < (p.h + h) / 2 + 4) {
+            collides = true; break
+          }
+        }
+        if (collides) continue
+        chosen = candidate
+        break
+      }
+      if (chosen) placed.push(chosen)
+    }
+    return placed
+  }
+
   const renderEntries = (z: ZCZone) => {
     const list = entries[z.id] ?? []
     if (list.length === 0) return null
     const a = ZC_ACCENT[(z.accent ?? 'slate') as ZCAccent]
-    const { cx, entriesStartY } = zonePos(z)
-    const max = 5
-    const visible = list.slice(0, max)
-    const truncate = (s: string) => (s.length > 30 ? s.slice(0, 28) + '…' : s)
+    const placed = planEntries(z)
+    const overflow = list.length - placed.length
     return (
       <>
-        {visible.map((entry, i) => (
-          <SvgText
-            key={`entry-${entry.id}`}
-            x={cx}
-            y={entriesStartY + i * 26}
-            fill={a.text}
-            fontSize={15}
-            fontWeight="500"
-            textAnchor="middle"
-            pointerEvents="none"
-          >
-            {`• ${truncate(entry.text || '')}`}
-          </SvgText>
+        {placed.map(p => (
+          <SvgG key={`entry-${p.id}`} transform={`translate(${p.cx} ${p.cy}) rotate(${p.angle})`}>
+            <Rect
+              x={-p.w / 2} y={-p.h / 2}
+              width={p.w} height={p.h} rx={p.h / 2}
+              fill="#ffffff" stroke={a.stroke} strokeWidth={1.2}
+              opacity={0.95}
+            />
+            <SvgText
+              x={0} y={3}
+              fill={a.stroke}
+              fontSize={13}
+              fontWeight="500"
+              textAnchor="middle"
+              pointerEvents="none"
+            >
+              {p.text}
+            </SvgText>
+          </SvgG>
         ))}
-        {list.length > visible.length ? (
+        {overflow > 0 ? (
           <SvgText
             key={`more-${z.id}`}
-            x={cx}
-            y={entriesStartY + visible.length * 26}
+            x={zonePos(z).cx}
+            y={zonePos(z).labelY + 22}
             fill={a.stroke}
-            fontSize={12}
+            fontSize={11}
             fontStyle="italic"
             textAnchor="middle"
             opacity={0.75}
             pointerEvents="none"
           >
-            {fr ? `+${list.length - visible.length} de plus` : es ? `+${list.length - visible.length} más` : `+${list.length - visible.length} more`}
+            {fr ? `+${overflow} de plus` : es ? `+${overflow} más` : `+${overflow} more`}
           </SvgText>
         ) : null}
       </>
@@ -2185,7 +2291,7 @@ function ZonedCanvasBlock({
       ) : null}
 
       {/* Canvas */}
-      <View style={{ backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f3f4f6', padding: 8, marginBottom: 16 }}>
+      <View style={{ backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f3f4f6', padding: 8, marginBottom: 16, position: 'relative' }}>
         <Svg viewBox={`0 0 ${canvas.width} ${canvas.height}`} width="100%" height={280}>
           {canvas.backgroundImageUrl ? (
             <SvgImage
@@ -2199,7 +2305,55 @@ function ZonedCanvasBlock({
           {paintOrder.map(renderLabel)}
           {paintOrder.map(renderEntries)}
         </Svg>
+        <TouchableOpacity
+          onPress={() => setExpanded(true)}
+          style={{ position: 'absolute', top: 14, right: 14, backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e5e7eb', borderWidth: 1, borderRadius: 999, padding: 8 }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={fr ? 'Agrandir' : es ? 'Ampliar' : 'Expand canvas'}
+        >
+          <Maximize2 size={16} color="#374151" />
+        </TouchableOpacity>
       </View>
+
+      {/* Full-screen expanded canvas */}
+      <Modal
+        visible={expanded}
+        animationType="fade"
+        transparent={false}
+        onRequestClose={() => setExpanded(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 48, paddingBottom: 12 }}>
+            <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600', flex: 1 }} numberOfLines={1}>
+              {block.content || ''}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setExpanded(false)}
+              style={{ padding: 8, marginLeft: 12 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <XIcon size={22} color="#fff" />
+            </TouchableOpacity>
+          </View>
+          <View style={{ flex: 1, paddingHorizontal: 12, paddingBottom: 24, justifyContent: 'center' }}>
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 12 }}>
+              <Svg viewBox={`0 0 ${canvas.width} ${canvas.height}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{ aspectRatio: canvas.width / canvas.height }}>
+                {canvas.backgroundImageUrl ? (
+                  <SvgImage
+                    href={canvas.backgroundImageUrl as any}
+                    x={0} y={0}
+                    width={canvas.width} height={canvas.height}
+                    preserveAspectRatio="xMidYMid meet"
+                  />
+                ) : null}
+                {paintOrder.map(renderShape)}
+                {paintOrder.map(renderLabel)}
+                {paintOrder.map(renderEntries)}
+              </Svg>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Per-zone list — primary mobile input surface */}
       <View style={{ gap: 12 }}>
@@ -2211,18 +2365,16 @@ function ZonedCanvasBlock({
             <View
               key={zone.id}
               style={{
-                backgroundColor: '#fff',
-                borderColor: '#e5e7eb',
+                backgroundColor: colour.bgRgba,
+                borderColor: colour.stroke + '55',
                 borderWidth: 1,
-                borderLeftColor: colour.stroke,
-                borderLeftWidth: 4,
                 borderRadius: 12,
                 padding: 12,
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: colour.text }}>{lt(zone.label)}</Text>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>{lt(zone.label)}</Text>
                   {desc ? <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{desc}</Text> : null}
                 </View>
                 {!readOnly ? (
