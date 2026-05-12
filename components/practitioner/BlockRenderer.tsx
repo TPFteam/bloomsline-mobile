@@ -2015,7 +2015,29 @@ function ZonedCanvasBlock({
     onChange?.(next)
   }
 
-  const paintOrder = [...block.zones].sort((a, b) => zoneArea(b) - zoneArea(a))
+  // Defensive: older drafts (and any future bug in the save mapper)
+  // can land here without `zones` / `canvas`. Crashing inside the
+  // worksheet step view bricks the whole exercise for the patient.
+  const zones: ZCZone[] = Array.isArray(block.zones) ? block.zones : []
+  const canvas = block.canvas ?? { width: 800, height: 600 }
+  if (zones.length === 0) {
+    return (
+      <View style={{ padding: 16, borderRadius: 12, backgroundColor: '#f3f4f6' }}>
+        <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center' }}>
+          This exercise is missing its zones. Please ask your practitioner to re-share it.
+        </Text>
+      </View>
+    )
+  }
+  const paintOrder = [...zones].sort((a, b) => zoneArea(b) - zoneArea(a))
+
+  // react-native-svg's web shim forwards native gesture props (onPress →
+  // onResponderTerminate, etc.) that react-native-web doesn't recognise,
+  // producing "Unknown event handler property" warnings. Skip onPress on
+  // web — the per-zone "+ Add" buttons below give web users an equivalent
+  // input path.
+  const tapHandler = (id: string) =>
+    Platform.OS === 'web' ? {} : { onPress: () => startAdd(id) }
 
   const renderShape = (z: ZCZone) => {
     const a = ZC_ACCENT[(z.accent ?? 'slate') as ZCAccent]
@@ -2026,7 +2048,7 @@ function ZonedCanvasBlock({
           key={z.id}
           x={s.x} y={s.y} width={s.w} height={s.h} rx={s.rx ?? 0}
           fill={a.fill} stroke={a.stroke} strokeWidth={2}
-          onPress={() => startAdd(z.id)}
+          {...tapHandler(z.id)}
         />
       )
     }
@@ -2036,7 +2058,7 @@ function ZonedCanvasBlock({
           key={z.id}
           cx={s.cx} cy={s.cy} r={s.r}
           fill={a.fill} stroke={a.stroke} strokeWidth={2}
-          onPress={() => startAdd(z.id)}
+          {...tapHandler(z.id)}
         />
       )
     }
@@ -2046,7 +2068,7 @@ function ZonedCanvasBlock({
           key={z.id}
           cx={s.cx} cy={s.cy} rx={s.rx} ry={s.ry}
           fill={a.fill} stroke={a.stroke} strokeWidth={2}
-          onPress={() => startAdd(z.id)}
+          {...tapHandler(z.id)}
         />
       )
     }
@@ -2056,7 +2078,7 @@ function ZonedCanvasBlock({
           key={z.id}
           points={s.points.map(([x, y]) => `${x},${y}`).join(' ')}
           fill={a.fill} stroke={a.stroke} strokeWidth={2}
-          onPress={() => startAdd(z.id)}
+          {...tapHandler(z.id)}
         />
       )
     }
@@ -2096,12 +2118,12 @@ function ZonedCanvasBlock({
 
       {/* Canvas */}
       <View style={{ backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f3f4f6', padding: 8, marginBottom: 16 }}>
-        <Svg viewBox={`0 0 ${block.canvas.width} ${block.canvas.height}`} width="100%" height={280}>
-          {block.canvas.backgroundImageUrl ? (
+        <Svg viewBox={`0 0 ${canvas.width} ${canvas.height}`} width="100%" height={280}>
+          {canvas.backgroundImageUrl ? (
             <SvgImage
-              href={block.canvas.backgroundImageUrl as any}
+              href={canvas.backgroundImageUrl as any}
               x={0} y={0}
-              width={block.canvas.width} height={block.canvas.height}
+              width={canvas.width} height={canvas.height}
               preserveAspectRatio="xMidYMid meet"
             />
           ) : null}
@@ -2112,7 +2134,7 @@ function ZonedCanvasBlock({
 
       {/* Per-zone list — primary mobile input surface */}
       <View style={{ gap: 12 }}>
-        {block.zones.map(zone => {
+        {zones.map(zone => {
           const colour = ZC_ACCENT[(zone.accent ?? 'slate') as ZCAccent]
           const list = entries[zone.id] ?? []
           const desc = zone.description ? lt(zone.description) : ''
@@ -2179,7 +2201,7 @@ function ZonedCanvasBlock({
               {fr ? 'Ajouter à' : es ? 'Añadir a' : 'Add to'}
             </Text>
             <Text style={{ fontSize: 16, fontWeight: '600', color: '#111827' }}>
-              {editingZone ? lt(block.zones.find(z => z.id === editingZone)!.label) : ''}
+              {editingZone ? lt(zones.find(z => z.id === editingZone)!.label) : ''}
             </Text>
             <TextInput
               value={draft}
