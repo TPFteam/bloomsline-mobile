@@ -171,14 +171,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // No member record found — call setup-member API (handles new signups)
       if (accessToken && setupCalledRef.current !== userId) {
         setupCalledRef.current = userId
-        try {
-          const res = await fetch(`${API_URL}/api/auth/setup-member`, {
+        const setupUrl = `${API_URL}/api/auth/setup-member`
+
+        // Wrap fetch in a single-retry helper. The original symptom users
+        // hit was "TypeError: Failed to fetch" with no corresponding
+        // Vercel log — i.e. the request never reached the server. That
+        // pattern fits transient client-side issues (PWA cold start
+        // racing with the auth callback, momentary CORS preflight
+        // cache, brief network blip). One quick retry catches those
+        // without changing the failure mode for actual server errors.
+        const callSetup = async (): Promise<Response> => {
+          return fetch(setupUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${accessToken}`,
             },
           })
+        }
+
+        let res: Response | null = null
+        let firstAttemptError: unknown = null
+        try {
+          res = await callSetup()
+        } catch (err) {
+          firstAttemptError = err
+          // Give the network / auth callback a beat, then try once more.
+          await new Promise(r => setTimeout(r, 800))
+          try {
+            res = await callSetup()
+          } catch (err2) {
+            // Both attempts failed. Log enough context to debug from
+            // the user's device (URL, error name, token presence).
+            console.error('setup-member failed twice:', {
+              url: setupUrl,
+              firstError: firstAttemptError instanceof Error
+                ? { name: firstAttemptError.name, message: firstAttemptError.message }
+                : String(firstAttemptError),
+              secondError: err2 instanceof Error
+                ? { name: err2.name, message: err2.message }
+                : String(err2),
+              hasAccessToken: !!accessToken,
+              accessTokenLength: accessToken?.length ?? 0,
+              userId,
+            })
+            const msg = err2 instanceof TypeError && err2.message === 'Failed to fetch'
+              ? 'Could not reach Bloomsline servers. Please check your connection and try again.'
+              : 'Could not verify your account. Please try again.'
+            setNotEligible(msg)
+            await supabase.auth.signOut()
+            setLoading(false)
+            return
+          }
+        }
+
+        if (!res) {
+          // Defensive — both attempts ran and the failure path above
+          // already returned, so we shouldn't get here. Bail safely.
+          setLoading(false)
+          return
+        }
+
+        try {
           const result = await res.json()
 
           if (result.ok) {
@@ -203,7 +257,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setNotEligible(result.message || fallbackMsg)
           await supabase.auth.signOut()
         } catch (err) {
-          console.error('setup-member failed:', err)
+          console.error('setup-member response parse failed:', {
+            url: setupUrl,
+            httpStatus: res?.status,
+            error: err instanceof Error ? { name: err.name, message: err.message } : String(err),
+          })
           setNotEligible('Could not verify your account. Please try again.')
           await supabase.auth.signOut()
         }
