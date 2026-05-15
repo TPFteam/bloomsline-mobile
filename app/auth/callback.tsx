@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
-import { View, ActivityIndicator } from 'react-native'
 import { useRouter } from 'expo-router'
 import { supabase } from '@/lib/supabase'
+import { BloomLoader } from '@/components/BloomLoader'
 
 export default function AuthCallback() {
   const router = useRouter()
@@ -29,9 +29,5 @@ export default function AuthCallback() {
     handleCallback()
   }, [])
 
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-      <ActivityIndicator size="large" color="#000" />
-    </View>
-  )
+  return <BloomLoader />
 }

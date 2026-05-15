@@ -106,6 +106,12 @@ export default {
   },
 
   // ─── Auth ───
+  loader: {
+    phrase1: 'Setting up your space…',
+    phrase2: 'Gathering your moments…',
+    phrase3: 'Almost there…',
+    phrase4: 'Take a breath.',
+  },
   auth: {
     welcomeHeadline: 'Some answers appear when your thoughts have a place to exist.',
     welcomeSubtitle: 'Your space to notice, reflect, and grow.',

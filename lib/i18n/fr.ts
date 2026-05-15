@@ -105,6 +105,13 @@ export default {
     version: 'Bloomsline v2.0.0',
   },
 
+  loader: {
+    phrase1: 'On prépare votre espace…',
+    phrase2: 'Rassemblement de vos moments…',
+    phrase3: 'Plus qu\'un instant…',
+    phrase4: 'Respirez.',
+  },
+
   // ─── Auth ───
   auth: {
     welcomeHeadline: 'Certaines réponses apparaissent quand vos pensées ont une place pour exister.',

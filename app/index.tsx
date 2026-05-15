@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'expo-router'
-import { View, Text, TouchableOpacity, ActivityIndicator, Linking, Platform } from 'react-native'
+import { View, Text, TouchableOpacity, Linking, Platform } from 'react-native'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { colors } from '@/lib/theme'
 import { supabase } from '@/lib/supabase'
+import { BloomLoader } from '@/components/BloomLoader'
 
 export default function Index() {
   const { session, loading, isPractitioner, member, signOut } = useAuth()
@@ -83,9 +84,5 @@ export default function Index() {
     )
   }
 
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-      <ActivityIndicator size="large" color="#000" />
-    </View>
-  )
+  return <BloomLoader />
 }
