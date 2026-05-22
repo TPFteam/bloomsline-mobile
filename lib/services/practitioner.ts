@@ -39,6 +39,9 @@ export interface UpcomingSession {
   source?: 'session' | 'booking'
   booking_id?: string
   meet_link?: string | null
+  // Read-only — set by the practitioner on the care app. Surface here so the
+  // patient sees whether the latest session was marked paid or unpaid.
+  payment_status?: 'paid' | 'unpaid' | null
 }
 
 export interface ResourceItem {
@@ -121,7 +124,7 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
   const [upcomingRes, pastRes] = await Promise.all([
     supabase
       .from('sessions')
-      .select('id, scheduled_at, duration_minutes, session_type, session_format, status, member_confirmed, reschedule_requested, reschedule_status, practitioner_proposed_date, notes, practitioner_id')
+      .select('id, scheduled_at, duration_minutes, session_type, session_format, status, member_confirmed, reschedule_requested, reschedule_status, practitioner_proposed_date, notes, practitioner_id, payment_status')
       .eq('member_id', memberId)
       .eq('status', 'scheduled')
       .gte('scheduled_at', now)
@@ -129,7 +132,7 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
       .limit(5),
     supabase
       .from('sessions')
-      .select('id, scheduled_at, duration_minutes, session_type, session_format, status, member_confirmed, reschedule_requested, reschedule_status, practitioner_proposed_date, notes, practitioner_id')
+      .select('id, scheduled_at, duration_minutes, session_type, session_format, status, member_confirmed, reschedule_requested, reschedule_status, practitioner_proposed_date, notes, practitioner_id, payment_status')
       .eq('member_id', memberId)
       .or('status.eq.completed,status.eq.cancelled,status.eq.no_show')
       .order('scheduled_at', { ascending: false })
@@ -144,7 +147,7 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
   const buildBookingQuery = (matchField: 'member_id' | 'client_email', matchValue: string, statusFilter: string[], order: 'asc' | 'desc', timeOp: 'gte' | 'lte', limit: number) => {
     let q = supabase
       .from('bookings')
-      .select('id, start_time, end_time, session_type, session_format, status, notes, practitioner_id, client_name, meet_link')
+      .select('id, start_time, end_time, session_type, session_format, status, notes, practitioner_id, client_name, meet_link, payment_status')
       .eq(matchField, matchValue)
       .in('status', statusFilter)
     if (practitionerId) q = q.eq('practitioner_id', practitionerId)
@@ -192,6 +195,7 @@ export async function fetchSessions(memberId: string, _userId?: string, practiti
       source: 'booking' as const,
       booking_id: b.id,
       meet_link: b.meet_link || null,
+      payment_status: b.payment_status || null,
     }
   }
 

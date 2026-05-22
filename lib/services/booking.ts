@@ -357,7 +357,7 @@ export async function createBooking(input: {
 export async function fetchModificationSettings(practitionerId: string) {
   const { data } = await supabase
     .from('booking_settings')
-    .select('allow_patient_reschedule, allow_patient_cancel, modification_notice_hours')
+    .select('allow_patient_reschedule, allow_patient_cancel, modification_notice_hours, late_cancellation_hours')
     .eq('user_id', practitionerId)
     .single()
 
@@ -365,12 +365,16 @@ export async function fetchModificationSettings(practitionerId: string) {
     allowReschedule: data?.allow_patient_reschedule ?? false,
     allowCancel: data?.allow_patient_cancel ?? false,
     noticeHours: data?.modification_notice_hours ?? 48,
+    // Cutoff (in hours before session start) below which a patient
+    // cancellation triggers the late-cancellation fee notice + flag.
+    // 0 = no policy.
+    lateCancellationHours: (data as { late_cancellation_hours?: number } | null)?.late_cancellation_hours ?? 0,
   }
 }
 
 // ─── Patient Cancel Booking ────────────────────────
 
-export async function cancelBooking(bookingId: string, reason: string) {
+export async function cancelBooking(bookingId: string, reason: string, opts?: { lateCancellation?: boolean }) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session?.access_token) return { success: false, error: 'Not authenticated' }
 
@@ -381,7 +385,16 @@ export async function cancelBooking(bookingId: string, reason: string) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({ action: 'cancel', reason }),
+      body: JSON.stringify({
+        action: 'cancel',
+        reason,
+        // Signals to the server that this cancellation falls inside
+        // the practitioner's late-cancellation policy window — the
+        // booking row gets late_cancellation=true and payment_status
+        // is forced to 'unpaid'. Mobile computes the boolean from the
+        // current time + the policy hours.
+        lateCancellation: opts?.lateCancellation ?? false,
+      }),
     })
     const data = await res.json()
     if (!res.ok) return { success: false, error: data.error || 'Failed to cancel' }

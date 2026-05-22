@@ -230,6 +230,8 @@ export default {
     done: '✓ Terminé',
     cancelled: 'Annulé',
     noShow: 'Absent',
+    paid: 'Payé',
+    unpaid: 'Non payé',
     inProgress: 'En cours',
     toDo: 'À faire',
     sessionTypeInitial: 'Séance initiale',

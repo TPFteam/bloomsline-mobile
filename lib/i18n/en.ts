@@ -229,6 +229,8 @@ export default {
     done: '✓ Done',
     cancelled: 'Cancelled',
     noShow: 'No Show',
+    paid: 'Paid',
+    unpaid: 'Unpaid',
     inProgress: 'In progress',
     toDo: 'To do',
     sessionTypeInitial: 'Initial Session',

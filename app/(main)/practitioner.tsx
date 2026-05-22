@@ -130,7 +130,7 @@ export default function PractitionerScreen() {
   const [suggestedTime, setSuggestedTime] = useState('')
 
   // Booking modification
-  const [modificationSettings, setModificationSettings] = useState<{ allowReschedule: boolean; allowCancel: boolean; noticeHours: number }>({ allowReschedule: false, allowCancel: false, noticeHours: 48 })
+  const [modificationSettings, setModificationSettings] = useState<{ allowReschedule: boolean; allowCancel: boolean; noticeHours: number; lateCancellationHours: number }>({ allowReschedule: false, allowCancel: false, noticeHours: 48, lateCancellationHours: 0 })
   const [practActiveDays, setPractActiveDays] = useState<number[] | null>(null)
   const [practDayFormats, setPractDayFormats] = useState<Record<string, string[]>>({})
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
@@ -332,9 +332,17 @@ export default function PractitionerScreen() {
     // Find the session to determine source
     const session = upcomingSessions.find(s => s.id === cancelBookingId || s.booking_id === cancelBookingId)
 
+    // Did this cancellation land inside the practitioner's late-cancel
+    // window? If so we flag the booking + force payment_status='unpaid'.
+    const isLate = (() => {
+      if (!session || modificationSettings.lateCancellationHours <= 0) return false
+      const hoursUntil = (new Date(session.scheduled_at).getTime() - Date.now()) / 3600000
+      return hoursUntil > 0 && hoursUntil < modificationSettings.lateCancellationHours
+    })()
+
     if (session?.booking_id) {
       // Booking-based: use API
-      const result = await cancelBooking(session.booking_id, cancelReason.trim())
+      const result = await cancelBooking(session.booking_id, cancelReason.trim(), { lateCancellation: isLate })
       if (result.success) {
         setUpcomingSessions(prev => prev.filter(s => s.id !== session.id))
         setCancelBookingId(null)
@@ -353,11 +361,22 @@ export default function PractitionerScreen() {
         .update({ status: 'cancelled' })
         .eq('id', cancelBookingId)
 
-      // Also cancel matching booking by practitioner_id + scheduled_at
+      // Also cancel matching booking by practitioner_id + scheduled_at.
+      // If this is a late cancel, flag it and force payment_status='unpaid'.
       if (!error && session) {
+        const update: Record<string, unknown> = {
+          status: 'cancelled',
+          cancelled_at: new Date().toISOString(),
+          cancelled_by: 'member',
+          cancellation_reason: cancelReason.trim(),
+        }
+        if (isLate) {
+          update.late_cancellation = true
+          update.payment_status = 'unpaid'
+        }
         await supabase
           .from('bookings')
-          .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancelled_by: 'member', cancellation_reason: cancelReason.trim() })
+          .update(update)
           .eq('practitioner_id', session.practitioner?.id || '')
           .eq('start_time', session.scheduled_at)
           .neq('status', 'cancelled')
@@ -1143,6 +1162,32 @@ export default function PractitionerScreen() {
             <Text style={{ fontSize: 15, color: '#8A8A8A', marginBottom: 14 }}>
               {locale === 'fr' ? 'Dites-nous pourquoi vous annulez.' : 'Please tell us why you are cancelling.'}
             </Text>
+            {/* Late-cancellation warning — only when the practitioner
+                has set a policy (>0 hours) and the cancellation is
+                happening inside that window. Read at render-time so
+                the banner appears/disappears live as time passes. */}
+            {(() => {
+              if (modificationSettings.lateCancellationHours <= 0) return null
+              const session = upcomingSessions.find(s => s.id === cancelBookingId || s.booking_id === cancelBookingId)
+              if (!session) return null
+              const hoursUntil = (new Date(session.scheduled_at).getTime() - Date.now()) / 3600000
+              if (hoursUntil <= 0 || hoursUntil >= modificationSettings.lateCancellationHours) return null
+              return (
+                <View style={{
+                  backgroundColor: '#FEF3C7', borderColor: '#FCD34D', borderWidth: 1,
+                  borderRadius: 14, padding: 12, marginBottom: 14,
+                }}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#B45309', marginBottom: 2 }}>
+                    {locale === 'fr' ? 'Annulation tardive' : 'Late cancellation'}
+                  </Text>
+                  <Text style={{ fontSize: 12, color: '#B45309', lineHeight: 17 }}>
+                    {locale === 'fr'
+                      ? `Vous annulez à moins de ${modificationSettings.lateCancellationHours}h de la séance. Selon la politique de votre praticien, cette séance sera facturée.`
+                      : `You're cancelling within ${modificationSettings.lateCancellationHours}h of the session. Per your practitioner's policy, this session will still be charged.`}
+                  </Text>
+                </View>
+              )
+            })()}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
               {(locale === 'fr'
                 ? ['Conflit d\'horaire', 'Raison personnelle', 'Je ne me sens pas bien', 'Je souhaite reprogrammer']
@@ -2028,6 +2073,30 @@ function ResourceCard({ item, onPress }: { item: ResourceItem; onPress: () => vo
   )
 }
 
+// Read-only badge mirroring whatever the practitioner set on the care
+// app. Two sizes: default (used in upcoming card) and `small` (alongside
+// other inline pills in the history row).
+function PaymentBadge({ status, t, small = false }: { status: 'paid' | 'unpaid'; t: any; small?: boolean }) {
+  const isPaid = status === 'paid'
+  const bg = isPaid ? '#ECFDF5' : '#FEF3C7'
+  const border = isPaid ? '#A7F3D0' : '#FCD34D'
+  const color = isPaid ? '#047857' : '#B45309'
+  return (
+    <View style={{
+      backgroundColor: bg,
+      borderRadius: small ? 8 : 10,
+      paddingHorizontal: small ? 7 : 10,
+      paddingVertical: small ? 2 : 4,
+      borderWidth: 1,
+      borderColor: border,
+    }}>
+      <Text style={{ fontSize: small ? 10 : 11, fontWeight: '600', color }}>
+        {isPaid ? t.practitioner.paid : t.practitioner.unpaid}
+      </Text>
+    </View>
+  )
+}
+
 function UpcomingSessionCard({
   session, actionLoading, onConfirm, onReschedule, onAcceptProposed, onDeclineProposed,
   onCancel, onRescheduleBooking, canModify, practitioner,
@@ -2100,11 +2169,16 @@ function UpcomingSessionCard({
           </View>
         </View>
       )}
-      {session.member_confirmed && !hasProposedDate && (
+      {/* "Confirmed" pill removed — every upcoming session is confirmed
+          by default; the tag was confusing alongside the "Done" tag we
+          use post-session. Mirrors the care app change. */}
+
+      {/* Payment status — read-only mirror of what the practitioner set
+          on the care app. Shown only when a status exists on the row
+          (sessions without a payment_status omit the badge entirely). */}
+      {session.payment_status && (
         <View style={{ flexDirection: 'row', marginBottom: 12 }}>
-          <View style={{ backgroundColor: colors.surface1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 }}>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: colors.bloom }}>{t.practitioner.confirmed}</Text>
-          </View>
+          <PaymentBadge status={session.payment_status} t={t} />
         </View>
       )}
 
@@ -2224,7 +2298,7 @@ function PastSessionCard({ session }: { session: UpcomingSession }) {
         </View>
 
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
             <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
               {getSessionTypeLabel(session.session_type, t)}
             </Text>
@@ -2233,6 +2307,9 @@ function PastSessionCard({ session }: { session: UpcomingSession }) {
                 {isCompleted ? t.practitioner.done : isCancelled ? t.practitioner.cancelled : isNoShow ? t.practitioner.noShow : session.status}
               </Text>
             </View>
+            {session.payment_status && (
+              <PaymentBadge status={session.payment_status} t={t} small />
+            )}
           </View>
           <Text style={{ fontSize: 12, color: '#8A8A8A' }}>
             {formatTime(session.scheduled_at)} · {getFormatLabel(session.session_format, t)} · {session.duration_minutes} min
