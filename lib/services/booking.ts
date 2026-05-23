@@ -357,7 +357,7 @@ export async function createBooking(input: {
 export async function fetchModificationSettings(practitionerId: string) {
   const { data } = await supabase
     .from('booking_settings')
-    .select('allow_patient_reschedule, allow_patient_cancel, modification_notice_hours, late_cancellation_hours')
+    .select('allow_patient_reschedule, allow_patient_cancel, modification_notice_hours, late_cancellation_hours, show_payment_to_patient')
     .eq('user_id', practitionerId)
     .single()
 
@@ -369,6 +369,10 @@ export async function fetchModificationSettings(practitionerId: string) {
     // cancellation triggers the late-cancellation fee notice + flag.
     // 0 = no policy.
     lateCancellationHours: (data as { late_cancellation_hours?: number } | null)?.late_cancellation_hours ?? 0,
+    // Whether to render the Paid / Unpaid badge on the session card.
+    // Defaults false — practitioner opts in from /bookings settings
+    // on the care app.
+    showPaymentToPatient: (data as { show_payment_to_patient?: boolean } | null)?.show_payment_to_patient ?? false,
   }
 }
 

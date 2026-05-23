@@ -130,7 +130,7 @@ export default function PractitionerScreen() {
   const [suggestedTime, setSuggestedTime] = useState('')
 
   // Booking modification
-  const [modificationSettings, setModificationSettings] = useState<{ allowReschedule: boolean; allowCancel: boolean; noticeHours: number; lateCancellationHours: number }>({ allowReschedule: false, allowCancel: false, noticeHours: 48, lateCancellationHours: 0 })
+  const [modificationSettings, setModificationSettings] = useState<{ allowReschedule: boolean; allowCancel: boolean; noticeHours: number; lateCancellationHours: number; showPaymentToPatient: boolean }>({ allowReschedule: false, allowCancel: false, noticeHours: 48, lateCancellationHours: 0, showPaymentToPatient: false })
   const [practActiveDays, setPractActiveDays] = useState<number[] | null>(null)
   const [practDayFormats, setPractDayFormats] = useState<Record<string, string[]>>({})
   const [cancelBookingId, setCancelBookingId] = useState<string | null>(null)
@@ -999,6 +999,7 @@ export default function PractitionerScreen() {
                   onCancel={canModifySession(session) && modificationSettings.allowCancel ? () => { setCancelBookingId(session.booking_id || session.id); setCancelReason('') } : undefined}
                   onRescheduleBooking={canModifySession(session) && modificationSettings.allowReschedule ? () => { setRescheduleBookingId(session.booking_id || session.id); setRescheduleBookingReason(''); setRescheduleBookingDate(''); setRescheduleBookingTime(''); setRescheduleBookingSlots([]) } : undefined}
                   practitioner={practitioner ? { address: practitioner.address, google_maps_url: practitioner.google_maps_url } : null}
+                  showPaymentBadge={modificationSettings.showPaymentToPatient}
                 />
               ))}
             </View>
@@ -1027,7 +1028,7 @@ export default function PractitionerScreen() {
           ) : (
             <View style={{ gap: 10 }}>
               {displayHistory.map((session) => (
-                <PastSessionCard key={session.id} session={session} />
+                <PastSessionCard key={session.id} session={session} showPaymentBadge={modificationSettings.showPaymentToPatient} />
               ))}
             </View>
           )}
@@ -2099,7 +2100,7 @@ function PaymentBadge({ status, t, small = false }: { status: 'paid' | 'unpaid';
 
 function UpcomingSessionCard({
   session, actionLoading, onConfirm, onReschedule, onAcceptProposed, onDeclineProposed,
-  onCancel, onRescheduleBooking, canModify, practitioner,
+  onCancel, onRescheduleBooking, canModify, practitioner, showPaymentBadge,
 }: {
   session: UpcomingSession; actionLoading: string | null
   onConfirm: () => void; onReschedule: () => void
@@ -2107,6 +2108,9 @@ function UpcomingSessionCard({
   onCancel?: () => void; onRescheduleBooking?: () => void
   canModify?: boolean
   practitioner?: { address: string | null; google_maps_url: string | null } | null
+  // When false the Paid / Unpaid pill is hidden — practitioner can
+  // toggle this from /bookings settings on the care app.
+  showPaymentBadge?: boolean
 }) {
   const { t, locale } = useI18n()
   const sessionDate = new Date(session.scheduled_at)
@@ -2175,8 +2179,9 @@ function UpcomingSessionCard({
 
       {/* Payment status — read-only mirror of what the practitioner set
           on the care app. Shown only when a status exists on the row
-          (sessions without a payment_status omit the badge entirely). */}
-      {session.payment_status && (
+          AND the practitioner has the "Show payment to patient"
+          toggle on (defaults true). */}
+      {showPaymentBadge !== false && session.payment_status && (
         <View style={{ flexDirection: 'row', marginBottom: 12 }}>
           <PaymentBadge status={session.payment_status} t={t} />
         </View>
@@ -2273,7 +2278,7 @@ function UpcomingSessionCard({
   )
 }
 
-function PastSessionCard({ session }: { session: UpcomingSession }) {
+function PastSessionCard({ session, showPaymentBadge }: { session: UpcomingSession; showPaymentBadge?: boolean }) {
   const { t, locale } = useI18n()
   const sessionDate = new Date(session.scheduled_at)
   const isCompleted = session.status === 'completed'
@@ -2307,7 +2312,7 @@ function PastSessionCard({ session }: { session: UpcomingSession }) {
                 {isCompleted ? t.practitioner.done : isCancelled ? t.practitioner.cancelled : isNoShow ? t.practitioner.noShow : session.status}
               </Text>
             </View>
-            {session.payment_status && (
+            {showPaymentBadge !== false && session.payment_status && (
               <PaymentBadge status={session.payment_status} t={t} small />
             )}
           </View>
