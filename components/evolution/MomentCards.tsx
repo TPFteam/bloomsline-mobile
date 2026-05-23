@@ -1,10 +1,29 @@
 import { useMemo } from 'react'
 import { View, Text, TouchableOpacity, Image, Dimensions } from 'react-native'
-import { Mic } from 'lucide-react-native'
+import { Mic, Send } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
 import { useSignedUrl } from '@/lib/hooks/useSignedUrl'
+
+function ShareButton({ shared, onPress }: { shared: boolean; onPress: () => void }) {
+    return (
+        <TouchableOpacity
+            onPress={onPress}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={{
+                width: 28, height: 28, borderRadius: 14,
+                backgroundColor: shared ? colors.bloom : 'rgba(255,255,255,0.92)',
+                justifyContent: 'center', alignItems: 'center',
+                shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.08, shadowRadius: 2, elevation: 2,
+            }}
+        >
+            <Send size={13} color={shared ? '#fff' : colors.textSecondary} strokeWidth={2} />
+        </TouchableOpacity>
+    )
+}
 
 const { width: _screenW } = Dimensions.get('window')
 const width = Math.min(_screenW, 430)
@@ -50,7 +69,7 @@ export function groupMomentsByWeek(moments: Moment[]): { label: string; moments:
 
 // ─── MomentRiverCard ────────────────────────────────
 
-function MomentRiverCard({ moment, cardWidth, onPress }: { moment: Moment; cardWidth: number; onPress: () => void }) {
+function MomentRiverCard({ moment, cardWidth, onPress, onShareToggle }: { moment: Moment; cardWidth: number; onPress: () => void; onShareToggle?: (m: Moment) => void }) {
     const { t } = useI18n()
     const mood = moment.moods?.[0]
     const moodColor = MOOD_COLORS[mood] || '#94A3B8'
@@ -63,7 +82,8 @@ function MomentRiverCard({ moment, cardWidth, onPress }: { moment: Moment; cardW
     const thumbSigned = useSignedUrl('moments_media', moment.thumbnail_path ?? moment.thumbnail_url ?? moment.media_path ?? moment.media_url)
 
     return (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ width: cardWidth }}>
+        <View style={{ width: cardWidth, position: 'relative' }}>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
             <View style={{
                 backgroundColor: colors.bg,
                 borderRadius: 20,
@@ -147,16 +167,20 @@ function MomentRiverCard({ moment, cardWidth, onPress }: { moment: Moment; cardW
                     </View>
                 )}
 
-                {/* Footer: mood + date */}
-                <View style={{ paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                {/* Footer: mood chip on its own line, date below it. The
+                    share button is positioned absolute at bottom-right by
+                    the parent, so the footer doesn't need to leave space
+                    on the right side. */}
+                <View style={{ paddingHorizontal: 14, paddingVertical: 10, gap: 4 }}>
                     {mood ? (
                         <View style={{
+                            alignSelf: 'flex-start',
                             backgroundColor: moodColor + '14',
                             borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
                         }}>
                             <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor, textTransform: 'capitalize' }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
                         </View>
-                    ) : <View />}
+                    ) : null}
                     <Text style={{ fontSize: 11, color: colors.textFaint }}>{timeStr}</Text>
                 </View>
 
@@ -170,12 +194,24 @@ function MomentRiverCard({ moment, cardWidth, onPress }: { moment: Moment; cardW
                 )}
             </View>
         </TouchableOpacity>
+            {/* Share button sits outside the card TouchableOpacity so the
+                tap doesn't bubble to the card's open-detail handler.
+                Top-right corner is the standard "save/share" position. */}
+            {onShareToggle && (
+                <View style={{ position: 'absolute', bottom: 8, right: 8, zIndex: 5 }}>
+                    <ShareButton
+                        shared={!!moment.shared_with_practitioner_at}
+                        onPress={() => onShareToggle(moment)}
+                    />
+                </View>
+            )}
+        </View>
     )
 }
 
 // ─── GridCard ───────────────────────────────────────
 
-function GridCard({ moment, onPress }: { moment: Moment; onPress: () => void }) {
+function GridCard({ moment, onPress, onShareToggle }: { moment: Moment; onPress: () => void; onShareToggle?: (m: Moment) => void }) {
     const { t } = useI18n()
     const mood = moment.moods?.[0]
     const moodColor = MOOD_COLORS[mood] || '#94A3B8'
@@ -186,6 +222,7 @@ function GridCard({ moment, onPress }: { moment: Moment; onPress: () => void }) 
     const thumbSigned = useSignedUrl('moments_media', moment.thumbnail_path ?? moment.thumbnail_url ?? moment.media_path ?? moment.media_url)
 
     return (
+        <View style={{ position: 'relative' }}>
         <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
             <View style={{
                 backgroundColor: isWrite ? colors.surface1 : colors.bg,
@@ -222,7 +259,7 @@ function GridCard({ moment, onPress }: { moment: Moment; onPress: () => void }) 
                         )}
                         {moment.media_items && moment.media_items.length > 1 && (
                             <View style={{
-                                position: 'absolute', top: 8, right: 8,
+                                position: 'absolute', top: 8, left: 8,
                                 backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 8,
                                 paddingHorizontal: 7, paddingVertical: 2,
                             }}>
@@ -261,17 +298,26 @@ function GridCard({ moment, onPress }: { moment: Moment; onPress: () => void }) 
                         </Text>
                     </View>
                 )}
-                <View style={{ paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                <View style={{ paddingHorizontal: 12, paddingVertical: 10, gap: 4 }}>
                     {mood ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: moodColor }} />
                             <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor, textTransform: 'capitalize' }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
                         </View>
-                    ) : <View />}
+                    ) : null}
                     <Text style={{ fontSize: 11, color: colors.textFaint }}>{timeStr}</Text>
                 </View>
             </View>
         </TouchableOpacity>
+            {onShareToggle && (
+                <View style={{ position: 'absolute', bottom: 8, right: 8, zIndex: 5 }}>
+                    <ShareButton
+                        shared={!!moment.shared_with_practitioner_at}
+                        onPress={() => onShareToggle(moment)}
+                    />
+                </View>
+            )}
+        </View>
     )
 }
 
@@ -280,9 +326,10 @@ function GridCard({ moment, onPress }: { moment: Moment; onPress: () => void }) 
 interface MomentViewProps {
     moments: Moment[]
     onMomentPress: (m: Moment) => void
+    onShareToggle?: (m: Moment) => void
 }
 
-export function EmotionalRiver({ moments, onMomentPress }: MomentViewProps) {
+export function EmotionalRiver({ moments, onMomentPress, onShareToggle }: MomentViewProps) {
     const { t } = useI18n()
     const cardWidth = (width - 48) / 2 - 14
     const groups = useMemo(() => groupMomentsByWeek(moments), [moments])
@@ -338,7 +385,7 @@ export function EmotionalRiver({ moments, onMomentPress }: MomentViewProps) {
                                 }}>
                                     {isLeft ? (
                                         <>
-                                            <MomentRiverCard moment={moment} cardWidth={cardWidth} onPress={() => onMomentPress(moment)} />
+                                            <MomentRiverCard moment={moment} cardWidth={cardWidth} onPress={() => onMomentPress(moment)} onShareToggle={onShareToggle} />
                                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 20 }}>
                                                 <View style={{ width: 12, height: 1, backgroundColor: colors.disabled }} />
                                                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: moodColor }} />
@@ -350,7 +397,7 @@ export function EmotionalRiver({ moments, onMomentPress }: MomentViewProps) {
                                                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: moodColor }} />
                                                 <View style={{ width: 12, height: 1, backgroundColor: colors.disabled }} />
                                             </View>
-                                            <MomentRiverCard moment={moment} cardWidth={cardWidth} onPress={() => onMomentPress(moment)} />
+                                            <MomentRiverCard moment={moment} cardWidth={cardWidth} onPress={() => onMomentPress(moment)} onShareToggle={onShareToggle} />
                                         </>
                                     )}
                                 </View>
@@ -365,7 +412,7 @@ export function EmotionalRiver({ moments, onMomentPress }: MomentViewProps) {
 
 // ─── MomentsGrid ────────────────────────────────────
 
-export function MomentsGrid({ moments, onMomentPress }: MomentViewProps) {
+export function MomentsGrid({ moments, onMomentPress, onShareToggle }: MomentViewProps) {
     const { t } = useI18n()
     const groups = useMemo(() => groupMomentsByWeek(moments), [moments])
 
@@ -396,12 +443,12 @@ export function MomentsGrid({ moments, onMomentPress }: MomentViewProps) {
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                         <View style={{ flex: 1, gap: 10 }}>
                             {group.moments.filter((_, i) => i % 2 === 0).map(moment => (
-                                <GridCard key={moment.id} moment={moment} onPress={() => onMomentPress(moment)} />
+                                <GridCard key={moment.id} moment={moment} onPress={() => onMomentPress(moment)} onShareToggle={onShareToggle} />
                             ))}
                         </View>
                         <View style={{ flex: 1, gap: 10 }}>
                             {group.moments.filter((_, i) => i % 2 === 1).map(moment => (
-                                <GridCard key={moment.id} moment={moment} onPress={() => onMomentPress(moment)} />
+                                <GridCard key={moment.id} moment={moment} onPress={() => onMomentPress(moment)} onShareToggle={onShareToggle} />
                             ))}
                         </View>
                     </View>

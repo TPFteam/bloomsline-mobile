@@ -1,14 +1,16 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
+import { View, Text, TouchableOpacity, Alert, Modal, Pressable } from 'react-native'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { getMemberMoments, Moment } from '@/lib/services/moments'
+import { getMemberMoments, Moment, shareMomentWithPractitioner, unshareMomentFromPractitioner } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
 import { GalleryVerticalEnd as GitBranch, LayoutGrid, Settings } from 'lucide-react-native'
 import NotificationBell from '@/components/NotificationBell'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
+import { useAuth } from '@/lib/auth-context'
+import { supabase } from '@/lib/supabase'
 
 // Extracted components
 import { BackButton } from '@/components/ui/BackButton'
@@ -32,7 +34,23 @@ export default function Evolution() {
   const [viewMode, setViewMode] = useState<'river' | 'grid'>('river')
   const [displayLimit, setDisplayLimit] = useState(20)
   const [tab, setTab] = useState<'moments' | 'patterns'>('moments')
+  const [practitionerName, setPractitionerName] = useState<string | undefined>(undefined)
+  const [shareConfirm, setShareConfirm] = useState<Moment | null>(null)
+  const [shareBusy, setShareBusy] = useState(false)
+  const { member } = useAuth()
   const { t, locale } = useI18n()
+
+  useEffect(() => {
+    if (!member?.practitioner_id) return
+    supabase
+      .from('users')
+      .select('full_name')
+      .eq('id', member.practitioner_id)
+      .single()
+      .then(({ data }) => {
+        if (data?.full_name) setPractitionerName(data.full_name)
+      })
+  }, [member?.practitioner_id])
 
   const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
 
@@ -53,6 +71,74 @@ export default function Evolution() {
   const onRefresh = useCallback(async () => {
     await fetchData()
   }, [fetchData])
+
+  const handleShareToggle = useCallback((m: Moment) => {
+    if (!member?.practitioner_id || !member?.id) {
+      Alert.alert(
+        locale === 'fr' ? 'Pas de praticien' : 'No practitioner',
+        locale === 'fr' ? 'Connectez-vous à un praticien pour partager.' : 'Connect a practitioner to share.'
+      )
+      return
+    }
+    setShareConfirm(m)
+  }, [member, locale])
+
+  const closeShareConfirm = useCallback(() => {
+    if (shareBusy) return
+    setShareConfirm(null)
+  }, [shareBusy])
+
+  const confirmShareAction = useCallback(async () => {
+    const m = shareConfirm
+    if (!m || !member?.practitioner_id || !member?.id) return
+    setShareBusy(true)
+    try {
+      const isShared = !!m.shared_with_practitioner_at
+      if (isShared) {
+        const ok = await unshareMomentFromPractitioner(m.id)
+        if (!ok) {
+          Alert.alert(locale === 'fr' ? 'Erreur' : 'Error', locale === 'fr' ? 'Impossible de modifier.' : 'Could not update.')
+          return
+        }
+        setAllMoments(prev => prev.map(x => x.id === m.id ? { ...x, shared_with_practitioner_at: null } : x))
+      } else {
+        const sharedAt = await shareMomentWithPractitioner(m.id)
+        if (!sharedAt) {
+          Alert.alert(locale === 'fr' ? 'Erreur' : 'Error', locale === 'fr' ? 'Impossible de partager.' : 'Could not share.')
+          return
+        }
+        setAllMoments(prev => prev.map(x => x.id === m.id ? { ...x, shared_with_practitioner_at: sharedAt } : x))
+        try {
+          const { data: { session } } = await supabase.auth.getSession()
+          if (session) {
+            const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
+            fetch(`${API_URL}/api/notifications/send`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({
+                userId: member.practitioner_id,
+                userType: 'practitioner',
+                type: 'moment_shared',
+                entityType: 'member',
+                entityId: member.id,
+                metadata: {
+                  memberId: member.id,
+                  memberName: `${(member as any).first_name || ''} ${(member as any).last_name || ''}`.trim(),
+                  momentId: m.id,
+                  momentType: m.type,
+                  momentMood: m.moods?.[0] || null,
+                  momentDate: m.created_at,
+                },
+              }),
+            }).catch(() => {})
+          }
+        } catch {}
+      }
+    } finally {
+      setShareBusy(false)
+      setShareConfirm(null)
+    }
+  }, [shareConfirm, member, locale])
 
   // Range-filtered moments for analytics
   const rangeSince = useMemo(() => {
@@ -329,11 +415,13 @@ export default function Evolution() {
           <EmotionalRiver
             moments={displayedMoments}
             onMomentPress={setViewingMoment}
+            onShareToggle={handleShareToggle}
           />
         ) : (
           <MomentsGrid
             moments={displayedMoments}
             onMomentPress={setViewingMoment}
+            onShareToggle={handleShareToggle}
           />
         )}
 
@@ -364,8 +452,78 @@ export default function Evolution() {
 
       {/* Moment detail sheet */}
       {viewingMoment && (
-        <MomentDetail moment={viewingMoment} onClose={() => setViewingMoment(null)} />
+        <MomentDetail
+          moment={viewingMoment}
+          onClose={() => setViewingMoment(null)}
+          onShareToggle={(m) => { setViewingMoment(null); handleShareToggle(m) }}
+        />
       )}
+
+      {/* Share confirmation modal. Custom Modal instead of Alert.alert
+          because Alert.alert with multiple buttons is flaky on RN Web. */}
+      <Modal
+        visible={!!shareConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={closeShareConfirm}
+      >
+        <Pressable
+          onPress={closeShareConfirm}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}
+        >
+          <Pressable onPress={() => {}} style={{ width: '100%', maxWidth: 360, backgroundColor: '#fff', borderRadius: 20, padding: 24 }}>
+            {shareConfirm && (() => {
+              const isShared = !!shareConfirm.shared_with_practitioner_at
+              const display = practitionerName || (locale === 'fr' ? 'votre praticien' : 'your practitioner')
+              const title = isShared
+                ? (locale === 'fr' ? 'Arrêter le partage ?' : 'Stop sharing?')
+                : (locale === 'fr' ? `Partager avec ${display} ?` : `Share with ${display}?`)
+              const body = isShared
+                ? (locale === 'fr' ? `Ce moment ne sera plus visible par ${display}.` : `${display} will no longer see this moment.`)
+                : (locale === 'fr' ? 'Ce moment apparaîtra dans leur tableau de bord.' : 'This moment will appear on their dashboard.')
+              const confirmLabel = isShared
+                ? (locale === 'fr' ? 'Arrêter' : 'Stop sharing')
+                : (locale === 'fr' ? 'Partager' : 'Share')
+              return (
+                <>
+                  <Text style={{ fontSize: 17, fontWeight: '700', color: colors.primary, marginBottom: 8 }}>
+                    {title}
+                  </Text>
+                  <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 20 }}>
+                    {body}
+                  </Text>
+                  <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+                    <TouchableOpacity
+                      onPress={closeShareConfirm}
+                      disabled={shareBusy}
+                      activeOpacity={0.7}
+                      style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>
+                        {locale === 'fr' ? 'Annuler' : 'Cancel'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={confirmShareAction}
+                      disabled={shareBusy}
+                      activeOpacity={0.8}
+                      style={{
+                        paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
+                        backgroundColor: isShared ? '#EF4444' : colors.primary,
+                        opacity: shareBusy ? 0.6 : 1,
+                      }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                        {shareBusy ? (locale === 'fr' ? '...' : '...') : confirmLabel}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   )
 }

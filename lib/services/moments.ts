@@ -49,6 +49,10 @@ export interface Moment {
   story_id: string | null
   created_at: string
   updated_at: string
+  /** ISO timestamp when patient shared this moment with their
+   *  practitioner. Null = not shared. Flipped via
+   *  shareMomentWithPractitioner / unshareMomentFromPractitioner. */
+  shared_with_practitioner_at: string | null
   // Multi-media items (populated from moment_media table)
   media_items?: MomentMediaRow[]
 }
@@ -273,6 +277,46 @@ export async function getMemberMoments(limit = 50, offset = 0, sinceDate?: Date,
   }
 
   return moments
+}
+
+/**
+ * Flag a moment as shared with the patient's practitioner. Sets
+ * `shared_with_practitioner_at` to now. Returns the new ISO timestamp
+ * on success or null on failure.
+ */
+export async function shareMomentWithPractitioner(momentId: string): Promise<string | null> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const sharedAt = new Date().toISOString()
+  const { error } = await supabase
+    .from('moments')
+    .update({ shared_with_practitioner_at: sharedAt })
+    .eq('id', momentId)
+    .eq('user_id', user.id)
+  if (error) {
+    console.error('Error sharing moment:', error)
+    return null
+  }
+  return sharedAt
+}
+
+/**
+ * Revoke a previously-shared moment. Sets the column back to null so
+ * the practitioner can no longer fetch the row (RLS denies them).
+ */
+export async function unshareMomentFromPractitioner(momentId: string): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
+  const { error } = await supabase
+    .from('moments')
+    .update({ shared_with_practitioner_at: null })
+    .eq('id', momentId)
+    .eq('user_id', user.id)
+  if (error) {
+    console.error('Error unsharing moment:', error)
+    return false
+  }
+  return true
 }
 
 export async function deleteMoment(momentId: string): Promise<boolean> {
