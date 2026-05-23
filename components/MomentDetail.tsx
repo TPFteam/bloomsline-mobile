@@ -1,5 +1,6 @@
-import { useState, useRef, useCallback } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, Image, Pressable, Modal, Dimensions } from 'react-native'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, Image, Pressable, Modal, Dimensions, TextInput } from 'react-native'
+import { supabase } from '@/lib/supabase'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av'
 import { Mic, Play, Pause, Volume2, VolumeX, Maximize, Minimize, X, BookOpen, Send, CheckCircle2 } from 'lucide-react-native'
@@ -235,6 +236,15 @@ function GalleryItem({ item, onPress }: {
     )
 }
 
+interface MomentCommentRow {
+    id: string
+    moment_id: string
+    author_id: string
+    author_type: 'practitioner' | 'member'
+    content: string
+    created_at: string
+}
+
 export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle }: MomentDetailProps) {
     const { t, locale } = useI18n()
     const insets = useSafeAreaInsets()
@@ -243,6 +253,72 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle }: Mo
     const isVoice = moment.type === 'voice'
     const [fullscreenImage, setFullscreenImage] = useState<string | null>(null)
     const mainSignedUrl = useSignedUrl('moments_media', moment.media_path ?? moment.media_url)
+
+    const [comments, setComments] = useState<MomentCommentRow[]>([])
+    const [newComment, setNewComment] = useState('')
+    const [postingComment, setPostingComment] = useState(false)
+
+    useEffect(() => {
+        let cancelled = false
+        ;(async () => {
+            const { data } = await supabase
+                .from('moment_comments')
+                .select('*')
+                .eq('moment_id', moment.id)
+                .order('created_at', { ascending: true })
+            if (!cancelled) setComments((data || []) as MomentCommentRow[])
+        })()
+        return () => { cancelled = true }
+    }, [moment.id])
+
+    const postComment = useCallback(async () => {
+        const trimmed = newComment.trim()
+        if (!trimmed) return
+        setPostingComment(true)
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+            const { data, error } = await supabase
+                .from('moment_comments')
+                .insert({ moment_id: moment.id, author_id: user.id, author_type: 'member', content: trimmed })
+                .select()
+                .single()
+            if (error) return
+            setComments(prev => [...prev, data as MomentCommentRow])
+            setNewComment('')
+            // Notify practitioner. We need the practitioner_id from the
+            // member row.
+            const { data: memberRow } = await supabase
+                .from('members')
+                .select('id, practitioner_id, first_name, last_name')
+                .eq('user_id', user.id)
+                .maybeSingle()
+            if (memberRow?.practitioner_id) {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session) {
+                    const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
+                    fetch(`${API_URL}/api/notifications/send`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+                        body: JSON.stringify({
+                            userId: memberRow.practitioner_id,
+                            userType: 'practitioner',
+                            type: 'moment_comment',
+                            entityType: 'member',
+                            entityId: memberRow.id,
+                            metadata: {
+                                memberName: `${memberRow.first_name || ''} ${memberRow.last_name || ''}`.trim(),
+                                memberId: memberRow.id,
+                                momentId: moment.id,
+                            },
+                        }),
+                    }).catch(() => {})
+                }
+            }
+        } finally {
+            setPostingComment(false)
+        }
+    }, [moment.id, newComment])
 
     return (
         <Pressable
@@ -401,8 +477,79 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle }: Mo
                                 </Text>
                             </TouchableOpacity>
                         )}
+
+                        {/* Conversation */}
+                        <View style={{ marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', color: colors.textTertiary, marginBottom: 12 }}>
+                                {locale === 'fr' ? 'Conversation' : 'Conversation'}
+                            </Text>
+                            {comments.length === 0 ? (
+                                <Text style={{ fontSize: 13, color: colors.textFaint, fontStyle: 'italic' }}>
+                                    {locale === 'fr' ? 'Pas encore de commentaires' : 'No comments yet'}
+                                </Text>
+                            ) : (
+                                <View style={{ gap: 10 }}>
+                                    {comments.map(c => {
+                                        const mine = c.author_type === 'member'
+                                        const when = new Date(c.created_at).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                        return (
+                                            <View key={c.id} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
+                                                <View style={{
+                                                    maxWidth: '82%',
+                                                    backgroundColor: mine ? colors.bloom : colors.surface1,
+                                                    borderRadius: 16,
+                                                    paddingHorizontal: 14, paddingVertical: 8,
+                                                }}>
+                                                    <Text style={{ fontSize: 14, color: mine ? '#fff' : colors.primary, lineHeight: 20 }}>{c.content}</Text>
+                                                </View>
+                                                <Text style={{ fontSize: 10, color: colors.textFaint, marginTop: 4, paddingHorizontal: 4 }}>{when}</Text>
+                                            </View>
+                                        )
+                                    })}
+                                </View>
+                            )}
+                        </View>
                     </View>
                 </ScrollView>
+
+                {/* Composer pinned at the bottom of the sheet */}
+                <View style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 10,
+                    paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6,
+                    borderTopWidth: 1, borderTopColor: '#F0F0F0',
+                    backgroundColor: colors.bg,
+                }}>
+                    <TextInput
+                        value={newComment}
+                        onChangeText={setNewComment}
+                        placeholder={locale === 'fr' ? 'Écrire un commentaire...' : 'Write a comment...'}
+                        placeholderTextColor={colors.textTertiary}
+                        style={{
+                            flex: 1,
+                            backgroundColor: colors.surface1,
+                            borderRadius: 18,
+                            paddingHorizontal: 14, paddingVertical: 10,
+                            fontSize: 14, color: colors.primary,
+                        }}
+                        editable={!postingComment}
+                        onSubmitEditing={() => { if (newComment.trim()) postComment() }}
+                        returnKeyType="send"
+                    />
+                    <TouchableOpacity
+                        onPress={postComment}
+                        disabled={!newComment.trim() || postingComment}
+                        activeOpacity={0.8}
+                        style={{
+                            paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18,
+                            backgroundColor: colors.bloom,
+                            opacity: !newComment.trim() || postingComment ? 0.5 : 1,
+                        }}
+                    >
+                        <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                            {locale === 'fr' ? 'Envoyer' : 'Send'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </Pressable>
 
             {/* Fullscreen image viewer */}
