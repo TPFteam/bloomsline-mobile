@@ -6,6 +6,12 @@ import { useI18n } from '@/lib/i18n'
 import { colors } from '@/lib/theme'
 import { X, Check, Sparkles, ArrowRight, Lightbulb, Heart, ChevronLeft } from 'lucide-react-native'
 
+// Feature flag — Chapters is hidden across the mobile app for now.
+// Mirror this with the constant in /(main)/stories.tsx so they flip
+// together. When false the chapter quiz slide + explainer card are
+// dropped from the tips screen.
+const SHOW_CHAPTERS = false
+
 // ─── Quiz Data ─────────────────────────────
 
 interface QuizSlide {
@@ -223,7 +229,12 @@ export default function Tips() {
 
   const [activeQuiz, setActiveQuiz] = useState<'how' | 'why' | null>(null)
 
-  const howSlides = isStories ? STORIES_HOW : MOMENTS_HOW
+  // Drop the chapter quiz slide (the purple "Chapters sound serious?"
+  // one) when chapters are hidden. Identified by its bg colour since
+  // that's stable across locales.
+  const howSlides = (isStories ? STORIES_HOW : MOMENTS_HOW).filter(
+    s => SHOW_CHAPTERS || !(isStories && s.bg === '#8B5CF6'),
+  )
   const whySlides = isStories ? STORIES_WHY : MOMENTS_WHY
 
   const pageFade = useRef(new Animated.Value(0)).current
@@ -270,6 +281,7 @@ export default function Tips() {
                   : "A space to write what you feel, what you're going through, or what you want to remember. Text, photo, voice — there are no rules."}
               </Text>
             </View>
+            {SHOW_CHAPTERS && (
             <View style={{
               backgroundColor: '#fff', borderRadius: 20, padding: 20,
               borderWidth: 1, borderColor: '#F0F0F0',
@@ -283,6 +295,7 @@ export default function Tips() {
                   : "Group your stories by what matters to you. Like playlists, but for your thoughts. Your themes, your way."}
               </Text>
             </View>
+            )}
           </View>
         )}
 

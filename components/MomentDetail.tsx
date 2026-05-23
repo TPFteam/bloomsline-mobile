@@ -88,7 +88,11 @@ function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compac
                 ref={videoRef}
                 source={{ uri }}
                 style={{ width: '100%', height: '100%' }}
-                resizeMode={fullscreen ? ResizeMode.CONTAIN : ResizeMode.COVER}
+                // Always CONTAIN so the whole video shows in both the
+                // inline preview and fullscreen, regardless of whether
+                // it's portrait or landscape. COVER cropped portrait
+                // videos to fit the preview's square frame.
+                resizeMode={ResizeMode.CONTAIN}
                 shouldPlay={false}
                 isMuted={isMuted}
                 onPlaybackStatusUpdate={onPlaybackStatusUpdate}

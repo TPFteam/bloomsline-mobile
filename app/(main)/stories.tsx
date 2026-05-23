@@ -92,6 +92,24 @@ import { useSignedUrl } from '@/lib/hooks/useSignedUrl'
 
 const SHARE_BASE_URL = 'https://bloomsline.com/stories'
 
+// Feature flag — Chapters is hidden across the mobile app for now.
+// Flip to true to bring back the Stories / Chapters tab toggle, the
+// chapter list view, and the New Chapter button. All chapter state +
+// fetch logic stays wired up so existing data is preserved.
+const SHOW_CHAPTERS = false
+
+// Feature flag — Story sharing (share link + secret code). On =
+// patients can share any story via a link and optionally protect it
+// with a code. Off = no share UI at all.
+const STORIES_SHARING_ENABLED = true
+
+// Feature flag — manual Publish / Unpublish UI. Off = the concept of
+// "publish" is hidden from the patient. Sharing a story still flips
+// the underlying published flag silently (so the public URL works),
+// but the patient never sees the term. Re-enable to expose the
+// explicit publish/draft state in the menu and filters.
+const SHOW_PUBLISH_UI = false
+
 // ─── Types ──────────────────────────────────────────
 
 interface ContentBlock {
@@ -987,6 +1005,10 @@ function DraggableBlockList({ blocks, onReorder, editTitle, setEditTitle, upload
 export default function StoriesScreen() {
   const { user, member } = useAuth()
   const mobileFeatures = useMobileFeatures(member?.practitioner_id)
+  // Single source of truth for whether sharing UI renders. Combines
+  // the global STORIES_SHARING_ENABLED flag with the per-practitioner
+  // mobileFeatures.stories_shareable toggle.
+  const canShareStories = STORIES_SHARING_ENABLED && mobileFeatures?.stories_shareable !== false
   const { t, locale } = useI18n()
   const router = useRouter()
   const { openStoryId, highlightLatestComment } = useLocalSearchParams<{ openStoryId?: string; highlightLatestComment?: string }>()
@@ -1042,6 +1064,14 @@ export default function StoriesScreen() {
   const [newCode, setNewCode] = useState('')
   const [confirmNewCode, setConfirmNewCode] = useState('')
   const [codeSaving, setCodeSaving] = useState(false)
+  // Share-link chooser sheet — opened on the first "Share link" tap
+  // for a story that has no code yet AND hasn't been shared before.
+  // Patient picks "with code" or "without code"; the story remembers
+  // and subsequent shares don't re-ask.
+  const [shareChooserStory, setShareChooserStory] = useState<Story | null>(null)
+  // When set, finishing the code modal also triggers shareStory —
+  // used when the chooser flow picked "with code".
+  const [shareAfterCodeSave, setShareAfterCodeSave] = useState(false)
 
   // Chapters
   const [chapters, setChapters] = useState<Chapter[]>([])
@@ -1459,6 +1489,20 @@ export default function StoriesScreen() {
   }
 
   async function shareStory(story: Story) {
+    // First-time share: ask the patient whether they want a code on
+    // the link. After that the decision is baked in (secret_code +
+    // published) and we don't ask again.
+    if (!story.secret_code && !story.published) {
+      setShareChooserStory(story)
+      return
+    }
+    // Silently publish drafts so the public URL works. The patient
+    // doesn't think about publish state — tapping "Share link" just
+    // makes the link work.
+    if (!story.published) {
+      await publishStory(story)
+      story = { ...story, published: true }
+    }
     const url = getShareUrl(story)
     const shareIntro = locale === 'fr'
       ? 'J\'ai ecrit quelque chose et je voulais le partager avec toi.'
@@ -1480,10 +1524,37 @@ export default function StoriesScreen() {
   }
 
   function openCodeModal(story: Story) {
+    // Auto-publish drafts so the secret code actually does something
+    // (a draft URL doesn't resolve, code or no code). Patient never
+    // sees the "publish" step.
+    if (!story.published) {
+      publishStory(story).catch(() => {})
+    }
     setCodeModalStory(story)
     setNewCode(story.secret_code || '')
     setConfirmNewCode(story.secret_code || '')
     setCodeModalVisible(true)
+  }
+
+  // ─── Share-link chooser handlers ──────────────────
+  async function chooseShareWithoutCode() {
+    const story = shareChooserStory
+    if (!story) return
+    setShareChooserStory(null)
+    // Mark the story as published so subsequent shares skip the
+    // chooser. secret_code stays null = no code.
+    if (!story.published) {
+      await publishStory(story)
+    }
+    // Re-enter shareStory with the now-published shape.
+    await shareStory({ ...story, published: true })
+  }
+  function chooseShareWithCode() {
+    const story = shareChooserStory
+    if (!story) return
+    setShareChooserStory(null)
+    setShareAfterCodeSave(true)
+    openCodeModal(story)
   }
 
   async function saveCode() {
@@ -1509,6 +1580,14 @@ export default function StoriesScreen() {
         setViewingStory({ ...viewingStory!, secret_code: codeValue })
       }
       setCodeModalVisible(false)
+      // Chain into share if we got here via the "Share link with code"
+      // path. Local shape reflects the just-saved code + published.
+      if (shareAfterCodeSave) {
+        setShareAfterCodeSave(false)
+        const updatedStory = { ...codeModalStory, secret_code: codeValue, published: true }
+        // Fire-and-forget — saveCode is awaited by caller too.
+        shareStory(updatedStory).catch(() => {})
+      }
     } catch (err) {
       showAlert('Error', 'Failed to update secret code.')
     } finally {
@@ -1780,8 +1859,6 @@ export default function StoriesScreen() {
 
   // ─── Computed ─────────────────────────────────────
 
-  const publishedCount = stories.filter(s => s.published).length
-  const draftCount = stories.filter(s => !s.published).length
   const filtered = filter === 'all' ? stories
     : filter === 'published' ? stories.filter(s => s.published)
     : stories.filter(s => !s.published)
@@ -1868,24 +1945,15 @@ export default function StoriesScreen() {
         ) : (
         <>
 
-        {/* Stats */}
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
-          {[
-            { count: stories.length, label: t.stories?.total || 'Total', color: colors.bloom },
-            { count: publishedCount, label: t.stories?.published || 'Published', color: '#059669' },
-            { count: draftCount, label: t.stories?.drafts || 'Drafts', color: colors.textSecondary },
-          ].map((stat, i) => (
-            <View key={i} style={{
-              flex: 1, backgroundColor: '#fff', borderRadius: radii.card, padding: 14,
-              alignItems: 'center', borderWidth: 1, borderColor: '#EBEBEB',
-            }}>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: stat.color }}>{stat.count}</Text>
-              <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>{stat.label}</Text>
-            </View>
-          ))}
-        </View>
+        {/* Stats cards (Total / Published / Drafts) removed — the
+            information also appears on each story row and in the
+            filter chips below. */}
 
-        {/* Stories / Chapters tabs */}
+        {/* Stories / Chapters tabs — hidden behind SHOW_CHAPTERS.
+            When the flag is off the toggle disappears entirely;
+            viewMode is already 'grid' by default so the Stories grid
+            renders without any other change. */}
+        {SHOW_CHAPTERS && (
         <View style={{ flexDirection: 'row', backgroundColor: colors.surface1, borderRadius: 12, padding: 3, marginBottom: 16 }}>
           {([
             { key: 'grid' as const, label: t.stories?.section || 'Stories' },
@@ -1909,9 +1977,12 @@ export default function StoriesScreen() {
             )
           })}
         </View>
+        )}
 
-        {/* Filter pills (stories view only, hidden when sharing off) */}
-        {viewMode === 'grid' && mobileFeatures?.stories_shareable !== false && (
+        {/* Filter pills — only shown when the explicit publish UI is
+            on. With SHOW_PUBLISH_UI off the patient doesn't think
+            about draft vs published so the filter is just noise. */}
+        {viewMode === 'grid' && canShareStories && SHOW_PUBLISH_UI && (
           <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
             {([
               { key: 'all' as const, label: t.stories?.all || 'All' },
@@ -2013,7 +2084,7 @@ export default function StoriesScreen() {
                                 <View style={{ flex: 1 }}>
                                   <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }} numberOfLines={1}>{story.title}</Text>
                                   <Text style={{ fontSize: 11, color: colors.textSecondary, marginTop: 2 }}>
-                                    {mobileFeatures?.stories_shareable !== false && (<>{story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}{' · '}</>)}
+                                    {SHOW_PUBLISH_UI && canShareStories && (<>{story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}{' · '}</>)}
                                     {formatDate(story.updated_at)}
                                   </Text>
                                 </View>
@@ -2106,9 +2177,13 @@ export default function StoriesScreen() {
                     }}
                   >
                     {/* Top row: badges + menu (or title + menu when sharing off) */}
-                    {mobileFeatures?.stories_shareable !== false ? (
+                    {canShareStories ? (
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                         <View style={{ flexDirection: 'row', gap: 6 }}>
+                          {/* Draft / Published badge — hidden behind the
+                              publish UI flag. Patient sees "this story
+                              has a code" but not "this story is a draft". */}
+                          {SHOW_PUBLISH_UI && (
                           <View style={{
                             flexDirection: 'row', alignItems: 'center', gap: 4,
                             backgroundColor: story.published ? '#ecfdf5' : colors.surface1,
@@ -2119,6 +2194,7 @@ export default function StoriesScreen() {
                               {story.published ? (t.stories?.published || 'Published') : (t.stories?.draft || 'Draft')}
                             </Text>
                           </View>
+                          )}
                           {!!story.secret_code && (
                             <View style={{
                               flexDirection: 'row', alignItems: 'center', gap: 3,
@@ -2143,7 +2219,7 @@ export default function StoriesScreen() {
                       <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primary, flex: 1 }} numberOfLines={2}>
                         {story.title}
                       </Text>
-                      {mobileFeatures?.stories_shareable === false && (
+                      {!canShareStories && (
                         <TouchableOpacity
                           onPress={() => setMenuStoryId(menuStoryId === story.id ? null : story.id)}
                           style={{ padding: 4 }}
@@ -2295,7 +2371,7 @@ export default function StoriesScreen() {
                     {viewingStory.title}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    {mobileFeatures?.stories_shareable !== false && (
+                    {SHOW_PUBLISH_UI && canShareStories && (
                     <View style={{
                       flexDirection: 'row', alignItems: 'center', gap: 3,
                       backgroundColor: viewingStory.published ? '#ecfdf5' : colors.surface1,
@@ -2327,7 +2403,7 @@ export default function StoriesScreen() {
                 )}
 
                 {/* Share URL for published stories (hidden when sharing off) */}
-                {viewingStory.published && mobileFeatures?.stories_shareable !== false && (
+                {viewingStory.published && canShareStories && (
                   <View style={{
                     marginTop: 20, backgroundColor: '#f0fdf4', borderRadius: radii.card, padding: 16,
                     borderWidth: 1, borderColor: '#bbf7d0',
@@ -2474,7 +2550,11 @@ export default function StoriesScreen() {
                     <Edit3 size={18} color={colors.primary} />
                     <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>Edit</Text>
                   </TouchableOpacity>
-                  {mobileFeatures?.stories_shareable !== false && (
+                  {/* Publish / Unpublish primary buttons — only when
+                      the explicit publish UI flag is on. With it off,
+                      sharing implicitly publishes; the patient never
+                      sees the word. */}
+                  {SHOW_PUBLISH_UI && canShareStories && (
                     viewingStory.published ? (
                     <TouchableOpacity
                       onPress={() => unpublishStory(viewingStory)}
@@ -2499,9 +2579,11 @@ export default function StoriesScreen() {
                     </TouchableOpacity>
                   ))}
                 </View>
-                {viewingStory.published && (
+                {/* Action buttons. Share link works for drafts too —
+                    shareStory silently publishes when needed. */}
+                {(member?.practitioner_id || canShareStories) && (
                   <View style={{ gap: 8 }}>
-                    {/* Send to practitioner */}
+                    {/* Send to practitioner — independent of publish. */}
                     {member?.practitioner_id && (
                       <TouchableOpacity
                         onPress={() => confirmShareToPractitioner(viewingStory)}
@@ -2520,8 +2602,11 @@ export default function StoriesScreen() {
                         </Text>
                       </TouchableOpacity>
                     )}
-                    {/* Share public link */}
-                    {mobileFeatures?.stories_shareable !== false && (
+                    {/* Share public link — auto-publishes on tap when
+                        the story is still a draft. The label changes
+                        when a code is set so the patient can tell at a
+                        glance whether the link is protected. */}
+                    {canShareStories && (
                       <TouchableOpacity
                         onPress={() => shareStory(viewingStory)}
                         style={{
@@ -2530,9 +2615,47 @@ export default function StoriesScreen() {
                           backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe',
                         }}
                       >
-                        <Share2 size={18} color="#2563eb" />
+                        {viewingStory.secret_code
+                          ? <Lock size={18} color="#2563eb" />
+                          : <Share2 size={18} color="#2563eb" />}
                         <Text style={{ fontSize: 15, fontWeight: '600', color: '#2563eb' }}>
-                          {locale === 'fr' ? 'Partager le lien' : 'Share link'}
+                          {viewingStory.secret_code
+                            ? (locale === 'fr' ? 'Partager le lien (avec code)' : 'Share link (with code)')
+                            : (locale === 'fr' ? 'Partager le lien' : 'Share link')}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {/* Manage code — visible only when a code is set,
+                        so the patient can change or remove it without
+                        digging into the dropdown menu. */}
+                    {canShareStories && viewingStory.secret_code && (
+                      <TouchableOpacity
+                        onPress={() => openCodeModal(viewingStory)}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+                          paddingVertical: 10, borderRadius: radii.button,
+                          backgroundColor: 'transparent',
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, color: '#7c3aed', fontWeight: '500' }}>
+                          {locale === 'fr' ? 'Modifier ou supprimer le code' : 'Change or remove code'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {/* Stop sharing — only when story is currently
+                        public. Reverts to draft so the link 404s. */}
+                    {canShareStories && viewingStory.published && (
+                      <TouchableOpacity
+                        onPress={() => unpublishStory(viewingStory)}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                          paddingVertical: 12, borderRadius: radii.button,
+                          backgroundColor: 'transparent',
+                        }}
+                      >
+                        <EyeOff size={16} color={colors.textSecondary} />
+                        <Text style={{ fontSize: 13, color: colors.textSecondary }}>
+                          {locale === 'fr' ? 'Arrêter le partage' : 'Stop sharing'}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -2618,7 +2741,7 @@ export default function StoriesScreen() {
                   {editSaving ? t.stories.saving : t.stories.saveDraft}
                 </Text>
               </TouchableOpacity>
-              {mobileFeatures?.stories_shareable !== false && (
+              {canShareStories && (
               <TouchableOpacity
                 onPress={() => {
                   // If already published, just save — no need to re-ask about code
@@ -2749,7 +2872,11 @@ export default function StoriesScreen() {
                       <Edit3 size={20} color={colors.primary} />
                       <Text style={{ fontSize: 16, color: colors.primary }}>Edit</Text>
                     </TouchableOpacity>
-                    {mobileFeatures?.stories_shareable !== false && (
+                    {/* Publish / Unpublish — only when the explicit
+                        publish UI flag is on. Default hides this menu
+                        item; "publish" happens silently when the
+                        patient taps Share Link or Secret Code. */}
+                    {SHOW_PUBLISH_UI && canShareStories && (
                     <TouchableOpacity
                       onPress={() => {
                         setMenuStoryId(null)
@@ -2762,7 +2889,11 @@ export default function StoriesScreen() {
                       <Text style={{ fontSize: 16, color: colors.primary }}>{story.published ? t.stories.unpublish : t.stories.publish}</Text>
                     </TouchableOpacity>
                     )}
-                    {story.published && mobileFeatures?.stories_shareable !== false && (
+                    {/* Share Link / Secret Code — work on drafts too.
+                        shareStory / openCodeModal auto-publish under
+                        the hood when needed, so the patient never has
+                        to think about publish state. */}
+                    {canShareStories && (
                       <TouchableOpacity
                         onPress={() => { setMenuStoryId(null); shareStory(story) }}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }}
@@ -2771,7 +2902,7 @@ export default function StoriesScreen() {
                         <Text style={{ fontSize: 16, color: colors.primary }}>Share Link</Text>
                       </TouchableOpacity>
                     )}
-                    {story.published && mobileFeatures?.stories_shareable !== false && (
+                    {canShareStories && (
                       <TouchableOpacity
                         onPress={() => { setMenuStoryId(null); openCodeModal(story) }}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }}
@@ -2787,7 +2918,7 @@ export default function StoriesScreen() {
                         </View>
                       </TouchableOpacity>
                     )}
-                    {chapters.length > 0 && (
+                    {SHOW_CHAPTERS && chapters.length > 0 && (
                       <TouchableOpacity
                         onPress={() => { setMenuStoryId(null); openAssignSheet(story) }}
                         style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 }}
@@ -3030,6 +3161,77 @@ export default function StoriesScreen() {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* ═══════════════════════════════════════════ */}
+      {/* SHARE LINK CHOOSER (first-time only)        */}
+      {/* ═══════════════════════════════════════════ */}
+      <Modal visible={!!shareChooserStory} animationType="fade" transparent onRequestClose={() => setShareChooserStory(null)}>
+        <Pressable
+          onPress={() => setShareChooserStory(null)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' }}
+        >
+          <Pressable onPress={() => {}} style={{
+            backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+            paddingTop: 12, paddingBottom: insets.bottom + 20, paddingHorizontal: 20,
+          }}>
+            <View style={{ width: 36, height: 4, backgroundColor: colors.divider, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.primary, marginBottom: 6 }}>
+              {locale === 'fr' ? 'Partager le lien' : 'Share link'}
+            </Text>
+            <Text style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 16, lineHeight: 19 }}>
+              {locale === 'fr'
+                ? 'Voulez-vous protéger ce lien avec un code ? Vous pourrez modifier ce choix plus tard depuis le menu.'
+                : 'Do you want to protect this link with a code? You can change this later from the menu.'}
+            </Text>
+            <TouchableOpacity
+              onPress={chooseShareWithCode}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+                paddingVertical: 14, paddingHorizontal: 14, borderRadius: radii.button,
+                backgroundColor: '#f5f3ff', borderWidth: 1, borderColor: '#ddd6fe',
+                marginBottom: 10,
+              }}
+            >
+              <Lock size={18} color="#7c3aed" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#5b21b6' }}>
+                  {locale === 'fr' ? 'Avec un code' : 'With a code'}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#7c3aed' }}>
+                  {locale === 'fr' ? 'Seuls les destinataires qui ont le code peuvent ouvrir' : 'Only people with the code can open it'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={chooseShareWithoutCode}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 12,
+                paddingVertical: 14, paddingHorizontal: 14, borderRadius: radii.button,
+                backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe',
+                marginBottom: 12,
+              }}
+            >
+              <Share2 size={18} color="#2563eb" />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 15, fontWeight: '600', color: '#1d4ed8' }}>
+                  {locale === 'fr' ? 'Sans code' : 'Without a code'}
+                </Text>
+                <Text style={{ fontSize: 12, color: '#2563eb' }}>
+                  {locale === 'fr' ? "N'importe qui avec le lien peut ouvrir" : 'Anyone with the link can open it'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShareChooserStory(null)}
+              style={{ paddingVertical: 12, alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 14, color: colors.textSecondary }}>
+                {locale === 'fr' ? 'Annuler' : 'Cancel'}
+              </Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* ═══════════════════════════════════════════ */}
