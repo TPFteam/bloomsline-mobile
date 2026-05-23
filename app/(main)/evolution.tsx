@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react'
 import { View, Text, TouchableOpacity, Alert, Modal, Pressable } from 'react-native'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
-import { useRouter } from 'expo-router'
+import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { getMemberMoments, Moment, shareMomentWithPractitioner, unshareMomentFromPractitioner } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
@@ -25,6 +25,8 @@ type TimeRange = '7d' | '30d' | '90d'
 export default function Evolution() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  const params = useLocalSearchParams<{ openMomentId?: string; highlightLatestComment?: string }>()
+  const [highlightLatest, setHighlightLatest] = useState(false)
   const [range, setRange] = useState<TimeRange>('7d')
   const [allMoments, setAllMoments] = useState<Moment[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,6 +69,20 @@ export default function Evolution() {
     }
     initialFetch()
   }, [fetchData])
+
+  // Notification deeplink: when ?openMomentId=... is in the URL and the
+  // matching moment has loaded, open the detail sheet. If the deeplink
+  // also says highlightLatestComment, MomentDetail will auto-scroll to
+  // the most recent comment after fetching the conversation.
+  useEffect(() => {
+    const id = params.openMomentId
+    if (!id || allMoments.length === 0) return
+    const target = allMoments.find(m => m.id === id)
+    if (target) {
+      setHighlightLatest(params.highlightLatestComment === '1')
+      setViewingMoment(target)
+    }
+  }, [params.openMomentId, params.highlightLatestComment, allMoments])
 
   const onRefresh = useCallback(async () => {
     await fetchData()
@@ -454,8 +470,9 @@ export default function Evolution() {
       {viewingMoment && (
         <MomentDetail
           moment={viewingMoment}
-          onClose={() => setViewingMoment(null)}
+          onClose={() => { setViewingMoment(null); setHighlightLatest(false) }}
           onShareToggle={(m) => { setViewingMoment(null); handleShareToggle(m) }}
+          highlightLatestComment={highlightLatest}
         />
       )}
 

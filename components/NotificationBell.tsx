@@ -234,7 +234,11 @@ export default function NotificationBell({ onOpenResource }: { onOpenResource?: 
                         const md: any = notif.metadata || {}
                         const storyId = md.storyId
                         const resourceId = md.resourceId
-                        if (storyId) {
+                        const momentId = md.momentId
+                        if (momentId) {
+                          setIsOpen(false)
+                          router.push(`/(main)/evolution?openMomentId=${momentId}&highlightLatestComment=1`)
+                        } else if (storyId) {
                           setIsOpen(false)
                           router.push(`/(main)/stories?openStoryId=${storyId}&highlightLatestComment=1`)
                         } else if (resourceId && onOpenResource) {

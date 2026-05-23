@@ -18,6 +18,10 @@ interface MomentDetailProps {
     onClose: () => void
     onOpenStory?: (storyId: string) => void
     onShareToggle?: (m: Moment) => void
+    /** When true, scroll the sheet to the bottom of the conversation
+     *  on initial load — used by the notification deeplink so the
+     *  practitioner's latest reply is what the patient sees first. */
+    highlightLatestComment?: boolean
 }
 
 function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compact?: boolean }) {
@@ -245,7 +249,7 @@ interface MomentCommentRow {
     created_at: string
 }
 
-export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle }: MomentDetailProps) {
+export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle, highlightLatestComment }: MomentDetailProps) {
     const { t, locale } = useI18n()
     const insets = useSafeAreaInsets()
     const hasMedia = (moment.media_path || moment.media_url) && (moment.type === 'photo' || moment.type === 'video' || moment.type === 'mixed')
@@ -257,6 +261,7 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle }: Mo
     const [comments, setComments] = useState<MomentCommentRow[]>([])
     const [newComment, setNewComment] = useState('')
     const [postingComment, setPostingComment] = useState(false)
+    const conversationScrollRef = useRef<ScrollView>(null)
 
     useEffect(() => {
         let cancelled = false
@@ -266,10 +271,17 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle }: Mo
                 .select('*')
                 .eq('moment_id', moment.id)
                 .order('created_at', { ascending: true })
-            if (!cancelled) setComments((data || []) as MomentCommentRow[])
+            if (cancelled) return
+            const rows = (data || []) as MomentCommentRow[]
+            setComments(rows)
+            if (highlightLatestComment && rows.length > 0) {
+                // Wait one tick for the sheet's ScrollView to layout
+                // the new content, then jump to the bottom.
+                setTimeout(() => conversationScrollRef.current?.scrollToEnd({ animated: true }), 60)
+            }
         })()
         return () => { cancelled = true }
-    }, [moment.id])
+    }, [moment.id, highlightLatestComment])
 
     const postComment = useCallback(async () => {
         const trimmed = newComment.trim()
@@ -286,6 +298,7 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle }: Mo
             if (error) return
             setComments(prev => [...prev, data as MomentCommentRow])
             setNewComment('')
+            setTimeout(() => conversationScrollRef.current?.scrollToEnd({ animated: true }), 50)
             // Notify practitioner. We need the practitioner_id from the
             // member row.
             const { data: memberRow } = await supabase
@@ -344,7 +357,7 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle }: Mo
                     <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.disabled }} />
                 </View>
 
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView ref={conversationScrollRef} showsVerticalScrollIndicator={false}>
                     {/* Media */}
                     {hasMedia && mainSignedUrl && (
                         isMainVideo ? (
