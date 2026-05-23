@@ -68,7 +68,7 @@ const PAST_MESSAGES_FR = [
   'Une page vide, une vie remplie.',
 ]
 
-function EmptyMomentCard({ onPress, locale, isToday, firstName }: { onPress?: () => void; locale: string; isToday: boolean; firstName: string }) {
+function EmptyMomentCard({ onSelectType, locale, isToday, firstName }: { onSelectType?: (type: string) => void; locale: string; isToday: boolean; firstName: string }) {
   const glowAnim = useRef(new Animated.Value(0)).current
 
   // Stable message — only changes when date or locale changes, not on every render
@@ -110,32 +110,53 @@ function EmptyMomentCard({ onPress, locale, isToday, firstName }: { onPress?: ()
     outputRange: [0.05, 0.2],
   })
 
+  const typeOrder = ['video', 'voice', 'write', 'photo']
+
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
-      <Animated.View style={{
-        backgroundColor: '#fff',
-        borderRadius: 24,
-        padding: 28,
-        alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor,
-        shadowColor: colors.bloom,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity,
-        shadowRadius: 16,
-        elevation: 4,
-      }}>
-        <Text style={{ fontSize: 20, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 8, lineHeight: 28 }}>
-          {msg.text}
-        </Text>
-        <Text style={{ fontSize: 14, color: '#999', textAlign: 'center', lineHeight: 20, marginBottom: 16 }}>
-          {msg.sub}
-        </Text>
-        <Text style={{ fontSize: 13, fontWeight: '500', color: colors.bloom }}>
-          {locale === 'fr' ? 'Appuyez pour capturer →' : 'Tap to capture →'}
-        </Text>
-      </Animated.View>
-    </TouchableOpacity>
+    <Animated.View style={{
+      backgroundColor: '#fff',
+      borderRadius: 24,
+      padding: 28,
+      alignItems: 'center',
+      borderWidth: 1.5,
+      borderColor,
+      shadowColor: colors.bloom,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity,
+      shadowRadius: 16,
+      elevation: 4,
+    }}>
+      <Text style={{ fontSize: 20, fontWeight: '600', color: colors.primary, textAlign: 'center', marginBottom: 8, lineHeight: 28 }}>
+        {msg.text}
+      </Text>
+      <Text style={{ fontSize: 14, color: '#999', textAlign: 'center', lineHeight: 20, marginBottom: 20 }}>
+        {msg.sub}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: 14, justifyContent: 'center' }}>
+        {typeOrder.map(k => {
+          const def = CAPTURE_TYPES.find(c => c.key === k)
+          if (!def) return null
+          const { Icon, color } = def
+          return (
+            <TouchableOpacity
+              key={k}
+              onPress={() => onSelectType?.(k)}
+              activeOpacity={0.7}
+              style={{
+                width: 52, height: 52, borderRadius: 16,
+                backgroundColor: '#fff',
+                borderWidth: 1, borderColor: '#EFEFEF',
+                justifyContent: 'center', alignItems: 'center',
+                shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.04, shadowRadius: 3, elevation: 1,
+              }}
+            >
+              <Icon size={22} color={color} strokeWidth={2} />
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+    </Animated.View>
   )
 }
 
@@ -547,7 +568,7 @@ export default function Home() {
                     </TouchableOpacity>
                     </Animated.View>
                   ) : (
-                  <EmptyMomentCard onPress={() => router.push('/(main)/capture')} locale={locale} isToday={true} firstName={firstName} />
+                  <EmptyMomentCard onSelectType={handleCaptureType} locale={locale} isToday={true} firstName={firstName} />
                   )
                 ) : (
                   <EmptyMomentCard locale={locale} isToday={false} firstName={firstName} />

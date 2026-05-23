@@ -1,6 +1,6 @@
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native'
+import { Text, TouchableOpacity, ScrollView } from 'react-native'
 import { Camera, Video, Mic, PenLine } from 'lucide-react-native'
-import { MOOD_COLORS, colors } from '@/lib/theme'
+import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
 
 const TYPE_FILTERS: { key: string; Icon?: any }[] = [
@@ -27,7 +27,7 @@ interface FilterRowProps {
     availableMoods: string[]
 }
 
-export function FilterRow({ activeType, onTypeChange, activeMood, onMoodChange, availableMoods }: FilterRowProps) {
+export function FilterRow({ activeType, onTypeChange }: FilterRowProps) {
     const { t } = useI18n()
 
     const getLabel = (key: string) => {
@@ -53,40 +53,6 @@ export function FilterRow({ activeType, onTypeChange, activeMood, onMoodChange, 
                     >
                         {f.Icon && <f.Icon size={14} color={active ? '#fff' : colors.textSecondary} strokeWidth={2} />}
                         <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : colors.textSecondary }}>{getLabel(f.key)}</Text>
-                    </TouchableOpacity>
-                )
-            })}
-
-            {/* Mood dots */}
-            {availableMoods.length > 0 && (
-                <View style={{ width: 1, height: 24, backgroundColor: colors.disabled, marginHorizontal: 4, alignSelf: 'center' }} />
-            )}
-            {availableMoods.slice(0, 6).map(mood => {
-                const active = activeMood === mood
-                return (
-                    <TouchableOpacity
-                        key={mood}
-                        onPress={() => onMoodChange(active ? null : mood)}
-                        activeOpacity={0.7}
-                        style={{
-                            flexDirection: 'row', alignItems: 'center', gap: 5,
-                            paddingHorizontal: active ? 12 : 0,
-                            paddingVertical: active ? 6 : 0,
-                            borderRadius: 12,
-                            backgroundColor: active ? (MOOD_COLORS[mood] || '#666') + '1A' : 'transparent',
-                        }}
-                    >
-                        <View style={{
-                            width: active ? 16 : 24, height: active ? 16 : 24,
-                            borderRadius: active ? 8 : 12,
-                            backgroundColor: MOOD_COLORS[mood] || '#666',
-                            opacity: active ? 1 : 0.5,
-                        }} />
-                        {active && (
-                            <Text style={{ fontSize: 12, fontWeight: '600', color: MOOD_COLORS[mood] || '#666', textTransform: 'capitalize' }}>
-                                {t.moods[mood as keyof typeof t.moods] || mood}
-                            </Text>
-                        )}
                     </TouchableOpacity>
                 )
             })}

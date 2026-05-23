@@ -31,6 +31,7 @@ export default function Evolution() {
   const [viewingMoment, setViewingMoment] = useState<Moment | null>(null)
   const [viewMode, setViewMode] = useState<'river' | 'grid'>('river')
   const [displayLimit, setDisplayLimit] = useState(20)
+  const [tab, setTab] = useState<'moments' | 'patterns'>('moments')
   const { t, locale } = useI18n()
 
   const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
@@ -127,6 +128,54 @@ export default function Evolution() {
           </View>
         </View>
 
+        {/* Tab switcher: Moments / Patterns */}
+        <View style={{
+          flexDirection: 'row',
+          backgroundColor: colors.surface1,
+          borderRadius: 14,
+          padding: 4,
+          marginBottom: 16,
+        }}>
+          {(['moments', 'patterns'] as const).map(k => {
+            const active = tab === k
+            const label = k === 'moments'
+              ? (locale === 'fr' ? 'Moments' : 'Moments')
+              : (locale === 'fr' ? 'Tendances' : 'Patterns')
+            return (
+              <TouchableOpacity
+                key={k}
+                onPress={() => setTab(k)}
+                activeOpacity={0.7}
+                style={{
+                  flex: 1,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  backgroundColor: active ? colors.bg : 'transparent',
+                }}
+              >
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '600',
+                  color: active ? colors.primary : colors.textTertiary,
+                }}>
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            )
+          })}
+        </View>
+      </View>
+
+      <PullToRefreshScrollView
+        onRefresh={onRefresh}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 24 }}
+        showsVerticalScrollIndicator={false}
+      >
+
+        {tab === 'patterns' && (
+          <>
         {/* Time range picker */}
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
           {(['7d', '30d', '90d'] as TimeRange[]).map(r => (
@@ -148,14 +197,6 @@ export default function Evolution() {
             </TouchableOpacity>
           ))}
         </View>
-      </View>
-
-      <PullToRefreshScrollView
-        onRefresh={onRefresh}
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingBottom: 40, paddingHorizontal: 24 }}
-        showsVerticalScrollIndicator={false}
-      >
 
         {/* Personal insight */}
         <View style={{
@@ -235,9 +276,12 @@ export default function Evolution() {
           </Text>
           <MoodCalendar moments={moments} days={days} />
         </View>
+          </>
+        )}
 
+        {tab === 'moments' && (
+          <>
         {/* ─── Moments Library ─── */}
-        <View style={{ height: 1, backgroundColor: '#f0f0f0', marginBottom: 20 }} />
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase' }}>
             {t.evolution.yourMoments}
@@ -313,6 +357,8 @@ export default function Evolution() {
               {locale === 'fr' ? 'Voir plus' : 'Load more'}
             </Text>
           </TouchableOpacity>
+        )}
+          </>
         )}
       </PullToRefreshScrollView>
 
