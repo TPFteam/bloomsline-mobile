@@ -228,9 +228,15 @@ function MomentRiverCard({ moment, cardWidth, onPress, onLongPress, onShareToggl
             {/* Selection checkbox overlay (top-left so it doesn't fight
                 with the existing multi-media count badge at top-right). */}
             {selectionMode && (
-                <View style={{ position: 'absolute', top: 8, left: 8, zIndex: 5 }}>
+                <TouchableOpacity
+                    onPress={onPress}
+                    disabled={alreadyShared}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={{ position: 'absolute', top: 8, left: 8, zIndex: 5 }}
+                >
                     <SelectCheckbox selected={!!selected} disabled={alreadyShared} />
-                </View>
+                </TouchableOpacity>
             )}
         </View>
     )
@@ -346,9 +352,15 @@ function GridCard({ moment, onPress, onLongPress, onShareToggle, selectionMode, 
                 </View>
             )}
             {selectionMode && (
-                <View style={{ position: 'absolute', top: 8, left: 8, zIndex: 5 }}>
+                <TouchableOpacity
+                    onPress={onPress}
+                    disabled={alreadyShared}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                    style={{ position: 'absolute', top: 8, left: 8, zIndex: 5 }}
+                >
                     <SelectCheckbox selected={!!selected} disabled={alreadyShared} />
-                </View>
+                </TouchableOpacity>
             )}
         </View>
     )
