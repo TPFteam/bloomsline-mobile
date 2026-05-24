@@ -31,7 +31,6 @@ const MOOD_ICONS: Record<string, any> = {
 
 const MOODS = [
   // Positive — gentle to energetic
-  { key: 'peaceful', label: 'Peaceful', color: '#06B6D4' },
   { key: 'calm', label: 'Calm', color: '#4A9A86' },
   { key: 'grateful', label: 'Grateful', color: '#10B981' },
   { key: 'hopeful', label: 'Hopeful', color: '#F97316' },
