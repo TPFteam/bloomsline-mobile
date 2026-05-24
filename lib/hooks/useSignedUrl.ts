@@ -72,6 +72,49 @@ async function signOne(
   return promise
 }
 
+/**
+ * Mint many signed URLs in a single round-trip and seed the cache.
+ * Drastically faster than per-card useSignedUrl when a page renders
+ * dozens of images — the Evolution / My Journey screen would otherwise
+ * fire N sequential createSignedUrl calls. Skips paths that are
+ * already cached and fresh.
+ */
+export async function prewarmSignedUrls(
+  bucket: string,
+  pathsOrUrls: Array<string | null | undefined>,
+  ttlSeconds: number = DEFAULT_TTL_SECONDS,
+): Promise<void> {
+  const needed = new Set<string>()
+  for (const input of pathsOrUrls) {
+    if (!input) continue
+    const path = normaliseToPath(input, bucket)
+    if (!path) continue
+    const key = `${bucket}:${path}`
+    const hit = cache.get(key)
+    if (hit && (Date.now() - hit.signedAt) < hit.ttlSeconds * 1000 * CACHE_REFRESH_THRESHOLD) continue
+    needed.add(path)
+  }
+  if (needed.size === 0) return
+  const paths = Array.from(needed)
+  try {
+    const { data, error } = await supabase.storage
+      .from(bucket)
+      .createSignedUrls(paths, ttlSeconds)
+    if (error || !data) {
+      console.warn('[useSignedUrl] batch sign failed', { bucket, count: paths.length, err: error?.message })
+      return
+    }
+    const now = Date.now()
+    for (const row of data) {
+      if (row.signedUrl && row.path) {
+        cache.set(`${bucket}:${row.path}`, { url: row.signedUrl, signedAt: now, ttlSeconds })
+      }
+    }
+  } catch (err) {
+    console.warn('[useSignedUrl] batch sign threw', err)
+  }
+}
+
 export function useSignedUrl(
   bucket: string,
   pathOrUrl: string | null | undefined,

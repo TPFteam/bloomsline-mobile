@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { prewarmSignedUrls } from '@/lib/hooks/useSignedUrl'
 import * as FileSystem from 'expo-file-system'
 import { Platform } from 'react-native'
 
@@ -274,6 +275,29 @@ export async function getMemberMoments(limit = 50, offset = 0, sinceDate?: Date,
         moment.media_items = mediaByMoment.get(moment.id) || []
       }
     }
+  }
+
+  // Mint signed URLs for all visible thumbnails / media in one batch
+  // and seed the useSignedUrl cache. Without this, every card hits
+  // Supabase storage individually at render time which makes My
+  // Journey feel sluggish on first load.
+  if (moments.length > 0) {
+    const paths: Array<string | null | undefined> = []
+    for (const m of moments) {
+      // Cards prefer thumbnail when available, fall back to media.
+      paths.push(m.thumbnail_path ?? m.thumbnail_url ?? m.media_path ?? m.media_url)
+      if (m.media_items) {
+        for (const item of m.media_items) {
+          paths.push(item.media_path ?? item.media_url)
+        }
+      }
+    }
+    // Fire-and-forget — UI still works without it; cards just take the
+    // slow path. But we await it inline because callers (Evolution
+    // screen) already show a single PageLoader while fetching, and
+    // waiting one extra batch round-trip is far better than 20+
+    // sequential ones afterwards.
+    await prewarmSignedUrls('moments_media', paths)
   }
 
   return moments
