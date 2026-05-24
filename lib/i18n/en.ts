@@ -473,10 +473,10 @@ export default {
     other: 'Other',
   },
 
-  // ─── Stories ───
+  // ─── Stories (rebranded to "Journal" in user-facing copy) ───
   stories: {
-    title: 'My Stories',
-    section: 'Stories',
+    title: 'My Journal',
+    section: 'Journal',
     sectionCta: 'Write & share your story →',
     create: 'Create',
     createStory: 'Create Story',
