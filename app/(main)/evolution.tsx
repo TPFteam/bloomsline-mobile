@@ -103,11 +103,19 @@ export default function Evolution() {
 
   const toggleSelect = useCallback((m: Moment) => {
     if (m.shared_with_practitioner_at) return
-    setSelectedIds(prev =>
-      prev.includes(m.id)
-        ? prev.filter(id => id !== m.id)
-        : [...prev, m.id]
-    )
+    setSelectedIds(prev => {
+      if (prev.includes(m.id)) {
+        const next = prev.filter(id => id !== m.id)
+        // Deselecting the last moment = user is done. Drop out of
+        // selection mode so the bottom action bar and the active
+        // Cancel pill at the top don't linger with nothing selected.
+        if (next.length === 0) {
+          queueMicrotask(() => setSelectionMode(false))
+        }
+        return next
+      }
+      return [...prev, m.id]
+    })
   }, [])
 
   // Long-press shortcut: flip into selection mode with this moment
