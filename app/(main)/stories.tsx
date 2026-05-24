@@ -1043,6 +1043,11 @@ export default function StoriesScreen() {
   const [storyComments, setStoryComments] = useState<Array<{ id: string; author_type: 'practitioner' | 'member'; content: string; created_at: string }>>([])
   const [newComment, setNewComment] = useState('')
   const [postingComment, setPostingComment] = useState(false)
+  // Patient can only see and use the story conversation once the
+  // practitioner has replied at least once. Sharing the story is
+  // itself the patient's opening message — no need for a one-sided
+  // thread before there's something to reply to.
+  const hasPractitionerStoryReply = storyComments.some(c => c.author_type === 'practitioner')
 
   // Action menu
   const [menuStoryId, setMenuStoryId] = useState<string | null>(null)
@@ -2464,8 +2469,11 @@ export default function StoriesScreen() {
                   </View>
                 )}
 
-                {/* Practitioner conversation thread */}
-                {storyShareId && (
+                {/* Practitioner conversation thread — gated on the
+                    practitioner having posted at least once so the
+                    patient doesn't see an empty thread before there's
+                    anything to reply to. */}
+                {storyShareId && hasPractitionerStoryReply && (
                   <View style={{ marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: '#EBEBEB' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                       <MessageCircle size={16} color={colors.bloom} />
@@ -2474,11 +2482,7 @@ export default function StoriesScreen() {
                       </Text>
                     </View>
 
-                    {storyComments.length === 0 ? (
-                      <Text style={{ fontSize: 13, color: colors.textSecondary, fontStyle: 'italic', marginBottom: 12 }}>
-                        {locale === 'fr' ? 'Aucun commentaire pour le moment' : 'No comments yet'}
-                      </Text>
-                    ) : (
+                    {storyComments.length === 0 ? null : (
                       <View style={{ gap: 8, marginBottom: 12 }}>
                         {storyComments.map((c, i) => {
                           const isLast = i === storyComments.length - 1
