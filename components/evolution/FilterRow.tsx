@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { View, Text, TouchableOpacity } from 'react-native'
+import { useRef, useState } from 'react'
+import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native'
 import { Camera, Video, Mic, PenLine, ChevronDown } from 'lucide-react-native'
 import { colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
@@ -31,6 +31,8 @@ interface FilterRowProps {
 export function FilterRow({ activeType, onTypeChange }: FilterRowProps) {
     const { t } = useI18n()
     const [open, setOpen] = useState(false)
+    const [anchor, setAnchor] = useState<{ x: number; y: number; h: number } | null>(null)
+    const triggerRef = useRef<View>(null)
 
     const getLabel = (key: string) => {
         if (key === 'all') return t.evolution.filterAll
@@ -40,12 +42,17 @@ export function FilterRow({ activeType, onTypeChange }: FilterRowProps) {
     const active = TYPE_FILTERS.find(f => f.key === activeType) || TYPE_FILTERS[0]
     const ActiveIcon = active.Icon
 
+    const openMenu = () => {
+        triggerRef.current?.measureInWindow((x, y, _w, h) => {
+            setAnchor({ x, y, h })
+            setOpen(true)
+        })
+    }
+
     return (
-        <View style={{ position: 'relative', alignSelf: 'flex-start', zIndex: 10 }}>
-            {/* Trigger: shows the current selection. Tap to open the
-                dropdown; tap again to close. */}
+        <View ref={triggerRef} style={{ alignSelf: 'flex-start' }}>
             <TouchableOpacity
-                onPress={() => setOpen(o => !o)}
+                onPress={openMenu}
                 activeOpacity={0.7}
                 style={{
                     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -67,36 +74,50 @@ export function FilterRow({ activeType, onTypeChange }: FilterRowProps) {
                 />
             </TouchableOpacity>
 
-            {/* Dropdown menu — absolute-positioned below the trigger.
-                Lists the other filters; selecting one swaps it into
-                the trigger and closes. */}
-            {open && (
-                <View style={{
-                    position: 'absolute', top: 40, left: 0, zIndex: 20,
-                    backgroundColor: '#fff', borderRadius: 14,
-                    borderWidth: 1, borderColor: '#EBEBEB',
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-                    shadowOpacity: 0.08, shadowRadius: 12, elevation: 8,
-                    minWidth: 160, paddingVertical: 4,
-                }}>
-                    {TYPE_FILTERS.filter(f => f.key !== activeType).map(f => (
-                        <TouchableOpacity
-                            key={f.key}
-                            onPress={() => { onTypeChange(f.key); setOpen(false) }}
-                            activeOpacity={0.7}
+            {/* Dropdown lives in a Modal so it overlays cards below
+                (the absolute-positioned approach got clipped because
+                each card creates its own stacking context). Anchored
+                to the trigger via measureInWindow. */}
+            <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+                <Pressable
+                    onPress={() => setOpen(false)}
+                    style={{ flex: 1, backgroundColor: 'transparent' }}
+                >
+                    {anchor && (
+                        <View
+                            onStartShouldSetResponder={() => true}
                             style={{
-                                flexDirection: 'row', alignItems: 'center', gap: 10,
-                                paddingHorizontal: 14, paddingVertical: 10,
+                                position: 'absolute',
+                                top: anchor.y + anchor.h + 6,
+                                left: anchor.x,
+                                minWidth: 170,
+                                backgroundColor: '#fff', borderRadius: 14,
+                                borderWidth: 1, borderColor: '#EBEBEB',
+                                shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+                                shadowOpacity: 0.12, shadowRadius: 14, elevation: 10,
+                                paddingVertical: 4,
                             }}
                         >
-                            {f.Icon
-                                ? <f.Icon size={15} color={colors.textSecondary} strokeWidth={2} />
-                                : <View style={{ width: 15 }} />}
-                            <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primary }}>{getLabel(f.key)}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-            )}
+                            {TYPE_FILTERS.filter(f => f.key !== activeType).map(f => (
+                                <TouchableOpacity
+                                    key={f.key}
+                                    onPress={() => { onTypeChange(f.key); setOpen(false) }}
+                                    activeOpacity={0.7}
+                                    style={{
+                                        flexDirection: 'row', alignItems: 'center', gap: 10,
+                                        paddingHorizontal: 14, paddingVertical: 10,
+                                    }}
+                                >
+                                    {f.Icon
+                                        ? <f.Icon size={15} color={colors.textSecondary} strokeWidth={2} />
+                                        : <View style={{ width: 15 }} />}
+                                    <Text style={{ fontSize: 14, fontWeight: '500', color: colors.primary }}>{getLabel(f.key)}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
+                </Pressable>
+            </Modal>
         </View>
     )
 }
