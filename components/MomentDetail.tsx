@@ -262,6 +262,10 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle, high
     const [newComment, setNewComment] = useState('')
     const [postingComment, setPostingComment] = useState(false)
     const conversationScrollRef = useRef<ScrollView>(null)
+    // The patient can only see + use the conversation thread once the
+    // practitioner has replied. Sharing the moment is itself the
+    // patient's opening message; we don't want a one-sided thread.
+    const hasPractitionerReply = comments.some(c => c.author_type === 'practitioner')
 
     useEffect(() => {
         let cancelled = false
@@ -491,41 +495,42 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle, high
                             </TouchableOpacity>
                         )}
 
-                        {/* Conversation */}
+                        {/* Conversation — only shown after the
+                            practitioner has replied. The patient can't
+                            start the thread; sharing the moment is
+                            already the invitation. */}
+                        {hasPractitionerReply && (
                         <View style={{ marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F0F0F0' }}>
                             <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', color: colors.textTertiary, marginBottom: 12 }}>
                                 {locale === 'fr' ? 'Conversation' : 'Conversation'}
                             </Text>
-                            {comments.length === 0 ? (
-                                <Text style={{ fontSize: 13, color: colors.textFaint, fontStyle: 'italic' }}>
-                                    {locale === 'fr' ? 'Pas encore de commentaires' : 'No comments yet'}
-                                </Text>
-                            ) : (
-                                <View style={{ gap: 10 }}>
-                                    {comments.map(c => {
-                                        const mine = c.author_type === 'member'
-                                        const when = new Date(c.created_at).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-                                        return (
-                                            <View key={c.id} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
-                                                <View style={{
-                                                    maxWidth: '82%',
-                                                    backgroundColor: mine ? colors.bloom : colors.surface1,
-                                                    borderRadius: 16,
-                                                    paddingHorizontal: 14, paddingVertical: 8,
-                                                }}>
-                                                    <Text style={{ fontSize: 14, color: mine ? '#fff' : colors.primary, lineHeight: 20 }}>{c.content}</Text>
-                                                </View>
-                                                <Text style={{ fontSize: 10, color: colors.textFaint, marginTop: 4, paddingHorizontal: 4 }}>{when}</Text>
+                            <View style={{ gap: 10 }}>
+                                {comments.map(c => {
+                                    const mine = c.author_type === 'member'
+                                    const when = new Date(c.created_at).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                    return (
+                                        <View key={c.id} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
+                                            <View style={{
+                                                maxWidth: '82%',
+                                                backgroundColor: mine ? colors.bloom : colors.surface1,
+                                                borderRadius: 16,
+                                                paddingHorizontal: 14, paddingVertical: 8,
+                                            }}>
+                                                <Text style={{ fontSize: 14, color: mine ? '#fff' : colors.primary, lineHeight: 20 }}>{c.content}</Text>
                                             </View>
-                                        )
-                                    })}
-                                </View>
-                            )}
+                                            <Text style={{ fontSize: 10, color: colors.textFaint, marginTop: 4, paddingHorizontal: 4 }}>{when}</Text>
+                                        </View>
+                                    )
+                                })}
+                            </View>
                         </View>
+                        )}
                     </View>
                 </ScrollView>
 
-                {/* Composer pinned at the bottom of the sheet */}
+                {/* Composer pinned at the bottom — also gated on the
+                    practitioner having replied first. */}
+                {hasPractitionerReply && (
                 <View style={{
                     flexDirection: 'row', alignItems: 'center', gap: 10,
                     paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6,
@@ -563,6 +568,7 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle, high
                         </Text>
                     </TouchableOpacity>
                 </View>
+                )}
             </Pressable>
 
             {/* Fullscreen image viewer */}
