@@ -338,24 +338,39 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle, high
     }, [moment.id, newComment])
 
     return (
-        <Pressable
-            onPress={onClose}
-            style={{
-                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-                backgroundColor: 'rgba(0,0,0,0.4)',
-                justifyContent: 'flex-end',
-            }}
+        <Modal
+            visible
+            transparent
+            animationType="slide"
+            onRequestClose={onClose}
+            // Wrapped in a Modal so the bottom sheet renders above every
+            // other element on the screen, including the Evolution
+            // sticky header (which sits at zIndex: 10). The previous
+            // absolute-positioned Pressable was clipped under it.
         >
             <Pressable
-                onPress={() => { }}
+                onPress={onClose}
                 style={{
-                    backgroundColor: colors.bg,
-                    borderTopLeftRadius: 28,
-                    borderTopRightRadius: 28,
-                    paddingBottom: insets.bottom + 16,
-                    maxHeight: '80%',
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.55)',
+                    justifyContent: 'flex-end',
                 }}
             >
+                <Pressable
+                    onPress={() => { }}
+                    style={{
+                        backgroundColor: colors.bg,
+                        borderTopLeftRadius: 28,
+                        borderTopRightRadius: 28,
+                        paddingBottom: insets.bottom + 16,
+                        maxHeight: '80%',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: -4 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 16,
+                        elevation: 24,
+                    }}
+                >
                 {/* Handle bar */}
                 <View style={{ alignItems: 'center', paddingVertical: 12 }}>
                     <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: colors.disabled }} />
@@ -598,6 +613,7 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle, high
                     )}
                 </Pressable>
             </Modal>
-        </Pressable>
+            </Pressable>
+        </Modal>
     )
 }
