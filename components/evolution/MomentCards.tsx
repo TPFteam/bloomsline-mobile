@@ -87,7 +87,7 @@ export function groupMomentsByWeek(moments: Moment[]): { label: string; moments:
 
 // ─── MomentRiverCard ────────────────────────────────
 
-function MomentRiverCard({ moment, cardWidth, onPress, onShareToggle, selectionMode, selected }: { moment: Moment; cardWidth: number; onPress: () => void; onShareToggle?: (m: Moment) => void; selectionMode?: boolean; selected?: boolean }) {
+function MomentRiverCard({ moment, cardWidth, onPress, onLongPress, onShareToggle, selectionMode, selected }: { moment: Moment; cardWidth: number; onPress: () => void; onLongPress?: () => void; onShareToggle?: (m: Moment) => void; selectionMode?: boolean; selected?: boolean }) {
     const alreadyShared = !!moment.shared_with_practitioner_at
     const selectable = selectionMode && !alreadyShared
     const { t } = useI18n()
@@ -103,7 +103,7 @@ function MomentRiverCard({ moment, cardWidth, onPress, onShareToggle, selectionM
 
     return (
         <View style={{ width: cardWidth, position: 'relative', opacity: selectionMode && alreadyShared ? 0.45 : 1 }}>
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={selectionMode && alreadyShared}>
+        <TouchableOpacity onPress={onPress} onLongPress={onLongPress} delayLongPress={350} activeOpacity={0.8} disabled={selectionMode && alreadyShared}>
             <View style={{
                 backgroundColor: colors.bg,
                 borderRadius: 20,
@@ -238,7 +238,7 @@ function MomentRiverCard({ moment, cardWidth, onPress, onShareToggle, selectionM
 
 // ─── GridCard ───────────────────────────────────────
 
-function GridCard({ moment, onPress, onShareToggle, selectionMode, selected }: { moment: Moment; onPress: () => void; onShareToggle?: (m: Moment) => void; selectionMode?: boolean; selected?: boolean }) {
+function GridCard({ moment, onPress, onLongPress, onShareToggle, selectionMode, selected }: { moment: Moment; onPress: () => void; onLongPress?: () => void; onShareToggle?: (m: Moment) => void; selectionMode?: boolean; selected?: boolean }) {
     const alreadyShared = !!moment.shared_with_practitioner_at
     const { t } = useI18n()
     const mood = moment.moods?.[0]
@@ -251,7 +251,7 @@ function GridCard({ moment, onPress, onShareToggle, selectionMode, selected }: {
 
     return (
         <View style={{ position: 'relative', opacity: selectionMode && alreadyShared ? 0.45 : 1 }}>
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={selectionMode && alreadyShared}>
+        <TouchableOpacity onPress={onPress} onLongPress={onLongPress} delayLongPress={350} activeOpacity={0.8} disabled={selectionMode && alreadyShared}>
             <View style={{
                 backgroundColor: isWrite ? colors.surface1 : colors.bg,
                 borderRadius: 18,
@@ -363,9 +363,10 @@ interface MomentViewProps {
     selectionMode?: boolean
     selectedIds?: string[]
     onToggleSelect?: (m: Moment) => void
+    onLongPress?: (m: Moment) => void
 }
 
-export function EmotionalRiver({ moments, onMomentPress, onShareToggle, selectionMode, selectedIds, onToggleSelect }: MomentViewProps) {
+export function EmotionalRiver({ moments, onMomentPress, onShareToggle, selectionMode, selectedIds, onToggleSelect, onLongPress }: MomentViewProps) {
     const { t } = useI18n()
     const cardWidth = (width - 48) / 2 - 14
     const groups = useMemo(() => groupMomentsByWeek(moments), [moments])
@@ -425,6 +426,7 @@ export function EmotionalRiver({ moments, onMomentPress, onShareToggle, selectio
                                                 moment={moment}
                                                 cardWidth={cardWidth}
                                                 onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
+                                                onLongPress={onLongPress ? () => onLongPress(moment) : undefined}
                                                 onShareToggle={onShareToggle}
                                                 selectionMode={selectionMode}
                                                 selected={selectedIds?.includes(moment.id)}
@@ -444,6 +446,7 @@ export function EmotionalRiver({ moments, onMomentPress, onShareToggle, selectio
                                                 moment={moment}
                                                 cardWidth={cardWidth}
                                                 onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
+                                                onLongPress={onLongPress ? () => onLongPress(moment) : undefined}
                                                 onShareToggle={onShareToggle}
                                                 selectionMode={selectionMode}
                                                 selected={selectedIds?.includes(moment.id)}
@@ -462,7 +465,7 @@ export function EmotionalRiver({ moments, onMomentPress, onShareToggle, selectio
 
 // ─── MomentsGrid ────────────────────────────────────
 
-export function MomentsGrid({ moments, onMomentPress, onShareToggle, selectionMode, selectedIds, onToggleSelect }: MomentViewProps) {
+export function MomentsGrid({ moments, onMomentPress, onShareToggle, selectionMode, selectedIds, onToggleSelect, onLongPress }: MomentViewProps) {
     const { t } = useI18n()
     const groups = useMemo(() => groupMomentsByWeek(moments), [moments])
 
@@ -497,6 +500,7 @@ export function MomentsGrid({ moments, onMomentPress, onShareToggle, selectionMo
                                     key={moment.id}
                                     moment={moment}
                                     onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
+                                    onLongPress={onLongPress ? () => onLongPress(moment) : undefined}
                                     onShareToggle={onShareToggle}
                                     selectionMode={selectionMode}
                                     selected={selectedIds?.includes(moment.id)}
@@ -509,6 +513,7 @@ export function MomentsGrid({ moments, onMomentPress, onShareToggle, selectionMo
                                     key={moment.id}
                                     moment={moment}
                                     onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
+                                    onLongPress={onLongPress ? () => onLongPress(moment) : undefined}
                                     onShareToggle={onShareToggle}
                                     selectionMode={selectionMode}
                                     selected={selectedIds?.includes(moment.id)}

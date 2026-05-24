@@ -110,6 +110,19 @@ export default function Evolution() {
     )
   }, [])
 
+  // Long-press shortcut: flip into selection mode with this moment
+  // pre-selected. If selection mode is already on, treat it like a tap
+  // (toggle the moment).
+  const handleLongPressMoment = useCallback((m: Moment) => {
+    if (selectionMode) {
+      toggleSelect(m)
+      return
+    }
+    setSelectionMode(true)
+    if (m.shared_with_practitioner_at) setSelectedIds([])
+    else setSelectedIds([m.id])
+  }, [selectionMode, toggleSelect])
+
   const confirmBulkShareAction = useCallback(async () => {
     if (!member?.practitioner_id || !member?.id) return
     const ids = selectedIds.slice()
@@ -518,6 +531,7 @@ export default function Evolution() {
             selectionMode={selectionMode}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
+            onLongPress={handleLongPressMoment}
           />
         ) : (
           <MomentsGrid
@@ -527,6 +541,7 @@ export default function Evolution() {
             selectionMode={selectionMode}
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
+            onLongPress={handleLongPressMoment}
           />
         )}
 
