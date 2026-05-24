@@ -40,7 +40,7 @@ export default function Evolution() {
   const [shareConfirm, setShareConfirm] = useState<Moment | null>(null)
   const [shareBusy, setShareBusy] = useState(false)
   const [selectionMode, setSelectionMode] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
   const { member } = useAuth()
   const { t, locale } = useI18n()
@@ -93,27 +93,26 @@ export default function Evolution() {
 
   const enterSelectionMode = useCallback(() => {
     setSelectionMode(true)
-    setSelectedIds(new Set())
+    setSelectedIds([])
   }, [])
 
   const exitSelectionMode = useCallback(() => {
     setSelectionMode(false)
-    setSelectedIds(new Set())
+    setSelectedIds([])
   }, [])
 
   const toggleSelect = useCallback((m: Moment) => {
     if (m.shared_with_practitioner_at) return
-    setSelectedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(m.id)) next.delete(m.id)
-      else next.add(m.id)
-      return next
-    })
+    setSelectedIds(prev =>
+      prev.includes(m.id)
+        ? prev.filter(id => id !== m.id)
+        : [...prev, m.id]
+    )
   }, [])
 
   const confirmBulkShareAction = useCallback(async () => {
     if (!member?.practitioner_id || !member?.id) return
-    const ids = Array.from(selectedIds)
+    const ids = selectedIds.slice()
     if (ids.length === 0) return
     setShareBusy(true)
     try {
@@ -449,38 +448,16 @@ export default function Evolution() {
         {tab === 'moments' && (
           <>
         {/* ─── Moments Library ─── */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <View style={{ marginBottom: 20 }}>
           <Text style={{ fontSize: 13, fontWeight: '600', letterSpacing: 0.5, color: colors.textTertiary, textTransform: 'uppercase' }}>
             {t.evolution.yourMoments}
           </Text>
-          <View style={{ flexDirection: 'row', backgroundColor: colors.surface1, borderRadius: 12, padding: 3 }}>
-            <TouchableOpacity
-              onPress={() => setViewMode('river')}
-              activeOpacity={0.7}
-              style={{
-                paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
-                backgroundColor: viewMode === 'river' ? colors.bg : 'transparent',
-              }}
-            >
-              <GitBranch size={16} color={viewMode === 'river' ? colors.primary : colors.textTertiary} strokeWidth={2} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => setViewMode('grid')}
-              activeOpacity={0.7}
-              style={{
-                paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
-                backgroundColor: viewMode === 'grid' ? colors.bg : 'transparent',
-              }}
-            >
-              <LayoutGrid size={16} color={viewMode === 'grid' ? colors.primary : colors.textTertiary} strokeWidth={2} />
-            </TouchableOpacity>
-          </View>
         </View>
 
         {/* Remember This */}
         <RememberThisCard moments={allMoments} onPress={setViewingMoment} />
 
-        {/* Filters + bulk-select toggle */}
+        {/* Filters + bulk-select toggle + view-mode toggle */}
         <View style={{ marginBottom: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <FilterRow
             activeType={filterType}
@@ -489,25 +466,47 @@ export default function Evolution() {
             onMoodChange={setFilterMood}
             availableMoods={availableMoods}
           />
-          <TouchableOpacity
-            onPress={selectionMode ? exitSelectionMode : enterSelectionMode}
-            activeOpacity={0.7}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 6,
-              paddingLeft: 12, paddingRight: 14, paddingVertical: 8,
-              borderRadius: 16,
-              backgroundColor: selectionMode ? colors.surface1 : colors.bloom,
-            }}
-          >
-            {selectionMode
-              ? <X size={14} color={colors.primary} strokeWidth={2.2} />
-              : <CheckSquare2 size={14} color="#fff" strokeWidth={2} />}
-            <Text style={{ fontSize: 13, fontWeight: '600', color: selectionMode ? colors.primary : '#fff' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              onPress={selectionMode ? exitSelectionMode : enterSelectionMode}
+              activeOpacity={0.7}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              accessibilityLabel={selectionMode ? (locale === 'fr' ? 'Annuler la sélection' : 'Cancel selection') : (locale === 'fr' ? 'Sélectionner' : 'Select')}
+              style={{
+                width: 34, height: 34, borderRadius: 17,
+                backgroundColor: selectionMode ? colors.bloom : '#fff',
+                borderWidth: selectionMode ? 0 : 1,
+                borderColor: '#EBEBEB',
+                justifyContent: 'center', alignItems: 'center',
+              }}
+            >
               {selectionMode
-                ? (locale === 'fr' ? 'Annuler' : 'Cancel')
-                : (locale === 'fr' ? 'Sélectionner' : 'Select')}
-            </Text>
-          </TouchableOpacity>
+                ? <X size={16} color="#fff" strokeWidth={2.5} />
+                : <CheckSquare2 size={16} color={colors.textSecondary} strokeWidth={2} />}
+            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', backgroundColor: colors.surface1, borderRadius: 12, padding: 3 }}>
+              <TouchableOpacity
+                onPress={() => setViewMode('river')}
+                activeOpacity={0.7}
+                style={{
+                  paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
+                  backgroundColor: viewMode === 'river' ? colors.bg : 'transparent',
+                }}
+              >
+                <GitBranch size={16} color={viewMode === 'river' ? colors.primary : colors.textTertiary} strokeWidth={2} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setViewMode('grid')}
+                activeOpacity={0.7}
+                style={{
+                  paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10,
+                  backgroundColor: viewMode === 'grid' ? colors.bg : 'transparent',
+                }}
+              >
+                <LayoutGrid size={16} color={viewMode === 'grid' ? colors.primary : colors.textTertiary} strokeWidth={2} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         {/* River or Grid view */}
@@ -579,26 +578,26 @@ export default function Evolution() {
           shadowOpacity: 0.06, shadowRadius: 8, elevation: 10,
         }}>
           <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.primary }}>
-            {selectedIds.size === 0
+            {selectedIds.length === 0
               ? (locale === 'fr' ? 'Sélectionnez des moments à partager' : 'Select moments to share')
-              : selectedIds.size === 1
+              : selectedIds.length === 1
                 ? (locale === 'fr' ? '1 moment sélectionné' : '1 moment selected')
-                : (locale === 'fr' ? `${selectedIds.size} moments sélectionnés` : `${selectedIds.size} moments selected`)}
+                : (locale === 'fr' ? `${selectedIds.length} moments sélectionnés` : `${selectedIds.length} moments selected`)}
           </Text>
           <TouchableOpacity
-            onPress={() => selectedIds.size > 0 && setBulkConfirmOpen(true)}
+            onPress={() => selectedIds.length > 0 && setBulkConfirmOpen(true)}
             activeOpacity={0.85}
-            disabled={selectedIds.size === 0}
+            disabled={selectedIds.length === 0}
             style={{
               paddingHorizontal: 18, paddingVertical: 11, borderRadius: 14,
               backgroundColor: colors.bloom,
-              opacity: selectedIds.size === 0 ? 0.45 : 1,
+              opacity: selectedIds.length === 0 ? 0.45 : 1,
             }}
           >
             <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>
               {locale === 'fr'
-                ? (selectedIds.size > 1 ? `Partager ${selectedIds.size}` : 'Partager')
-                : (selectedIds.size > 1 ? `Share ${selectedIds.size}` : 'Share')}
+                ? (selectedIds.length > 1 ? `Partager ${selectedIds.length}` : 'Partager')
+                : (selectedIds.length > 1 ? `Share ${selectedIds.length}` : 'Share')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -618,7 +617,7 @@ export default function Evolution() {
           <Pressable onPress={() => {}} style={{ width: '100%', maxWidth: 360, backgroundColor: '#fff', borderRadius: 20, padding: 24 }}>
             <Text style={{ fontSize: 17, fontWeight: '700', color: colors.primary, marginBottom: 8 }}>
               {(() => {
-                const n = selectedIds.size
+                const n = selectedIds.length
                 const display = practitionerName || (locale === 'fr' ? 'votre praticien' : 'your practitioner')
                 if (locale === 'fr') return n === 1 ? `Partager avec ${display} ?` : `Partager ${n} moments avec ${display} ?`
                 return n === 1 ? `Share with ${display}?` : `Share ${n} moments with ${display}?`

@@ -361,7 +361,7 @@ interface MomentViewProps {
     onMomentPress: (m: Moment) => void
     onShareToggle?: (m: Moment) => void
     selectionMode?: boolean
-    selectedIds?: Set<string>
+    selectedIds?: string[]
     onToggleSelect?: (m: Moment) => void
 }
 
@@ -427,7 +427,7 @@ export function EmotionalRiver({ moments, onMomentPress, onShareToggle, selectio
                                                 onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
                                                 onShareToggle={onShareToggle}
                                                 selectionMode={selectionMode}
-                                                selected={selectedIds?.has(moment.id)}
+                                                selected={selectedIds?.includes(moment.id)}
                                             />
                                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 20 }}>
                                                 <View style={{ width: 12, height: 1, backgroundColor: colors.disabled }} />
@@ -446,7 +446,7 @@ export function EmotionalRiver({ moments, onMomentPress, onShareToggle, selectio
                                                 onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
                                                 onShareToggle={onShareToggle}
                                                 selectionMode={selectionMode}
-                                                selected={selectedIds?.has(moment.id)}
+                                                selected={selectedIds?.includes(moment.id)}
                                             />
                                         </>
                                     )}
@@ -499,7 +499,7 @@ export function MomentsGrid({ moments, onMomentPress, onShareToggle, selectionMo
                                     onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
                                     onShareToggle={onShareToggle}
                                     selectionMode={selectionMode}
-                                    selected={selectedIds?.has(moment.id)}
+                                    selected={selectedIds?.includes(moment.id)}
                                 />
                             ))}
                         </View>
@@ -511,7 +511,7 @@ export function MomentsGrid({ moments, onMomentPress, onShareToggle, selectionMo
                                     onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
                                     onShareToggle={onShareToggle}
                                     selectionMode={selectionMode}
-                                    selected={selectedIds?.has(moment.id)}
+                                    selected={selectedIds?.includes(moment.id)}
                                 />
                             ))}
                         </View>
