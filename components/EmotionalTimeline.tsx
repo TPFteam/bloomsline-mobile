@@ -273,7 +273,7 @@ export function EmotionalTimeline({ moments, showNow, onMomentPress, glowDots }:
             <View style={{ paddingHorizontal: 20, paddingBottom: 18, paddingTop: 2 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: latestColor }} />
-                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary, textTransform: 'capitalize' }}>
+                    <Text style={{ fontSize: 15, fontWeight: '600', color: colors.primary }}>
                         {t.moods[latest.mood as keyof typeof t.moods] || latest.mood}
                     </Text>
                     <Text style={{ fontSize: 13, color: colors.textTertiary }}>

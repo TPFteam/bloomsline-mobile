@@ -50,7 +50,7 @@ export function RememberThisCard({ moments, onPress }: RememberThisCardProps) {
                 </View>
                 <Text style={{ fontSize: 16, fontWeight: '600', color: colors.primary, lineHeight: 22 }}>
                     {timeLabel}, {t.remember.youFelt}{' '}
-                    <Text style={{ color: MOOD_COLORS[mood] || '#666', textTransform: 'capitalize' as any }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
+                    <Text style={{ color: MOOD_COLORS[mood] || '#666' }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
                 </Text>
 
                 {/* Mini moment preview */}

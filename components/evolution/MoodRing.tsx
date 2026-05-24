@@ -67,7 +67,7 @@ export function MoodRing({ moodCounts, totalMoments }: MoodRingProps) {
                 {arcs.map(arc => (
                     <View key={arc.mood} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: arc.color }} />
-                        <Text style={{ fontSize: 12, color: '#666', textTransform: 'capitalize' }}>{t.moods[arc.mood as keyof typeof t.moods] || arc.mood}</Text>
+                        <Text style={{ fontSize: 12, color: '#666' }}>{t.moods[arc.mood as keyof typeof t.moods] || arc.mood}</Text>
                         <Text style={{ fontSize: 11, color: colors.textFaint }}>{arc.count}</Text>
                     </View>
                 ))}

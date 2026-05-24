@@ -421,7 +421,7 @@ export function MomentDetail({ moment, onClose, onOpenStory, onShareToggle, high
                                         paddingHorizontal: 14,
                                         paddingVertical: 6,
                                     }}>
-                                        <Text style={{ fontSize: 14, fontWeight: '600', color: MOOD_COLORS[mood] || '#666', textTransform: 'capitalize' }}>
+                                        <Text style={{ fontSize: 14, fontWeight: '600', color: MOOD_COLORS[mood] || '#666' }}>
                                             {t.moods[mood as keyof typeof t.moods] || mood}
                                         </Text>
                                     </View>

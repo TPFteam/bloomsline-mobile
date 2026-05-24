@@ -198,7 +198,7 @@ function MomentRiverCard({ moment, cardWidth, onPress, onLongPress, onShareToggl
                             backgroundColor: moodColor + '14',
                             borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
                         }}>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor, textTransform: 'capitalize' }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
                         </View>
                     ) : null}
                     <Text style={{ fontSize: 11, color: colors.textFaint }}>{timeStr}</Text>
@@ -336,7 +336,7 @@ function GridCard({ moment, onPress, onLongPress, onShareToggle, selectionMode, 
                     {mood ? (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: moodColor }} />
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor, textTransform: 'capitalize' }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: moodColor }}>{t.moods[mood as keyof typeof t.moods] || mood}</Text>
                         </View>
                     ) : null}
                     <Text style={{ fontSize: 11, color: colors.textFaint }}>{timeStr}</Text>

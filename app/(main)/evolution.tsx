@@ -433,7 +433,7 @@ export default function Evolution() {
               return (
                 <View key={mood} style={{ marginBottom: i < Math.min(sortedMoods.length, 5) - 1 ? 14 : 0 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary, textTransform: 'capitalize' }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>
                       {moodLabel}
                     </Text>
                     <Text style={{ fontSize: 13, color: '#BBB' }}>
