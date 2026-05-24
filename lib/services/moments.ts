@@ -301,6 +301,28 @@ export async function shareMomentWithPractitioner(momentId: string): Promise<str
 }
 
 /**
+ * Bulk-share many moments in one round-trip. Used by the multi-select
+ * flow in the evolution screen. Returns the timestamp the rows were
+ * stamped with, or null on failure.
+ */
+export async function shareMomentsWithPractitioner(momentIds: string[]): Promise<string | null> {
+  if (momentIds.length === 0) return null
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+  const sharedAt = new Date().toISOString()
+  const { error } = await supabase
+    .from('moments')
+    .update({ shared_with_practitioner_at: sharedAt })
+    .in('id', momentIds)
+    .eq('user_id', user.id)
+  if (error) {
+    console.error('Error bulk-sharing moments:', error)
+    return null
+  }
+  return sharedAt
+}
+
+/**
  * Revoke a previously-shared moment. Sets the column back to null so
  * the practitioner can no longer fetch the row (RLS denies them).
  */

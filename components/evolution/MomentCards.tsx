@@ -1,10 +1,28 @@
 import { useMemo } from 'react'
 import { View, Text, TouchableOpacity, Image, Dimensions } from 'react-native'
-import { Mic, Send } from 'lucide-react-native'
+import { Mic, Send, Check } from 'lucide-react-native'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { Moment } from '@/lib/services/moments'
 import { useI18n } from '@/lib/i18n'
 import { useSignedUrl } from '@/lib/hooks/useSignedUrl'
+
+function SelectCheckbox({ selected, disabled }: { selected: boolean; disabled?: boolean }) {
+    return (
+        <View style={{
+            width: 26, height: 26, borderRadius: 13,
+            backgroundColor: disabled
+                ? '#E5E7EB'
+                : selected ? colors.bloom : 'rgba(255,255,255,0.95)',
+            borderWidth: selected || disabled ? 0 : 1.5,
+            borderColor: '#CBD5E1',
+            justifyContent: 'center', alignItems: 'center',
+            shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.08, shadowRadius: 2, elevation: 2,
+        }}>
+            {selected && <Check size={14} color="#fff" strokeWidth={3} />}
+        </View>
+    )
+}
 
 function ShareButton({ shared, onPress }: { shared: boolean; onPress: () => void }) {
     return (
@@ -69,7 +87,9 @@ export function groupMomentsByWeek(moments: Moment[]): { label: string; moments:
 
 // ─── MomentRiverCard ────────────────────────────────
 
-function MomentRiverCard({ moment, cardWidth, onPress, onShareToggle }: { moment: Moment; cardWidth: number; onPress: () => void; onShareToggle?: (m: Moment) => void }) {
+function MomentRiverCard({ moment, cardWidth, onPress, onShareToggle, selectionMode, selected }: { moment: Moment; cardWidth: number; onPress: () => void; onShareToggle?: (m: Moment) => void; selectionMode?: boolean; selected?: boolean }) {
+    const alreadyShared = !!moment.shared_with_practitioner_at
+    const selectable = selectionMode && !alreadyShared
     const { t } = useI18n()
     const mood = moment.moods?.[0]
     const moodColor = MOOD_COLORS[mood] || '#94A3B8'
@@ -82,13 +102,13 @@ function MomentRiverCard({ moment, cardWidth, onPress, onShareToggle }: { moment
     const thumbSigned = useSignedUrl('moments_media', moment.thumbnail_path ?? moment.thumbnail_url ?? moment.media_path ?? moment.media_url)
 
     return (
-        <View style={{ width: cardWidth, position: 'relative' }}>
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+        <View style={{ width: cardWidth, position: 'relative', opacity: selectionMode && alreadyShared ? 0.45 : 1 }}>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={selectionMode && alreadyShared}>
             <View style={{
                 backgroundColor: colors.bg,
                 borderRadius: 20,
-                borderWidth: 1,
-                borderColor: '#f0f0f0',
+                borderWidth: selected ? 2 : 1,
+                borderColor: selected ? colors.bloom : '#f0f0f0',
                 overflow: 'hidden',
             }}>
                 {/* Photo/Video */}
@@ -197,12 +217,19 @@ function MomentRiverCard({ moment, cardWidth, onPress, onShareToggle }: { moment
             {/* Share button sits outside the card TouchableOpacity so the
                 tap doesn't bubble to the card's open-detail handler.
                 Top-right corner is the standard "save/share" position. */}
-            {onShareToggle && (
+            {!selectionMode && onShareToggle && (
                 <View style={{ position: 'absolute', bottom: 8, right: 8, zIndex: 5 }}>
                     <ShareButton
                         shared={!!moment.shared_with_practitioner_at}
                         onPress={() => onShareToggle(moment)}
                     />
+                </View>
+            )}
+            {/* Selection checkbox overlay (top-left so it doesn't fight
+                with the existing multi-media count badge at top-right). */}
+            {selectionMode && (
+                <View style={{ position: 'absolute', top: 8, left: 8, zIndex: 5 }}>
+                    <SelectCheckbox selected={!!selected} disabled={alreadyShared} />
                 </View>
             )}
         </View>
@@ -211,7 +238,8 @@ function MomentRiverCard({ moment, cardWidth, onPress, onShareToggle }: { moment
 
 // ─── GridCard ───────────────────────────────────────
 
-function GridCard({ moment, onPress, onShareToggle }: { moment: Moment; onPress: () => void; onShareToggle?: (m: Moment) => void }) {
+function GridCard({ moment, onPress, onShareToggle, selectionMode, selected }: { moment: Moment; onPress: () => void; onShareToggle?: (m: Moment) => void; selectionMode?: boolean; selected?: boolean }) {
+    const alreadyShared = !!moment.shared_with_practitioner_at
     const { t } = useI18n()
     const mood = moment.moods?.[0]
     const moodColor = MOOD_COLORS[mood] || '#94A3B8'
@@ -222,13 +250,13 @@ function GridCard({ moment, onPress, onShareToggle }: { moment: Moment; onPress:
     const thumbSigned = useSignedUrl('moments_media', moment.thumbnail_path ?? moment.thumbnail_url ?? moment.media_path ?? moment.media_url)
 
     return (
-        <View style={{ position: 'relative' }}>
-        <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+        <View style={{ position: 'relative', opacity: selectionMode && alreadyShared ? 0.45 : 1 }}>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={selectionMode && alreadyShared}>
             <View style={{
                 backgroundColor: isWrite ? colors.surface1 : colors.bg,
                 borderRadius: 18,
-                borderWidth: 1,
-                borderColor: '#f0f0f0',
+                borderWidth: selected ? 2 : 1,
+                borderColor: selected ? colors.bloom : '#f0f0f0',
                 overflow: 'hidden',
             }}>
                 {hasImage && thumbSigned && (
@@ -309,12 +337,17 @@ function GridCard({ moment, onPress, onShareToggle }: { moment: Moment; onPress:
                 </View>
             </View>
         </TouchableOpacity>
-            {onShareToggle && (
+            {!selectionMode && onShareToggle && (
                 <View style={{ position: 'absolute', bottom: 8, right: 8, zIndex: 5 }}>
                     <ShareButton
                         shared={!!moment.shared_with_practitioner_at}
                         onPress={() => onShareToggle(moment)}
                     />
+                </View>
+            )}
+            {selectionMode && (
+                <View style={{ position: 'absolute', top: 8, left: 8, zIndex: 5 }}>
+                    <SelectCheckbox selected={!!selected} disabled={alreadyShared} />
                 </View>
             )}
         </View>
@@ -327,9 +360,12 @@ interface MomentViewProps {
     moments: Moment[]
     onMomentPress: (m: Moment) => void
     onShareToggle?: (m: Moment) => void
+    selectionMode?: boolean
+    selectedIds?: Set<string>
+    onToggleSelect?: (m: Moment) => void
 }
 
-export function EmotionalRiver({ moments, onMomentPress, onShareToggle }: MomentViewProps) {
+export function EmotionalRiver({ moments, onMomentPress, onShareToggle, selectionMode, selectedIds, onToggleSelect }: MomentViewProps) {
     const { t } = useI18n()
     const cardWidth = (width - 48) / 2 - 14
     const groups = useMemo(() => groupMomentsByWeek(moments), [moments])
@@ -385,7 +421,14 @@ export function EmotionalRiver({ moments, onMomentPress, onShareToggle }: Moment
                                 }}>
                                     {isLeft ? (
                                         <>
-                                            <MomentRiverCard moment={moment} cardWidth={cardWidth} onPress={() => onMomentPress(moment)} onShareToggle={onShareToggle} />
+                                            <MomentRiverCard
+                                                moment={moment}
+                                                cardWidth={cardWidth}
+                                                onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
+                                                onShareToggle={onShareToggle}
+                                                selectionMode={selectionMode}
+                                                selected={selectedIds?.has(moment.id)}
+                                            />
                                             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 20 }}>
                                                 <View style={{ width: 12, height: 1, backgroundColor: colors.disabled }} />
                                                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: moodColor }} />
@@ -397,7 +440,14 @@ export function EmotionalRiver({ moments, onMomentPress, onShareToggle }: Moment
                                                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: moodColor }} />
                                                 <View style={{ width: 12, height: 1, backgroundColor: colors.disabled }} />
                                             </View>
-                                            <MomentRiverCard moment={moment} cardWidth={cardWidth} onPress={() => onMomentPress(moment)} onShareToggle={onShareToggle} />
+                                            <MomentRiverCard
+                                                moment={moment}
+                                                cardWidth={cardWidth}
+                                                onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
+                                                onShareToggle={onShareToggle}
+                                                selectionMode={selectionMode}
+                                                selected={selectedIds?.has(moment.id)}
+                                            />
                                         </>
                                     )}
                                 </View>
@@ -412,7 +462,7 @@ export function EmotionalRiver({ moments, onMomentPress, onShareToggle }: Moment
 
 // ─── MomentsGrid ────────────────────────────────────
 
-export function MomentsGrid({ moments, onMomentPress, onShareToggle }: MomentViewProps) {
+export function MomentsGrid({ moments, onMomentPress, onShareToggle, selectionMode, selectedIds, onToggleSelect }: MomentViewProps) {
     const { t } = useI18n()
     const groups = useMemo(() => groupMomentsByWeek(moments), [moments])
 
@@ -443,12 +493,26 @@ export function MomentsGrid({ moments, onMomentPress, onShareToggle }: MomentVie
                     <View style={{ flexDirection: 'row', gap: 10 }}>
                         <View style={{ flex: 1, gap: 10 }}>
                             {group.moments.filter((_, i) => i % 2 === 0).map(moment => (
-                                <GridCard key={moment.id} moment={moment} onPress={() => onMomentPress(moment)} onShareToggle={onShareToggle} />
+                                <GridCard
+                                    key={moment.id}
+                                    moment={moment}
+                                    onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
+                                    onShareToggle={onShareToggle}
+                                    selectionMode={selectionMode}
+                                    selected={selectedIds?.has(moment.id)}
+                                />
                             ))}
                         </View>
                         <View style={{ flex: 1, gap: 10 }}>
                             {group.moments.filter((_, i) => i % 2 === 1).map(moment => (
-                                <GridCard key={moment.id} moment={moment} onPress={() => onMomentPress(moment)} onShareToggle={onShareToggle} />
+                                <GridCard
+                                    key={moment.id}
+                                    moment={moment}
+                                    onPress={() => selectionMode ? onToggleSelect?.(moment) : onMomentPress(moment)}
+                                    onShareToggle={onShareToggle}
+                                    selectionMode={selectionMode}
+                                    selected={selectedIds?.has(moment.id)}
+                                />
                             ))}
                         </View>
                     </View>

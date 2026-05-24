@@ -3,9 +3,9 @@ import { View, Text, TouchableOpacity, Alert, Modal, Pressable } from 'react-nat
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { useRouter, useLocalSearchParams } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { getMemberMoments, Moment, shareMomentWithPractitioner, unshareMomentFromPractitioner } from '@/lib/services/moments'
+import { getMemberMoments, Moment, shareMomentWithPractitioner, shareMomentsWithPractitioner, unshareMomentFromPractitioner } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
-import { GalleryVerticalEnd as GitBranch, LayoutGrid, Settings } from 'lucide-react-native'
+import { GalleryVerticalEnd as GitBranch, LayoutGrid, Settings, CheckSquare2, X } from 'lucide-react-native'
 import NotificationBell from '@/components/NotificationBell'
 import { MOOD_COLORS, colors } from '@/lib/theme'
 import { useI18n } from '@/lib/i18n'
@@ -39,6 +39,9 @@ export default function Evolution() {
   const [practitionerName, setPractitionerName] = useState<string | undefined>(undefined)
   const [shareConfirm, setShareConfirm] = useState<Moment | null>(null)
   const [shareBusy, setShareBusy] = useState(false)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false)
   const { member } = useAuth()
   const { t, locale } = useI18n()
 
@@ -87,6 +90,68 @@ export default function Evolution() {
   const onRefresh = useCallback(async () => {
     await fetchData()
   }, [fetchData])
+
+  const enterSelectionMode = useCallback(() => {
+    setSelectionMode(true)
+    setSelectedIds(new Set())
+  }, [])
+
+  const exitSelectionMode = useCallback(() => {
+    setSelectionMode(false)
+    setSelectedIds(new Set())
+  }, [])
+
+  const toggleSelect = useCallback((m: Moment) => {
+    if (m.shared_with_practitioner_at) return
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(m.id)) next.delete(m.id)
+      else next.add(m.id)
+      return next
+    })
+  }, [])
+
+  const confirmBulkShareAction = useCallback(async () => {
+    if (!member?.practitioner_id || !member?.id) return
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    setShareBusy(true)
+    try {
+      const sharedAt = await shareMomentsWithPractitioner(ids)
+      if (!sharedAt) {
+        Alert.alert(locale === 'fr' ? 'Erreur' : 'Error', locale === 'fr' ? 'Impossible de partager.' : 'Could not share.')
+        return
+      }
+      setAllMoments(prev => prev.map(x => ids.includes(x.id) ? { ...x, shared_with_practitioner_at: sharedAt } : x))
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
+          fetch(`${API_URL}/api/notifications/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({
+              userId: member.practitioner_id,
+              userType: 'practitioner',
+              type: 'moment_shared',
+              entityType: 'member',
+              entityId: member.id,
+              metadata: {
+                memberId: member.id,
+                memberName: `${(member as any).first_name || ''} ${(member as any).last_name || ''}`.trim(),
+                count: ids.length,
+                momentIds: ids,
+              },
+            }),
+          }).catch(() => {})
+        }
+      } catch {}
+    } finally {
+      setShareBusy(false)
+      setBulkConfirmOpen(false)
+      exitSelectionMode()
+    }
+  }, [selectedIds, member, locale, exitSelectionMode])
 
   const handleShareToggle = useCallback((m: Moment) => {
     if (!member?.practitioner_id || !member?.id) {
@@ -415,8 +480,8 @@ export default function Evolution() {
         {/* Remember This */}
         <RememberThisCard moments={allMoments} onPress={setViewingMoment} />
 
-        {/* Filters */}
-        <View style={{ marginBottom: 24 }}>
+        {/* Filters + bulk-select toggle */}
+        <View style={{ marginBottom: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
           <FilterRow
             activeType={filterType}
             onTypeChange={setFilterType}
@@ -424,6 +489,25 @@ export default function Evolution() {
             onMoodChange={setFilterMood}
             availableMoods={availableMoods}
           />
+          <TouchableOpacity
+            onPress={selectionMode ? exitSelectionMode : enterSelectionMode}
+            activeOpacity={0.7}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 6,
+              paddingLeft: 12, paddingRight: 14, paddingVertical: 8,
+              borderRadius: 16,
+              backgroundColor: selectionMode ? colors.surface1 : colors.bloom,
+            }}
+          >
+            {selectionMode
+              ? <X size={14} color={colors.primary} strokeWidth={2.2} />
+              : <CheckSquare2 size={14} color="#fff" strokeWidth={2} />}
+            <Text style={{ fontSize: 13, fontWeight: '600', color: selectionMode ? colors.primary : '#fff' }}>
+              {selectionMode
+                ? (locale === 'fr' ? 'Annuler' : 'Cancel')
+                : (locale === 'fr' ? 'Sélectionner' : 'Select')}
+            </Text>
+          </TouchableOpacity>
         </View>
 
         {/* River or Grid view */}
@@ -432,12 +516,18 @@ export default function Evolution() {
             moments={displayedMoments}
             onMomentPress={setViewingMoment}
             onShareToggle={handleShareToggle}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
           />
         ) : (
           <MomentsGrid
             moments={displayedMoments}
             onMomentPress={setViewingMoment}
             onShareToggle={handleShareToggle}
+            selectionMode={selectionMode}
+            selectedIds={selectedIds}
+            onToggleSelect={toggleSelect}
           />
         )}
 
@@ -475,6 +565,99 @@ export default function Evolution() {
           highlightLatestComment={highlightLatest}
         />
       )}
+
+      {/* Selection action bar pinned to the bottom of the screen
+          while bulk-select is active. */}
+      {selectionMode && (
+        <View style={{
+          position: 'absolute', left: 0, right: 0, bottom: 0,
+          paddingTop: 12, paddingBottom: insets.bottom + 12, paddingHorizontal: 16,
+          backgroundColor: '#fff',
+          borderTopWidth: 1, borderTopColor: '#EBEBEB',
+          flexDirection: 'row', alignItems: 'center', gap: 12,
+          shadowColor: '#000', shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.06, shadowRadius: 8, elevation: 10,
+        }}>
+          <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: colors.primary }}>
+            {selectedIds.size === 0
+              ? (locale === 'fr' ? 'Sélectionnez des moments à partager' : 'Select moments to share')
+              : selectedIds.size === 1
+                ? (locale === 'fr' ? '1 moment sélectionné' : '1 moment selected')
+                : (locale === 'fr' ? `${selectedIds.size} moments sélectionnés` : `${selectedIds.size} moments selected`)}
+          </Text>
+          <TouchableOpacity
+            onPress={() => selectedIds.size > 0 && setBulkConfirmOpen(true)}
+            activeOpacity={0.85}
+            disabled={selectedIds.size === 0}
+            style={{
+              paddingHorizontal: 18, paddingVertical: 11, borderRadius: 14,
+              backgroundColor: colors.bloom,
+              opacity: selectedIds.size === 0 ? 0.45 : 1,
+            }}
+          >
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>
+              {locale === 'fr'
+                ? (selectedIds.size > 1 ? `Partager ${selectedIds.size}` : 'Partager')
+                : (selectedIds.size > 1 ? `Share ${selectedIds.size}` : 'Share')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Bulk-share confirmation */}
+      <Modal
+        visible={bulkConfirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !shareBusy && setBulkConfirmOpen(false)}
+      >
+        <Pressable
+          onPress={() => !shareBusy && setBulkConfirmOpen(false)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center', padding: 24 }}
+        >
+          <Pressable onPress={() => {}} style={{ width: '100%', maxWidth: 360, backgroundColor: '#fff', borderRadius: 20, padding: 24 }}>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.primary, marginBottom: 8 }}>
+              {(() => {
+                const n = selectedIds.size
+                const display = practitionerName || (locale === 'fr' ? 'votre praticien' : 'your practitioner')
+                if (locale === 'fr') return n === 1 ? `Partager avec ${display} ?` : `Partager ${n} moments avec ${display} ?`
+                return n === 1 ? `Share with ${display}?` : `Share ${n} moments with ${display}?`
+              })()}
+            </Text>
+            <Text style={{ fontSize: 14, color: colors.textSecondary, lineHeight: 20, marginBottom: 20 }}>
+              {locale === 'fr'
+                ? 'Ces moments apparaîtront dans leur tableau de bord et une notification leur sera envoyée.'
+                : 'They will appear on their dashboard and a notification will be sent.'}
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+              <TouchableOpacity
+                onPress={() => setBulkConfirmOpen(false)}
+                disabled={shareBusy}
+                activeOpacity={0.7}
+                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: colors.textSecondary }}>
+                  {locale === 'fr' ? 'Annuler' : 'Cancel'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmBulkShareAction}
+                disabled={shareBusy}
+                activeOpacity={0.8}
+                style={{
+                  paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12,
+                  backgroundColor: colors.bloom,
+                  opacity: shareBusy ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+                  {shareBusy ? '...' : (locale === 'fr' ? 'Partager' : 'Share')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       {/* Share confirmation modal. Custom Modal instead of Alert.alert
           because Alert.alert with multiple buttons is flaky on RN Web. */}
