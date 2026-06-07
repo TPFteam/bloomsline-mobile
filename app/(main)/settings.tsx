@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
+import { NameSetup } from '@/components/NameSetup'
 
 const NAV_OPTIONS = [
   { key: 'moments', icon: Heart, label: { en: 'Moments', fr: 'Moments' } },
@@ -16,8 +17,9 @@ const NAV_OPTIONS = [
 export default function Settings() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { user, member, signOut, updateMember } = useAuth()
+  const { user, member, signOut, updateMember, patientFullName, patientFirstName, patientLastName, saveProfileName } = useAuth()
   const { t, locale, setLocale } = useI18n()
+  const [showEditName, setShowEditName] = useState(false)
 
   const currentFirst = (member as any)?.nav_order?.[0] || (member?.practitioner_id ? 'practitioner' : 'moments')
   const [selectedFirst, setSelectedFirst] = useState(currentFirst)
@@ -49,7 +51,7 @@ export default function Settings() {
           subject: supportSubject.trim(),
           description: supportDescription.trim(),
           userEmail: user?.email,
-          userName: member?.first_name ? `${member.first_name} ${member.last_name || ''}`.trim() : user?.email,
+          userName: patientFullName || user?.email,
           source: 'mobile-app',
         }),
       })
@@ -103,9 +105,7 @@ export default function Settings() {
     setSaving(false)
   }
 
-  const displayName = member?.first_name
-    ? `${member.first_name} ${member.last_name || ''}`
-    : user?.user_metadata?.full_name || user?.email || ''
+  const displayName = patientFullName || user?.email || ''
 
   return (
     <View style={{ flex: 1, backgroundColor: '#fff', paddingTop: insets.top + 16, paddingHorizontal: 24 }}>
@@ -129,11 +129,32 @@ export default function Settings() {
             {displayName.charAt(0).toUpperCase()}
           </Text>
         </View>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 17, fontWeight: '600', color: '#000' }}>{displayName}</Text>
           <Text style={{ fontSize: 13, color: '#999' }}>{user?.email}</Text>
         </View>
+        <TouchableOpacity
+          onPress={() => setShowEditName(true)}
+          activeOpacity={0.7}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center' }}
+          accessibilityLabel={locale === 'fr' ? 'Modifier le nom' : 'Edit name'}
+        >
+          <PenLine size={16} color="#666" />
+        </TouchableOpacity>
       </View>
+
+      {/* Edit name modal */}
+      <NameSetup
+        visible={showEditName}
+        initialFirst={patientFirstName}
+        initialLast={patientLastName}
+        locale={locale}
+        onSave={saveProfileName}
+        onClose={() => setShowEditName(false)}
+        title={locale === 'fr' ? 'Modifier le nom' : 'Edit name'}
+        subtitle={locale === 'fr' ? 'Ce nom est affiché dans votre application.' : 'This name is shown in your app.'}
+        ctaLabel={locale === 'fr' ? 'Enregistrer' : 'Save'}
+      />
 
       {/* Home screen picker */}
       <View style={{ marginBottom: 24 }}>

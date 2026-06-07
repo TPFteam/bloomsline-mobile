@@ -9,7 +9,8 @@ import { useI18n } from '@/lib/i18n'
 import { fetchPublicProfile, PractitionerPublicProfile } from '@/lib/services/booking'
 
 function formatLabel(key: string, map: Record<string, string>) {
-  return map[key] || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  // Unicode-aware title-case (plain \b\w mis-capitalizes after accents).
+  return map[key] || key.replace(/_/g, ' ').replace(/(^|\s)(\p{L})/gu, (_, sp, ch) => sp + ch.toUpperCase())
 }
 
 function extractLocalized(val: any): string {

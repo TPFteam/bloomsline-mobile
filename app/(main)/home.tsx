@@ -165,7 +165,7 @@ function EmptyMomentCard({ onSelectType, locale, isToday, firstName }: { onSelec
 export default function Home() {
   const router = useRouter()
   const insets = useSafeAreaInsets()
-  const { user, member } = useAuth()
+  const { user, member, patientFirstName } = useAuth()
   const { t, locale } = useI18n()
   const isHome = getHomeScreen(member as any) === 'moments'
   const [moments, setMoments] = useState<Moment[]>([])
@@ -357,7 +357,7 @@ export default function Home() {
     router.push({ pathname: '/(main)/capture', params: { type } })
   }
 
-  const firstName = member?.first_name || user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || ''
+  const firstName = patientFirstName || member?.first_name || user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || ''
 
   const fetchMoments = useCallback(async () => {
     const start = new Date(selectedDate)

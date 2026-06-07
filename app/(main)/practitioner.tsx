@@ -84,7 +84,10 @@ function getSessionTypeLabel(type: string, t?: any): string {
     }
     if (map[type]) return map[type]
   }
-  return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+  // Unicode-aware title-case: capitalize the first letter of each word.
+  // (A plain \b\w treats accented letters like "é" as word boundaries, which
+  // produced "SéAnce" for "séance".)
+  return type.replace(/_/g, ' ').replace(/(^|\s)(\p{L})/gu, (_, sp, ch) => sp + ch.toUpperCase())
 }
 
 function getFormatLabel(format: string, t?: any): string {
@@ -102,13 +105,13 @@ export default function PractitionerScreen() {
   const { width: screenWidth } = useWindowDimensions()
   const router = useRouter()
   const { openResourceId } = useLocalSearchParams<{ openResourceId?: string }>()
-  const { member, allMembers, setActiveMemberId } = useAuth()
+  const { member, allMembers, setActiveMemberId, patientFirstName } = useAuth()
   const { t, locale } = useI18n()
 
   const mobileFeatures = useMobileFeatures(member?.practitioner_id)
   const isHome = getHomeScreen(member as any, mobileFeatures) === 'practitioner'
   const [bloomOpen, setBloomOpen] = useState(false)
-  const firstName = member?.first_name || ''
+  const firstName = patientFirstName || member?.first_name || ''
 
   const [loading, setLoading] = useState(true)
   const [practitioner, setPractitioner] = useState<PractitionerProfile | null>(null)

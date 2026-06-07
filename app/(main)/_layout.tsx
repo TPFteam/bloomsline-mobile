@@ -7,11 +7,12 @@ import { supabase } from '@/lib/supabase'
 import { getHomeScreen } from '@/lib/nav-order'
 import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { ConsentModal } from '@/components/ConsentModal'
+import { NameSetup } from '@/components/NameSetup'
 import { registerForPushNotifications } from '@/lib/notifications'
 import { useInactivityTimeout } from '@/lib/hooks/useInactivityTimeout'
 
 export default function MainLayout() {
-  const { session, member, loading, user, signOut } = useAuth()
+  const { session, member, loading, user, signOut, needsNameSetup, saveProfileName } = useAuth()
   const mobileFeatures = useMobileFeatures(member?.practitioner_id)
   const { locale } = useI18n()
   const router = useRouter()
@@ -98,6 +99,16 @@ export default function MainLayout() {
         visible={hasConsented === false}
         onAccept={handleConsent}
         locale={locale}
+      />
+
+      {/* One-time "confirm your name" prompt — after consent, pre-filled with
+          the practitioner-set name. Mandatory (no dismiss) until saved. */}
+      <NameSetup
+        visible={hasConsented === true && needsNameSetup}
+        initialFirst={member?.first_name || ''}
+        initialLast={member?.last_name || ''}
+        locale={locale}
+        onSave={saveProfileName}
       />
       <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="home" />

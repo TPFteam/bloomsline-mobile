@@ -35,6 +35,15 @@ type AuthContextType = {
   setActiveMemberId: (id: string) => void
   loading: boolean
   isPractitioner: boolean
+  // Patient's own name (from the `users` table). Falls back to the
+  // practitioner-set `members` name until the patient sets their own.
+  patientFirstName: string
+  patientLastName: string
+  patientFullName: string
+  // True once we know the patient hasn't set their own name yet — drives the
+  // one-time "confirm your name" prompt.
+  needsNameSetup: boolean
+  saveProfileName: (first: string, last: string) => Promise<{ error: any }>
   notEligible: string | null
   clearNotEligible: () => void
   signIn: (email: string, password: string) => Promise<{ error: any }>
@@ -54,6 +63,11 @@ const AuthContext = createContext<AuthContextType>({
   setActiveMemberId: () => {},
   loading: true,
   isPractitioner: false,
+  patientFirstName: '',
+  patientLastName: '',
+  patientFullName: '',
+  needsNameSetup: false,
+  saveProfileName: async () => ({ error: null }),
   notEligible: null,
   clearNotEligible: () => {},
   signIn: async () => ({ error: null }),
@@ -72,6 +86,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [allMembers, setAllMembers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isPractitioner, setIsPractitioner] = useState(false)
+  // Patient's self-set name from the `users` table.
+  const [profile, setProfile] = useState<{ first_name: string | null; last_name: string | null } | null>(null)
   const [notEligible, setNotEligible] = useState<string | null>(null)
   const savedActiveMemberIdRef = useRef<string | null>(null)
 
@@ -136,9 +152,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check if user is a practitioner
       const { data: userData } = await supabase
         .from('users')
-        .select('user_type, signup_source')
+        .select('user_type, signup_source, first_name, last_name')
         .eq('id', userId)
         .single()
+
+      setProfile({ first_name: userData?.first_name ?? null, last_name: userData?.last_name ?? null })
 
       if (userData?.user_type === 'mentor') {
         setIsPractitioner(true)
@@ -420,12 +438,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMember(null)
     setAllMembers([])
     setIsPractitioner(false)
+    setProfile(null)
     AsyncStorage.removeItem(ACTIVE_MEMBER_KEY).catch(() => {})
   }
 
+  // Persist the patient's own name to the `users` table (and keep full_name in
+  // sync since some patient UI greets by full_name).
+  async function saveProfileName(first: string, last: string) {
+    if (!user?.id) return { error: 'no_user' }
+    const f = first.trim()
+    const l = last.trim()
+    const full = [f, l].filter(Boolean).join(' ')
+    const { error } = await supabase
+      .from('users')
+      .update({ first_name: f || null, last_name: l || null, full_name: full || null })
+      .eq('id', user.id)
+    if (!error) setProfile({ first_name: f || null, last_name: l || null })
+    return { error }
+  }
+
+  // Patient name with fallback: own name (users) → practitioner label
+  // (members) → OAuth metadata → email.
+  const metaFull = (user?.user_metadata as any)?.full_name as string | undefined
+  const ownFirst = profile?.first_name?.trim()
+  const ownLast = profile?.last_name?.trim()
+  const patientFirstName = ownFirst || member?.first_name || metaFull?.split(' ')[0] || user?.email?.split('@')[0] || ''
+  const patientLastName = ownLast || member?.last_name || ''
+  const patientFullName = (
+    [ownFirst || member?.first_name, ownLast || member?.last_name].filter(Boolean).join(' ').trim()
+    || metaFull
+    || user?.email
+    || ''
+  )
+  const needsNameSetup = !isPractitioner && !!member && !ownFirst
+
   return (
     <AuthContext.Provider value={{
-      session, user, member, allMembers, setActiveMemberId, loading, isPractitioner, notEligible, clearNotEligible,
+      session, user, member, allMembers, setActiveMemberId, loading, isPractitioner,
+      patientFirstName, patientLastName, patientFullName, needsNameSetup, saveProfileName,
+      notEligible, clearNotEligible,
       signIn, signUp, signInWithGoogle, signInWithAzure, sendMagicLink, signOut,
       updateMember: (updates: Record<string, any>) => {
         setMember((prev: any) => prev ? { ...prev, ...updates } : prev)
