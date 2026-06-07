@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { supabase } from '@/lib/supabase'
 import { colors } from '@/lib/theme'
-import { INTAKE, CRISIS_STATE, HELPLINES } from '@/lib/for-you'
+import { INTAKE, CRISIS_STATE, HELPLINES, SAVE_ENABLED } from '@/lib/for-you'
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window')
@@ -65,6 +65,7 @@ export default function Affirmations() {
           need: finalAnswers.need,
           firstName: patientFirstName,
           locale,
+          hour: new Date().getHours(),
         }),
       })
       const data = await res.json()
@@ -194,7 +195,9 @@ export default function Affirmations() {
               <Text style={{ fontSize: 30, lineHeight: 42, color: '#fff', textAlign: 'center', fontWeight: '800', letterSpacing: -0.3 }}>
                 {text}
               </Text>
-              {/* Per-card save — instant + animated, saves THIS affirmation */}
+              {/* Per-card save — instant + animated, saves THIS affirmation.
+                  Hidden for now via SAVE_ENABLED. */}
+              {SAVE_ENABLED && (
               <TouchableOpacity
                 onPress={() => toggleSave(i, text)}
                 activeOpacity={0.85}
@@ -207,6 +210,7 @@ export default function Affirmations() {
                   {saved[i] ? (fr ? 'Enregistré' : 'Saved') : (fr ? 'Enregistrer' : 'Save')}
                 </Text>
               </TouchableOpacity>
+              )}
             </View>
           ))}
         </ScrollView>

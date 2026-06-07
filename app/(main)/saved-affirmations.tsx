@@ -53,7 +53,7 @@ export default function SavedAffirmations() {
         <View style={{ paddingTop: 40, alignItems: 'center' }}><ActivityIndicator color="#999" /></View>
       ) : items.length === 0 ? (
         <Text style={{ fontSize: 14, color: '#999', marginTop: 12 }}>
-          {fr ? 'Touchez le ❤️ sur une affirmation pour la retrouver ici.' : 'Tap the ❤️ on an affirmation to keep it here.'}
+          {fr ? 'Touchez le ❤️ pour garder des mots ici.' : 'Tap the ❤️ to keep words here.'}
         </Text>
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}>
@@ -72,8 +72,8 @@ export default function SavedAffirmations() {
         visible={!!pendingDelete}
         title={fr ? 'Retirer des favoris ?' : 'Remove from saved?'}
         message={fr
-          ? 'Cette affirmation sera définitivement supprimée. Vous ne pourrez pas la récupérer.'
-          : 'This affirmation will be gone forever — you won’t be able to get it back.'}
+          ? 'Ces mots seront définitivement supprimés. Vous ne pourrez pas les récupérer.'
+          : 'These words will be gone forever — you won’t be able to get them back.'}
         confirmLabel={fr ? 'Supprimer' : 'Remove'}
         cancelLabel={fr ? 'Annuler' : 'Cancel'}
         destructive

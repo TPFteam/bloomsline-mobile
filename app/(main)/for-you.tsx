@@ -7,6 +7,7 @@ import { useI18n } from '@/lib/i18n'
 import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { colors } from '@/lib/theme'
 import { BottomNav } from '@/components/BottomNav'
+import { SAVE_ENABLED } from '@/lib/for-you'
 
 export default function ForYou() {
   const router = useRouter()
@@ -54,8 +55,8 @@ export default function ForYou() {
           icon={Sparkles}
           color="#8B5CF6"
           bg="#F3EEFF"
-          title={fr ? 'Affirmations' : 'Affirmations'}
-          subtitle={fr ? 'Quelques mots doux, adaptés à vous' : 'A few kind words, tailored to you'}
+          title={fr ? 'Quelques mots' : 'A few words'}
+          subtitle={fr ? 'Quelques mots doux, pour maintenant' : 'A few gentle words for right now'}
           onPress={() => router.push('/(main)/affirmations')}
         />
         {mobileFeatures?.stories !== false && (
@@ -68,14 +69,16 @@ export default function ForYou() {
             onPress={() => router.push('/(main)/stories')}
           />
         )}
-        <Card
-          icon={Heart}
-          color="#F43F5E"
-          bg="#FFE8EC"
-          title={fr ? 'Enregistrées' : 'Saved'}
-          subtitle={fr ? 'Les affirmations qui vous ont touché(e)' : 'The affirmations that landed for you'}
-          onPress={() => router.push('/(main)/saved-affirmations')}
-        />
+        {SAVE_ENABLED && (
+          <Card
+            icon={Heart}
+            color="#F43F5E"
+            bg="#FFE8EC"
+            title={fr ? 'Enregistrées' : 'Saved'}
+            subtitle={fr ? 'Les mots qui vous ont touché(e)' : 'The words that landed for you'}
+            onPress={() => router.push('/(main)/saved-affirmations')}
+          />
+        )}
 
         {/* Always-available crisis support */}
         <TouchableOpacity

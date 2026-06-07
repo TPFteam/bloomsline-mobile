@@ -2,6 +2,10 @@
 // Answer keys are the contract with the care-app /api/affirmations endpoint
 // (topic → theme, state → crisis trigger, need → tone).
 
+// Temporarily hide the save / favorites feature (per-card save + Saved hub
+// card). Flip to true to bring it back.
+export const SAVE_ENABLED = false
+
 export interface IntakeOption {
   key: string
   en: string
