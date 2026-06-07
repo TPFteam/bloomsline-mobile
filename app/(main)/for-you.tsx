@@ -51,14 +51,16 @@ export default function ForYou() {
           {fr ? 'Quelques instants rien que pour vous.' : 'A few moments, just for you.'}
         </Text>
 
-        <Card
-          icon={Sparkles}
-          color="#8B5CF6"
-          bg="#F3EEFF"
-          title={fr ? 'Quelques mots' : 'A few words'}
-          subtitle={fr ? 'Quelques mots doux, pour maintenant' : 'A few gentle words for right now'}
-          onPress={() => router.push('/(main)/affirmations')}
-        />
+        {mobileFeatures?.affirmations !== false && (
+          <Card
+            icon={Sparkles}
+            color="#8B5CF6"
+            bg="#F3EEFF"
+            title={fr ? 'Quelques mots' : 'A few words'}
+            subtitle={fr ? 'Quelques mots doux, pour maintenant' : 'A few gentle words for right now'}
+            onPress={() => router.push('/(main)/affirmations')}
+          />
+        )}
         {mobileFeatures?.stories !== false && (
           <Card
             icon={PenLine}

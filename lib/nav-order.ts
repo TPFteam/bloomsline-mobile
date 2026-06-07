@@ -2,6 +2,7 @@ export type MobileFeatures = {
   moments?: boolean
   stories?: boolean
   my_care?: boolean
+  affirmations?: boolean
   stories_shareable?: boolean
   talk_to_bloom?: boolean
 }
