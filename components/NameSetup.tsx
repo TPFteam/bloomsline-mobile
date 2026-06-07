@@ -12,7 +12,7 @@ const content = {
     cancel: 'Cancel',
   },
   fr: {
-    title: 'Comment vous appeler ?',
+    title: 'Quel est votre nom ?',
     subtitle: 'Petit coucou 👋 — dites-nous comment vous aimeriez que votre nom apparaisse. Modifiable à tout moment dans les Réglages.',
     first: 'Prénom',
     last: 'Nom',
