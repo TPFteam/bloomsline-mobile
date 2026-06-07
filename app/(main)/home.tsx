@@ -9,6 +9,7 @@ import { getMemberMoments, Moment } from '@/lib/services/moments'
 import { PageLoader } from '@/components/PageLoader'
 import { Camera, Video, Mic, PenLine, Settings, Heart, User, Plus, Lightbulb } from 'lucide-react-native'
 import { getNavOrder, getHomeScreen } from '@/lib/nav-order'
+import { BottomNav } from '@/components/BottomNav'
 import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { InlineGuide } from '@/components/InlineGuide'
 import { WelcomeGuide } from '@/components/WelcomeGuide'
@@ -837,51 +838,7 @@ export default function Home() {
           zIndex: 10,
         }}>
           {/* Nav bubble — only show if more than 1 tab */}
-          {getNavOrder(member as any, mobileFeatures).length > 1 && (
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 16,
-            backgroundColor: '#fff',
-            paddingHorizontal: 20, paddingVertical: 12,
-            borderRadius: 40,
-            borderWidth: 1,
-            borderColor: '#EBEBEB',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.1,
-            shadowRadius: 20,
-            elevation: 8,
-          }}>
-            {getNavOrder(member as any, mobileFeatures).map((key) => {
-              const isActive = key === 'moments'
-              const config = {
-                moments: { icon: Heart, label: (t.home as any)?.moments || 'Moments', route: null },
-                practitioner: { icon: User, label: locale === 'fr' ? 'Mon Suivi' : 'My Care', route: '/(main)/practitioner' },
-                stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: '/(main)/stories' },
-              }[key] as { icon: any; label: string; route: string | null }
-              if (!config) return null
-              const Icon = config.icon
-              return (
-                <TouchableOpacity
-                  key={key}
-                  onPress={config.route ? () => router.push(config.route as any) : undefined}
-                  activeOpacity={0.8}
-                  style={{ alignItems: 'center', gap: 6 }}
-                >
-                  <View style={{
-                    width: 52, height: 52, borderRadius: 26,
-                    backgroundColor: isActive ? colors.bloom : '#fff',
-                    borderWidth: isActive ? 0 : 1,
-                    borderColor: '#E5E5E3',
-                    justifyContent: 'center', alignItems: 'center',
-                  }}>
-                    <Icon size={22} color={isActive ? '#fff' : '#999'} strokeWidth={isActive ? 2 : 1.5} />
-                  </View>
-                  <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '700' : '500' }}>{config.label}</Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-          )}
+          <BottomNav active="moments" member={member} mobileFeatures={mobileFeatures} />
           {/* Capture — standalone circle */}
           <View style={{ alignItems: 'center' }}>
             {/* Tooltip */}

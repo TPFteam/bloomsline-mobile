@@ -77,6 +77,7 @@ import {
 import NotificationBell from '@/components/NotificationBell'
 import { BackButton } from '@/components/ui/BackButton'
 import { getNavOrder } from '@/lib/nav-order'
+import { BottomNav } from '@/components/BottomNav'
 import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { InlineGuide } from '@/components/InlineGuide'
 import { FloatingCapture } from '@/components/FloatingCapture'
@@ -1888,8 +1889,15 @@ export default function StoriesScreen() {
       >
         {/* Header — inside the pull wrapper so it slides down with the content */}
         <View style={{ paddingTop: insets.top + 20, paddingHorizontal: spacing.screenPadding, paddingBottom: 16, backgroundColor: '#fff' }}>
-          {/* Top row — notification + settings */}
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 20 }}>
+          {/* Top row — back (to For You) + notification + settings */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <TouchableOpacity
+              onPress={() => router.canGoBack() ? router.back() : router.push('/(main)/for-you')}
+              activeOpacity={0.7}
+              style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: '#f5f5f5', justifyContent: 'center', alignItems: 'center' }}
+            >
+              <Text style={{ fontSize: 18, color: '#000', marginTop: -1 }}>‹</Text>
+            </TouchableOpacity>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <NotificationBell onOpenResource={() => {}} />
               <TouchableOpacity
@@ -2306,51 +2314,7 @@ export default function StoriesScreen() {
           zIndex: 10,
         }}>
           {/* Nav bubble — only show if more than 1 tab */}
-          {getNavOrder(member as any, mobileFeatures).length > 1 && (
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 16,
-            backgroundColor: '#fff',
-            paddingHorizontal: 20, paddingVertical: 12,
-            borderRadius: 40,
-            borderWidth: 1,
-            borderColor: '#EBEBEB',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.1,
-            shadowRadius: 20,
-            elevation: 8,
-          }}>
-            {getNavOrder(member as any, mobileFeatures).map((key) => {
-              const isActive = key === 'stories'
-              const config = {
-                moments: { icon: Heart, label: (t.home as any)?.moments || 'Moments', route: '/(main)/home' },
-                practitioner: { icon: User, label: locale === 'fr' ? 'Mon Suivi' : 'My Care', route: '/(main)/practitioner' },
-                stories: { icon: PenLine, label: t.stories?.section || 'Stories', route: null },
-              }[key] as { icon: any; label: string; route: string | null }
-              if (!config) return null
-              const Icon = config.icon
-              return (
-                <TouchableOpacity
-                  key={key}
-                  onPress={config.route ? () => router.push(config.route as any) : undefined}
-                  activeOpacity={0.8}
-                  style={{ alignItems: 'center', gap: 6 }}
-                >
-                  <View style={{
-                    width: 52, height: 52, borderRadius: 26,
-                    backgroundColor: isActive ? colors.bloom : '#fff',
-                    borderWidth: isActive ? 0 : 1,
-                    borderColor: '#E5E5E3',
-                    justifyContent: 'center', alignItems: 'center',
-                  }}>
-                    <Icon size={22} color={isActive ? '#fff' : '#999'} strokeWidth={isActive ? 2 : 1.5} />
-                  </View>
-                  <Text style={{ fontSize: 11, color: isActive ? colors.bloom : '#8A8A8A', fontWeight: isActive ? '700' : '500' }}>{config.label}</Text>
-                </TouchableOpacity>
-              )
-            })}
-          </View>
-          )}
+          <BottomNav active="forYou" member={member} mobileFeatures={mobileFeatures} />
           {/* Spacer to match Moments tab layout (where + button exists) */}
           <View style={{ width: 56 }} />
         </View>

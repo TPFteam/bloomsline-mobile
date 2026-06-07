@@ -36,6 +36,12 @@ export function getNavOrder(
     })
   }
 
+  // Journal ("stories") now lives inside the For You hub, not the bottom nav.
+  order = order.filter(k => k !== 'stories')
+
+  // "For You" is always present, appended after Moments / My Care.
+  if (!order.includes('forYou')) order = [...order, 'forYou']
+
   return order
 }
 
