@@ -135,6 +135,7 @@ export const MOODS: MoodDef[] = [
   { key: 'overwhelmed', icon: 'Waves', label: 'Overwhelmed', color: '#EF4444', valence: 35 },
   { key: 'heavy', icon: 'CloudRain', label: 'Heavy', color: '#475569', valence: 32 },
   { key: 'angry', icon: 'Flame', label: 'Angry', color: '#DC2626', valence: 30 },
+  { key: 'fear', icon: 'Ghost', label: 'Fearful', color: '#4F46E5', valence: 26 },
 ]
 
 // ─── Capture Types ───────────────────────────────────

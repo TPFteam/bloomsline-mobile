@@ -88,6 +88,7 @@ export default {
     sad: 'Triste',
     lonely: 'Seul(e)',
     angry: 'En colère',
+    fear: 'Effrayé(e)',
     // Legacy
     peaceful: 'Paisible',
     joyful: 'Joyeux(se)',

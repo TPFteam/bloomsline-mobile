@@ -6,7 +6,7 @@ import { createMoment } from '@/lib/services/moments'
 import { trackEvent } from '@/lib/analytics'
 import * as ImagePicker from 'expo-image-picker'
 import { Audio } from 'expo-av'
-import { Camera, ImageIcon, X, Plus, Check, Mic, Play, Pause, Trash2, RotateCcw, Leaf, Heart, Sparkles, HeartHandshake, Trophy, Sun, Wind, Waves, Moon, CloudRain, Laugh, TreePalm, Zap, CloudDrizzle, Flame, UserX } from 'lucide-react-native'
+import { Camera, ImageIcon, X, Plus, Check, Mic, Play, Pause, Trash2, RotateCcw, Leaf, Heart, Sparkles, HeartHandshake, Trophy, Sun, Wind, Waves, Moon, CloudRain, Laugh, TreePalm, Zap, CloudDrizzle, Flame, UserX, Ghost } from 'lucide-react-native'
 import { useI18n } from '@/lib/i18n'
 import { colors } from '@/lib/theme'
 
@@ -27,6 +27,7 @@ const MOOD_ICONS: Record<string, any> = {
   sad: CloudDrizzle,
   angry: Flame,
   lonely: UserX,
+  fear: Ghost,
 }
 
 const MOODS = [
@@ -47,6 +48,7 @@ const MOODS = [
   { key: 'overwhelmed', label: 'Overwhelmed', color: '#EF4444' },
   { key: 'heavy', label: 'Heavy', color: '#475569' },
   { key: 'angry', label: 'Angry', color: '#DC2626' },
+  { key: 'fear', label: 'Fearful', color: '#4F46E5' },
 ]
 
 type CaptureType = 'photo' | 'video' | 'voice' | 'write'

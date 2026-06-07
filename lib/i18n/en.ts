@@ -88,6 +88,7 @@ export default {
     sad: 'Sad',
     lonely: 'Lonely',
     angry: 'Angry',
+    fear: 'Fearful',
     // Legacy
     peaceful: 'Peaceful',
     joyful: 'Joyful',
