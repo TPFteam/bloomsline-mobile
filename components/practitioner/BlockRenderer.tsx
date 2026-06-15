@@ -1989,9 +1989,14 @@ function ZonedCanvasBlock({
   const [editingZone, setEditingZone] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [expanded, setExpanded] = useState(false)
+  // Which on-canvas tag is tapped open — its full sentence shows in a popup.
+  const [openEntry, setOpenEntry] = useState<string | null>(null)
+  // Measured inline-canvas width, to lay tap targets over the SVG tags.
+  const [canvasW, setCanvasW] = useState(0)
 
   const startAdd = (zoneId: string) => {
     if (readOnly) return
+    setOpenEntry(null)
     setEditingZone(zoneId)
     setDraft('')
   }
@@ -2031,6 +2036,11 @@ function ZonedCanvasBlock({
     )
   }
   const paintOrder = [...zones].sort((a, b) => zoneArea(b) - zoneArea(a))
+  // Long custom labels overflow the canvas (SVG text doesn't wrap), so each
+  // zone shows a small numbered badge and the full labels live in the legend
+  // list below (number → label).
+  const zoneNumber: Record<string, number> = {}
+  zones.forEach((z, i) => { zoneNumber[z.id] = i + 1 })
 
   // react-native-svg's web shim forwards native gesture props (onPress →
   // onResponderTerminate, etc.) that react-native-web doesn't recognise,
@@ -2120,16 +2130,18 @@ function ZonedCanvasBlock({
     const a = ZC_ACCENT[(z.accent ?? 'slate') as ZCAccent]
     const { cx, labelY } = zonePos(z)
     return (
-      <SvgText
-        key={`label-${z.id}`}
-        x={cx} y={labelY}
-        fill={a.text}
-        fontSize={18}
-        fontWeight="700"
-        textAnchor="middle"
-      >
-        {lt(z.label)}
-      </SvgText>
+      <SvgG key={`label-${z.id}`}>
+        <SvgCircle cx={cx} cy={labelY} r={14} fill={a.stroke} />
+        <SvgText
+          x={cx} y={labelY + 5}
+          fill="#ffffff"
+          fontSize={16}
+          fontWeight="700"
+          textAnchor="middle"
+        >
+          {zoneNumber[z.id]}
+        </SvgText>
+      </SvgG>
     )
   }
 
@@ -2167,7 +2179,40 @@ function ZonedCanvasBlock({
     }
     return false
   }
-
+  // Does an (axis-aligned, padded) pill box overlap a shape? Keeps outer-zone
+  // tags clear of a nested inner shape (e.g. the circle), checking the whole
+  // box, not just its centre.
+  const boxOverlapsShape = (cx: number, cy: number, w: number, h: number, s: ZCShape, clearance = 0): boolean => {
+    const hw = w / 2 + clearance, hh = h / 2 + clearance
+    if (s.kind === 'circle' || s.kind === 'ellipse') {
+      const r = s.kind === 'circle' ? (s.r ?? 0) : Math.min(s.rx ?? 0, s.ry ?? 0)
+      const nx = Math.max(cx - hw, Math.min(s.cx ?? 0, cx + hw))
+      const ny = Math.max(cy - hh, Math.min(s.cy ?? 0, cy + hh))
+      return Math.hypot((s.cx ?? 0) - nx, (s.cy ?? 0) - ny) < r
+    }
+    if (s.kind === 'rect') {
+      const scx = (s.x ?? 0) + (s.w ?? 0) / 2, scy = (s.y ?? 0) + (s.h ?? 0) / 2
+      return Math.abs(cx - scx) < hw + (s.w ?? 0) / 2 && Math.abs(cy - scy) < hh + (s.h ?? 0) / 2
+    }
+    return false
+  }
+  // Zones nested inside `z` (explicit parentZoneId, or geometrically a smaller
+  // zone whose centre is inside z). Tags in z must avoid these.
+  const childrenOf = (z: ZCZone): ZCZone[] =>
+    zones.filter(c => {
+      if (c.id === z.id) return false
+      if (c.parentZoneId === z.id) return true
+      if (zoneArea(c) >= zoneArea(z)) return false
+      const s = c.shape
+      let ccx = 0, ccy = 0
+      if (s.kind === 'rect') { ccx = (s.x ?? 0) + (s.w ?? 0) / 2; ccy = (s.y ?? 0) + (s.h ?? 0) / 2 }
+      else if (s.kind === 'circle' || s.kind === 'ellipse') { ccx = s.cx ?? 0; ccy = s.cy ?? 0 }
+      else if (s.kind === 'polygon' && s.points?.length) {
+        ccx = s.points.reduce((a, p) => a + p[0], 0) / s.points.length
+        ccy = s.points.reduce((a, p) => a + p[1], 0) / s.points.length
+      }
+      return insideShape(ccx, ccy, z.shape, 0)
+    })
   type Placed = { id: string; text: string; cx: number; cy: number; w: number; h: number; angle: number }
 
   // Build the placement plan once per zone — used by renderEntries.
@@ -2176,7 +2221,7 @@ function ZonedCanvasBlock({
     if (list.length === 0) return []
     const maxVisible = 8
     const visible = list.slice(0, maxVisible)
-    const children = zones.filter(c => c.parentZoneId === z.id)
+    const children = childrenOf(z)
     const { labelY } = zonePos(z)
     const fontSize = 13
     const h = fontSize + 14
@@ -2184,11 +2229,15 @@ function ZonedCanvasBlock({
     const margin = 12
 
     for (const entry of visible) {
-      const text = (entry.text || '').length > 24 ? (entry.text || '').slice(0, 22) + '…' : (entry.text || '')
+      // Keep tags compact so they fit inside their zone; the full sentence is
+      // revealed on tap (and only then allowed to overflow).
+      const raw = entry.text || ''
+      const text = raw.length > 18 ? raw.slice(0, 16) + '…' : raw
       const w = estimatePillWidth(text, fontSize)
+      const halfDiag = Math.hypot(w / 2, h / 2)  // rotation-safe radius
       const rng = seededRand(z.id + entry.id)
       let chosen: Placed | null = null
-      for (let t = 0; t < 60; t++) {
+      for (let t = 0; t < 80; t++) {
         const s = z.shape
         let cx = 0, cy = 0
         if (s.kind === 'rect') {
@@ -2196,7 +2245,7 @@ function ZonedCanvasBlock({
           cy = labelY + 26 + h / 2 + rng() * ((s.y ?? 0) + (s.h ?? 0) - labelY - 26 - h - 2 * margin)
         } else if (s.kind === 'circle') {
           const angle = rng() * Math.PI * 2
-          const maxR = Math.max(0, (s.r ?? 0) - Math.max(w, h) / 2 - margin)
+          const maxR = Math.max(0, (s.r ?? 0) - halfDiag - margin)
           const radius = Math.sqrt(rng()) * maxR
           cx = (s.cx ?? 0) + Math.cos(angle) * radius
           cy = (s.cy ?? 0) + Math.sin(angle) * radius
@@ -2212,13 +2261,13 @@ function ZonedCanvasBlock({
           cx = Math.min(...xs) + margin + rng() * (Math.max(...xs) - Math.min(...xs) - 2 * margin)
           cy = Math.min(...ys) + margin + rng() * (Math.max(...ys) - Math.min(...ys) - 2 * margin)
         }
-        // Reject if pill centre lands inside a child zone (e.g. the
-        // inner circle for Circle of Control).
-        let insideChild = false
+        // Keep the whole tag box clear of any nested zone (e.g. the circle),
+        // not just its centre — so outer tags never spill onto the circle.
+        let hitsChild = false
         for (const c of children) {
-          if (insideShape(cx, cy, c.shape, -6)) { insideChild = true; break }
+          if (boxOverlapsShape(cx, cy, w, h, c.shape, 4)) { hitsChild = true; break }
         }
-        if (insideChild) continue
+        if (hitsChild) continue
         // Collision check against already-placed pills.
         const angle = (rng() - 0.5) * 6
         const candidate: Placed = { id: entry.id, text, cx, cy, w, h, angle }
@@ -2237,11 +2286,10 @@ function ZonedCanvasBlock({
     return placed
   }
 
-  const renderEntries = (z: ZCZone) => {
+  const renderEntries = (z: ZCZone, placed: Placed[]) => {
     const list = entries[z.id] ?? []
     if (list.length === 0) return null
     const a = ZC_ACCENT[(z.accent ?? 'slate') as ZCAccent]
-    const placed = planEntries(z)
     const overflow = list.length - placed.length
     return (
       <SvgG key={`entries-${z.id}`}>
@@ -2283,6 +2331,32 @@ function ZonedCanvasBlock({
     )
   }
 
+  // Plan all zones once so the entry layer and the tap hotspots agree on
+  // positions.
+  const placedByZone: Record<string, Placed[]> = {}
+  for (const z of zones) placedByZone[z.id] = planEntries(z)
+
+  // Map a viewBox point to on-screen pixels inside the measured inline canvas
+  // (Svg is width 100% × 280, preserveAspectRatio xMidYMid meet). Used to lay
+  // transparent tap targets over each tag so tapping works on web too (SVG
+  // onPress isn't reliable under react-native-web).
+  const INLINE_H = 280
+  const scale = canvasW > 0 ? Math.min(canvasW / canvas.width, INLINE_H / canvas.height) : 0
+  const offX = (canvasW - canvas.width * scale) / 2
+  const offY = (INLINE_H - canvas.height * scale) / 2
+
+  // Full text + accent for the currently-open tag (for the popup).
+  const openInfo = (() => {
+    if (!openEntry) return null
+    const text = Object.values(entries).flat().find(e => e.id === openEntry)?.text
+    if (!text) return null
+    let accent: ZCAccent = 'slate'
+    for (const z of zones) {
+      if ((entries[z.id] ?? []).some(e => e.id === openEntry)) { accent = (z.accent ?? 'slate') as ZCAccent; break }
+    }
+    return { text, colour: ZC_ACCENT[accent] }
+  })()
+
   return (
     <View>
       {block.content ? (
@@ -2291,19 +2365,36 @@ function ZonedCanvasBlock({
 
       {/* Canvas */}
       <View style={{ backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#f3f4f6', padding: 8, marginBottom: 16, position: 'relative' }}>
-        <Svg viewBox={`0 0 ${canvas.width} ${canvas.height}`} width="100%" height={280}>
-          {canvas.backgroundImageUrl ? (
-            <SvgImage
-              href={canvas.backgroundImageUrl as any}
-              x={0} y={0}
-              width={canvas.width} height={canvas.height}
-              preserveAspectRatio="xMidYMid meet"
+        <View style={{ position: 'relative' }} onLayout={e => setCanvasW(e.nativeEvent.layout.width)}>
+          <Svg viewBox={`0 0 ${canvas.width} ${canvas.height}`} width="100%" height={280}>
+            {canvas.backgroundImageUrl ? (
+              <SvgImage
+                href={canvas.backgroundImageUrl as any}
+                x={0} y={0}
+                width={canvas.width} height={canvas.height}
+                preserveAspectRatio="xMidYMid meet"
+              />
+            ) : null}
+            {paintOrder.map(renderShape)}
+            {paintOrder.map(renderLabel)}
+            {paintOrder.map(z => renderEntries(z, placedByZone[z.id] ?? []))}
+          </Svg>
+          {/* Transparent tap targets over each tag → open the full-text popup.
+              Works on web (where SVG onPress is unreliable) and native. */}
+          {scale > 0 && Object.values(placedByZone).flat().map(p => (
+            <TouchableOpacity
+              key={`hit-${p.id}`}
+              onPress={() => setOpenEntry(p.id)}
+              style={{
+                position: 'absolute',
+                left: offX + (p.cx - p.w / 2) * scale,
+                top: offY + (p.cy - p.h / 2) * scale,
+                width: p.w * scale,
+                height: p.h * scale,
+              }}
             />
-          ) : null}
-          {paintOrder.map(renderShape)}
-          {paintOrder.map(renderLabel)}
-          {paintOrder.map(renderEntries)}
-        </Svg>
+          ))}
+        </View>
         <TouchableOpacity
           onPress={() => setExpanded(true)}
           style={{ position: 'absolute', top: 14, right: 14, backgroundColor: 'rgba(255,255,255,0.95)', borderColor: '#e5e7eb', borderWidth: 1, borderRadius: 999, padding: 8 }}
@@ -2358,7 +2449,7 @@ function ZonedCanvasBlock({
                 ) : null}
                 {paintOrder.map(renderShape)}
                 {paintOrder.map(renderLabel)}
-                {paintOrder.map(renderEntries)}
+                {paintOrder.map(z => renderEntries(z, placedByZone[z.id] ?? []))}
               </Svg>
             </View>
           </TouchableOpacity>
@@ -2366,6 +2457,32 @@ function ZonedCanvasBlock({
             {fr ? "Touchez à l'extérieur pour fermer" : es ? 'Toca afuera para cerrar' : 'Tap outside to close'}
           </Text>
         </View>
+      </Modal>
+
+      {/* Tag tapped open — show the full sentence in a small centred popup. */}
+      <Modal
+        visible={!!openInfo}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpenEntry(null)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setOpenEntry(null)}
+          style={{ flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+        >
+          <View
+            onStartShouldSetResponder={() => true}
+            style={{ backgroundColor: '#fff', borderRadius: 16, padding: 18, width: '100%', maxWidth: 360, borderTopWidth: 3, borderTopColor: openInfo?.colour.stroke ?? '#475569' }}
+          >
+            <Text style={{ fontSize: 15, lineHeight: 22, color: '#1f2937' }}>{openInfo?.text}</Text>
+            <TouchableOpacity onPress={() => setOpenEntry(null)} style={{ alignSelf: 'flex-end', marginTop: 14, paddingVertical: 4, paddingHorizontal: 8 }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: openInfo?.colour.stroke ?? '#475569' }}>
+                {fr ? 'Fermer' : es ? 'Cerrar' : 'Close'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
 
       {/* Per-zone list — primary mobile input surface */}
@@ -2389,9 +2506,14 @@ function ZonedCanvasBlock({
               }}
             >
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8, gap: 8 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>{lt(zone.label)}</Text>
-                  {desc ? <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{desc}</Text> : null}
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, marginTop: 1, backgroundColor: colour.stroke, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#fff' }}>{zoneNumber[zone.id]}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#374151' }}>{lt(zone.label)}</Text>
+                    {desc ? <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{desc}</Text> : null}
+                  </View>
                 </View>
                 {!readOnly ? (
                   <TouchableOpacity
@@ -2407,10 +2529,10 @@ function ZonedCanvasBlock({
               </View>
               {list.length > 0 ? (
                 <View style={{ gap: 6 }}>
-                  {list.map(entry => (
+                  {list.map((entry, i) => (
                     <View key={entry.id} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
-                      <View style={{ width: 6, height: 6, borderRadius: 3, marginTop: 6, backgroundColor: colour.stroke }} />
-                      <Text style={{ flex: 1, fontSize: 14, color: '#1f2937', lineHeight: 20 }}>{entry.text}</Text>
+                      <Text style={{ minWidth: 18, fontSize: 14, fontWeight: '600', color: colour.stroke, lineHeight: 20 }}>{i + 1}.</Text>
+                      <Text style={{ flex: 1, minWidth: 0, flexShrink: 1, fontSize: 14, color: '#1f2937', lineHeight: 20 }}>{entry.text}</Text>
                       {!readOnly ? (
                         <TouchableOpacity
                           onPress={() => removeEntry(zone.id, entry.id)}
