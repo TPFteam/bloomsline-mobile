@@ -41,7 +41,7 @@ export interface UpcomingSession {
   meet_link?: string | null
   // Read-only — set by the practitioner on the care app. Surface here so the
   // patient sees whether the latest session was marked paid or unpaid.
-  payment_status?: 'paid' | 'unpaid' | null
+  payment_status?: 'paid' | 'unpaid' | 'free' | null
 }
 
 export interface ResourceItem {

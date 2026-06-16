@@ -23,6 +23,7 @@ import { getGreetingKey } from '@/components/DayNav'
 import * as Clipboard from 'expo-clipboard'
 import { PullToRefreshScrollView } from '@/components/PullToRefresh'
 import { trackEvent } from '@/lib/analytics'
+import { htmlToPlainText } from '@/lib/html-text'
 import { BackButton } from '@/components/ui/BackButton'
 import { BloomLogo } from '@/components/BloomLogo'
 import { BloomFullScreen } from '@/components/BloomFullScreen'
@@ -1512,7 +1513,7 @@ export default function PractitionerScreen() {
                       </Text>
                     </View>
                     <Text style={{ fontSize: 14, color: '#15803D', lineHeight: 20 }}>
-                      {previewNotes}
+                      {htmlToPlainText(previewNotes)}
                     </Text>
                   </View>
                 )}
@@ -1683,7 +1684,7 @@ export default function PractitionerScreen() {
                         {practitioner?.full_name ? t.practitioner.noteFrom.replace('{name}', practitioner.full_name) : t.practitioner.noteFromPractitioner}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 14, color: '#15803D', lineHeight: 20 }}>{practitionerNotes}</Text>
+                    <Text style={{ fontSize: 14, color: '#15803D', lineHeight: 20 }}>{htmlToPlainText(practitionerNotes)}</Text>
                   </View>
                 )}
                 {(() => {
@@ -2037,22 +2038,25 @@ function ResourceCard({ item, onPress }: { item: ResourceItem; onPress: () => vo
 // Read-only badge mirroring whatever the practitioner set on the care
 // app. Two sizes: default (used in upcoming card) and `small` (alongside
 // other inline pills in the history row).
-function PaymentBadge({ status, t, small = false }: { status: 'paid' | 'unpaid'; t: any; small?: boolean }) {
-  const isPaid = status === 'paid'
-  const bg = isPaid ? '#ECFDF5' : '#FEF3C7'
-  const border = isPaid ? '#A7F3D0' : '#FCD34D'
-  const color = isPaid ? '#047857' : '#B45309'
+function PaymentBadge({ status, t, small = false }: { status: 'paid' | 'unpaid' | 'free'; t: any; small?: boolean }) {
+  // paid = green, awaiting payment (unpaid) = amber, not billed (free) = gray.
+  const STYLE: Record<string, { bg: string; border: string; color: string; label: string }> = {
+    paid:   { bg: '#ECFDF5', border: '#A7F3D0', color: '#047857', label: t.practitioner.paid },
+    unpaid: { bg: '#FEF3C7', border: '#FCD34D', color: '#B45309', label: t.practitioner.unpaid },
+    free:   { bg: '#F3F4F6', border: '#E5E7EB', color: '#6B7280', label: t.practitioner.notBilled },
+  }
+  const s = STYLE[status] ?? STYLE.unpaid
   return (
     <View style={{
-      backgroundColor: bg,
+      backgroundColor: s.bg,
       borderRadius: small ? 8 : 10,
       paddingHorizontal: small ? 7 : 10,
       paddingVertical: small ? 2 : 4,
       borderWidth: 1,
-      borderColor: border,
+      borderColor: s.border,
     }}>
-      <Text style={{ fontSize: small ? 10 : 11, fontWeight: '600', color }}>
-        {isPaid ? t.practitioner.paid : t.practitioner.unpaid}
+      <Text style={{ fontSize: small ? 10 : 11, fontWeight: '600', color: s.color }}>
+        {s.label}
       </Text>
     </View>
   )
