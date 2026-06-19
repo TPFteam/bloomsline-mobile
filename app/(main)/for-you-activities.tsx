@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronLeft, ChevronRight, Flower2, Settings } from 'lucide-react-native'
+import { ChevronLeft, ChevronRight, Sprout, Settings } from 'lucide-react-native'
 import NotificationBell from '@/components/NotificationBell'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
@@ -80,7 +80,7 @@ export default function ForYouActivities() {
                   style={{ flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: '#fff', borderRadius: 20, padding: 18, borderWidth: 1, borderColor: '#EEE', marginBottom: 14 }}
                 >
                   <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: '#E8F5F2', justifyContent: 'center', alignItems: 'center' }}>
-                    <Flower2 size={22} color="#4A9A86" strokeWidth={2} />
+                    <Sprout size={22} color="#4A9A86" strokeWidth={2} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 16, fontWeight: '700', color: '#1A1A1A' }} numberOfLines={1}>{activity.title}</Text>

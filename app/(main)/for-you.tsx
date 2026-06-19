@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react'
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Sparkles, Heart, ChevronRight, LifeBuoy, PenLine, Flower2, Settings } from 'lucide-react-native'
+import { Sparkles, Heart, ChevronRight, LifeBuoy, PenLine, Sprout, Settings } from 'lucide-react-native'
 import NotificationBell from '@/components/NotificationBell'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
@@ -117,7 +117,7 @@ export default function ForYou() {
             card (like Journal) that opens the full list on its own screen. */}
         {practiceCount > 0 && (
           <Card
-            icon={Flower2}
+            icon={Sprout}
             color="#4A9A86"
             bg="#E8F5F2"
             title={fr ? 'Pratiques' : 'Practices'}
