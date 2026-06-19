@@ -19,6 +19,18 @@ const STEP_COLORS = [
   '#F59E0B', // amber
 ]
 
+// Perceived luminance — true for the practitioner's light screen colours, so
+// we flip text/chrome to dark and keep them readable.
+function isLightColor(hex?: string): boolean {
+  if (!hex) return false
+  const h = hex.replace('#', '')
+  if (h.length < 6) return false
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.6
+}
+
 // Content-only block types (not questions)
 const CONTENT_TYPES = new Set([
   'heading', 'paragraph', 'quote', 'tip', 'divider', 'key_points',
@@ -47,6 +59,10 @@ interface WorksheetStepViewProps {
   onClose: () => void
   saving?: boolean
   submitting?: boolean
+  /** When true, the final Submit is greyed and pressing it calls
+   *  onBlockedSubmit instead of onSubmit (e.g. nothing has been answered). */
+  submitDisabled?: boolean
+  onBlockedSubmit?: () => void
   isCompleted?: boolean
   t: any
   locale?: string
@@ -68,24 +84,26 @@ function groupBlocksIntoSteps(blocks: any[]): Step[] {
       }
       pendingContext.push(block)
     } else {
-      // This is a question block
+      // This is a question block. Honour the practitioner's per-screen colour
+      // (stored on the anchor block) and fall back to the rotation.
       steps.push({
         contextBlocks: pendingContext,
         questionBlock: block,
         pdfBlock: lastPdfBlock,
-        color: STEP_COLORS[steps.length % STEP_COLORS.length],
+        color: (block.color as string) || STEP_COLORS[steps.length % STEP_COLORS.length],
       })
       pendingContext = []
     }
   }
 
-  // Trailing content with no question → info slide
+  // Trailing content with no question → info slide (anchor = last context block)
   if (pendingContext.length > 0) {
+    const anchor = pendingContext[pendingContext.length - 1]
     steps.push({
       contextBlocks: pendingContext,
       questionBlock: null,
       pdfBlock: lastPdfBlock,
-      color: STEP_COLORS[steps.length % STEP_COLORS.length],
+      color: (anchor?.color as string) || STEP_COLORS[steps.length % STEP_COLORS.length],
     })
   }
 
@@ -101,6 +119,8 @@ export function WorksheetStepView({
   onClose,
   saving,
   submitting,
+  submitDisabled,
+  onBlockedSubmit,
   isCompleted,
   t,
   locale,
@@ -125,6 +145,23 @@ export function WorksheetStepView({
 
   const step = steps[currentStep]
   if (!step) return null
+
+  // Adapt text / chrome to the screen colour so light backgrounds stay
+  // readable. Dark colours (incl. the default rotation) keep the original
+  // white-on-colour look, so existing worksheets are unchanged.
+  const lightBg = isLightColor(step.color)
+  const fg = {
+    text: lightBg ? '#1F2937' : '#FFFFFF',
+    soft: lightBg ? 'rgba(31,41,55,0.55)' : 'rgba(255,255,255,0.6)',
+    soft80: lightBg ? 'rgba(31,41,55,0.8)' : 'rgba(255,255,255,0.8)',
+    track: lightBg ? 'rgba(31,41,55,0.18)' : 'rgba(255,255,255,0.2)',
+    pillBg: lightBg ? 'rgba(31,41,55,0.07)' : 'rgba(255,255,255,0.15)',
+    controlBg: lightBg ? 'rgba(31,41,55,0.08)' : 'rgba(0,0,0,0.15)',
+    cardBg: lightBg ? 'rgba(31,41,55,0.05)' : 'rgba(255,255,255,0.12)',
+    primaryBg: lightBg ? '#1F2937' : '#FFFFFF',
+    primaryBgDim: lightBg ? 'rgba(31,41,55,0.25)' : 'rgba(255,255,255,0.3)',
+    primaryText: lightBg ? '#FFFFFF' : step.color,
+  }
 
   const isLast = currentStep === steps.length - 1
   const isFirst = currentStep === 0
@@ -157,6 +194,7 @@ export function WorksheetStepView({
 
   const goNext = () => {
     if (isLast) {
+      if (submitDisabled) { onBlockedSubmit?.(); return }
       onSubmit()
     } else {
       animateTransition('next', () => setCurrentStep(prev => prev + 1))
@@ -177,25 +215,25 @@ export function WorksheetStepView({
       <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity onPress={onClose} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'center', alignItems: 'center' }}>
-              <X size={16} color="#fff" />
+            <TouchableOpacity onPress={onClose} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: fg.controlBg, justifyContent: 'center', alignItems: 'center' }}>
+              <X size={16} color={fg.text} />
             </TouchableOpacity>
             {step.questionBlock?.type === 'table_exercise' && !isFirst && (
-              <TouchableOpacity onPress={goBack} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.15)', justifyContent: 'center', alignItems: 'center' }}>
-                <ChevronLeft size={16} color="#fff" />
+              <TouchableOpacity onPress={goBack} style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: fg.controlBg, justifyContent: 'center', alignItems: 'center' }}>
+                <ChevronLeft size={16} color={fg.text} />
               </TouchableOpacity>
             )}
           </View>
           {/* Progress bar (flex center) */}
-          <View style={{ flex: 1, marginHorizontal: 16, height: 4, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 2 }}>
-            <View style={{ height: 4, borderRadius: 2, backgroundColor: '#fff', width: `${((currentStep + 1) / totalSteps) * 100}%` }} />
+          <View style={{ flex: 1, marginHorizontal: 16, height: 4, backgroundColor: fg.track, borderRadius: 2 }}>
+            <View style={{ height: 4, borderRadius: 2, backgroundColor: fg.text, width: `${((currentStep + 1) / totalSteps) * 100}%` }} />
           </View>
           {onSaveDraft && draftResponseId && !isCompleted ? (
             <TouchableOpacity onPress={onSaveDraft} disabled={saving} style={{ padding: 4 }}>
-              <Save size={18} color={saving ? 'rgba(255,255,255,0.4)' : '#fff'} />
+              <Save size={18} color={saving ? fg.soft : fg.text} />
             </TouchableOpacity>
           ) : (
-            <Text style={{ fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: fg.soft }}>
               {currentStep + 1} {locale === 'fr' ? 'sur' : 'of'} {totalSteps}
             </Text>
           )}
@@ -221,12 +259,12 @@ export function WorksheetStepView({
             style={{
               marginHorizontal: 20, marginBottom: 4,
               flexDirection: 'row', alignItems: 'center', gap: 6,
-              backgroundColor: 'rgba(0,0,0,0.12)', borderRadius: 16,
+              backgroundColor: fg.controlBg, borderRadius: 16,
               paddingHorizontal: 12, paddingVertical: 7, alignSelf: 'flex-start',
             }}
           >
-            <ChevronLeft size={12} color="rgba(255,255,255,0.7)" />
-            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '500' }} numberOfLines={1}>{answerText}</Text>
+            <ChevronLeft size={12} color={fg.soft} />
+            <Text style={{ fontSize: 12, color: fg.soft80, fontWeight: '500' }} numberOfLines={1}>{answerText}</Text>
           </TouchableOpacity>
         )
       })()}
@@ -391,7 +429,7 @@ export function WorksheetStepView({
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 8,
-                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  backgroundColor: fg.pillBg,
                   borderRadius: 20,
                   paddingHorizontal: 14,
                   paddingVertical: 8,
@@ -399,8 +437,8 @@ export function WorksheetStepView({
                   marginBottom: 16,
                 }}
               >
-                <FileText size={14} color="rgba(255,255,255,0.8)" />
-                <Text style={{ fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)' }} numberOfLines={1}>
+                <FileText size={14} color={fg.soft80} />
+                <Text style={{ fontSize: 12, fontWeight: '600', color: fg.soft80 }} numberOfLines={1}>
                   {step.pdfBlock.content || 'PDF'}
                 </Text>
               </TouchableOpacity>
@@ -414,14 +452,14 @@ export function WorksheetStepView({
                 setPdfLoading(true)
                 setPdfViewerName(name)
                 setPdfViewerUrl(url)
-              }, true /* lightText — context sits on the resource's tinted background */)}
+              }, !lightBg /* lightText: white on dark screens, dark on light ones */)}
             </View>
           ))}
 
           {/* Question block */}
           {step.questionBlock && (
             <View style={{
-              backgroundColor: 'rgba(255,255,255,0.12)',
+              backgroundColor: fg.cardBg,
               borderRadius: 24,
               padding: 20,
               marginTop: step.contextBlocks.length > 0 ? 8 : 0,
@@ -450,7 +488,7 @@ export function WorksheetStepView({
           {/* Info slide */}
           {!step.questionBlock && step.contextBlocks.length === 0 && (
             <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-              <Text style={{ fontSize: 16, color: 'rgba(255,255,255,0.6)' }}>
+              <Text style={{ fontSize: 16, color: fg.soft }}>
                 {locale === 'fr' ? 'Pas de contenu' : 'No content'}
               </Text>
             </View>
@@ -513,23 +551,23 @@ export function WorksheetStepView({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                backgroundColor: '#fff',
+                backgroundColor: fg.primaryBg,
                 borderRadius: 28,
                 paddingVertical: 14,
                 opacity: (isLast && submitting) ? 0.6 : 1,
               }}
             >
               {isLast && submitting ? (
-                <ActivityIndicator size="small" color={step.color} />
+                <ActivityIndicator size="small" color={fg.primaryText} />
               ) : (
                 <>
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: step.color }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: fg.primaryText }}>
                     {isLast
                       ? (locale === 'fr' ? 'Soumettre' : 'Submit')
                       : (locale === 'fr' ? 'Suivant' : 'Next')}
                   </Text>
-                  {!isLast && <ChevronRight size={16} color={step.color} />}
-                  {isLast && <Check size={16} color={step.color} />}
+                  {!isLast && <ChevronRight size={16} color={fg.primaryText} />}
+                  {isLast && <Check size={16} color={fg.primaryText} />}
                 </>
               )}
             </TouchableOpacity>
@@ -543,13 +581,13 @@ export function WorksheetStepView({
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-              backgroundColor: 'rgba(0,0,0,0.15)',
+              backgroundColor: fg.controlBg,
               borderRadius: 28,
               paddingVertical: 14,
             }}
           >
-            <ChevronLeft size={16} color="#fff" />
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>
+            <ChevronLeft size={16} color={fg.text} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: fg.text }}>
               {isFirst ? (locale === 'fr' ? 'Fermer' : 'Close') : (locale === 'fr' ? 'Retour' : 'Back')}
             </Text>
           </TouchableOpacity>
@@ -563,23 +601,23 @@ export function WorksheetStepView({
               alignItems: 'center',
               justifyContent: 'center',
               gap: 6,
-              backgroundColor: canProceed ? '#fff' : 'rgba(255,255,255,0.3)',
+              backgroundColor: (canProceed && !(isLast && submitDisabled)) ? fg.primaryBg : fg.primaryBgDim,
               borderRadius: 28,
               paddingVertical: 14,
-              opacity: canProceed ? 1 : 0.5,
+              opacity: (canProceed && !(isLast && submitDisabled)) ? 1 : 0.5,
             }}
           >
             {isLast && submitting ? (
-              <ActivityIndicator size="small" color={step.color} />
+              <ActivityIndicator size="small" color={fg.primaryText} />
             ) : (
               <>
-                <Text style={{ fontSize: 14, fontWeight: '700', color: step.color }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: fg.primaryText }}>
                   {isLast
                     ? (locale === 'fr' ? 'Soumettre' : 'Submit')
                     : (locale === 'fr' ? 'Suivant' : 'Next')}
                 </Text>
-                {!isLast && <ChevronRight size={16} color={step.color} />}
-                {isLast && <Check size={16} color={step.color} />}
+                {!isLast && <ChevronRight size={16} color={fg.primaryText} />}
+                {isLast && <Check size={16} color={fg.primaryText} />}
               </>
             )}
           </TouchableOpacity>
@@ -610,13 +648,13 @@ export function WorksheetStepView({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                backgroundColor: 'rgba(0,0,0,0.15)',
+                backgroundColor: fg.controlBg,
                 borderRadius: 28,
                 paddingVertical: 14,
               }}
             >
-              <ChevronLeft size={16} color="#fff" />
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{locale === 'fr' ? 'Retour' : 'Back'}</Text>
+              <ChevronLeft size={16} color={fg.text} />
+              <Text style={{ fontSize: 14, fontWeight: '600', color: fg.text }}>{locale === 'fr' ? 'Retour' : 'Back'}</Text>
             </TouchableOpacity>
           )}
           {!isLast ? (
@@ -628,13 +666,13 @@ export function WorksheetStepView({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                backgroundColor: '#fff',
+                backgroundColor: fg.primaryBg,
                 borderRadius: 28,
                 paddingVertical: 14,
               }}
             >
-              <Text style={{ fontSize: 14, fontWeight: '700', color: step.color }}>{locale === 'fr' ? 'Suivant' : 'Next'}</Text>
-              <ChevronRight size={16} color={step.color} />
+              <Text style={{ fontSize: 14, fontWeight: '700', color: fg.primaryText }}>{locale === 'fr' ? 'Suivant' : 'Next'}</Text>
+              <ChevronRight size={16} color={fg.primaryText} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -645,13 +683,13 @@ export function WorksheetStepView({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                backgroundColor: '#fff',
+                backgroundColor: fg.primaryBg,
                 borderRadius: 28,
                 paddingVertical: 14,
               }}
             >
-              <Text style={{ fontSize: 14, fontWeight: '700', color: step.color }}>{locale === 'fr' ? 'Terminé' : 'Done'}</Text>
-              <Check size={16} color={step.color} />
+              <Text style={{ fontSize: 14, fontWeight: '700', color: fg.primaryText }}>{locale === 'fr' ? 'Terminé' : 'Done'}</Text>
+              <Check size={16} color={fg.primaryText} />
             </TouchableOpacity>
           )}
         </View>
