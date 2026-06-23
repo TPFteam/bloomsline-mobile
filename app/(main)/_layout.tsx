@@ -121,8 +121,7 @@ export default function MainLayout() {
         <Stack.Screen name="stories" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="tips" options={{ animation: 'slide_from_right' }} />
         <Stack.Screen name="for-you" />
-        <Stack.Screen name="affirmations" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="saved-affirmations" options={{ animation: 'slide_from_right' }} />
+        <Stack.Screen name="help" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
       </Stack>
     </>
   )

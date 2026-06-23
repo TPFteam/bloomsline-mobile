@@ -2,14 +2,13 @@ import { useState, useCallback } from 'react'
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Sparkles, Heart, ChevronRight, LifeBuoy, PenLine, Sprout, Settings } from 'lucide-react-native'
+import { ChevronRight, LifeBuoy, PenLine, Sprout, Settings } from 'lucide-react-native'
 import NotificationBell from '@/components/NotificationBell'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import { useMobileFeatures } from '@/lib/use-mobile-features'
 import { colors } from '@/lib/theme'
 import { BottomNav } from '@/components/BottomNav'
-import { SAVE_ENABLED } from '@/lib/for-you'
 import { getForYouResources } from '@/lib/services/for-you-resources'
 
 export default function ForYou() {
@@ -82,16 +81,6 @@ export default function ForYou() {
           {fr ? 'Un petit espace, rien que pour vous.' : 'A little space, just for you.'}
         </Text>
 
-        {mobileFeatures?.affirmations !== false && (
-          <Card
-            icon={Sparkles}
-            color="#8B5CF6"
-            bg="#F3EEFF"
-            title={fr ? 'Quelques mots' : 'A few words'}
-            subtitle={fr ? 'Quelques mots doux, pour maintenant' : 'A few gentle words for right now'}
-            onPress={() => router.push('/(main)/affirmations')}
-          />
-        )}
         {mobileFeatures?.stories !== false && (
           <Card
             icon={PenLine}
@@ -100,16 +89,6 @@ export default function ForYou() {
             title={fr ? 'Journal' : 'Journal'}
             subtitle={fr ? 'Écrivez et explorez votre histoire' : 'Write and explore your story'}
             onPress={() => router.push('/(main)/stories')}
-          />
-        )}
-        {SAVE_ENABLED && (
-          <Card
-            icon={Heart}
-            color="#F43F5E"
-            bg="#FFE8EC"
-            title={fr ? 'Enregistrées' : 'Saved'}
-            subtitle={fr ? 'Les mots qui vous ont touché(e)' : 'The words that landed for you'}
-            onPress={() => router.push('/(main)/saved-affirmations')}
           />
         )}
 
@@ -128,7 +107,7 @@ export default function ForYou() {
 
         {/* Always-available crisis support */}
         <TouchableOpacity
-          onPress={() => router.push({ pathname: '/(main)/affirmations', params: { crisis: '1' } })}
+          onPress={() => router.push('/(main)/help')}
           activeOpacity={0.7}
           style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 12 }}
         >
