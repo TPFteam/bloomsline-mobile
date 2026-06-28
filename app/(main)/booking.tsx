@@ -11,7 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth-context'
 import { useI18n } from '@/lib/i18n'
 import {
-  fetchBookingSettings, fetchAvailableSlots, createBooking,
+  fetchBookingSettings, fetchAvailableSlots, createBooking, fetchNextAvailable,
   BookingSettings, SessionType, TimeSlot,
 } from '@/lib/services/booking'
 
@@ -64,7 +64,7 @@ export default function BookingScreen() {
   const [dayFormats, setDayFormats] = useState<Record<string, string[]>>({})
 
   // Quick view
-  const [dateViewMode, setDateViewMode] = useState<'calendar' | 'quick'>('calendar')
+  const [dateViewMode, setDateViewMode] = useState<'calendar' | 'quick'>('quick')
   const [quickDays, setQuickDays] = useState<{ date: string; dayLabel: string; slots: { slot_start: string; slot_end: string }[] }[]>([])
   const [quickLoading, setQuickLoading] = useState(false)
   const [quickExpandedDate, setQuickExpandedDate] = useState<string | null>(null)
@@ -151,46 +151,34 @@ export default function BookingScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFormat, dayFormats])
 
-  // Load quick view
-  const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://www.bloomsline.com'
+  // Load real availability for the next ~60 days. Powers three things: the
+  // "Next available" tab, greying out calendar days with no open slot, and
+  // auto-selecting the first available date. Always on (not just in quick view).
   useEffect(() => {
-    if (dateViewMode !== 'quick' || !practitionerId || !selectedService) return
+    if (!practitionerId || !selectedService) return
     setQuickLoading(true)
-    fetch(`${API_URL}/api/bookings/next-available?practitionerId=${practitionerId}&duration=${selectedService.duration}&limit=6${selectedFormat ? `&format=${selectedFormat}` : ''}`)
-      .then(res => res.json())
-      .then(data => {
-        setQuickDays(data.days || [])
-        if (data.practitionerTimezone) setPractitionerTz(data.practitionerTimezone)
-        if (data.days?.length > 0) setQuickExpandedDate(data.days[0].date)
+    fetchNextAvailable(practitionerId, selectedService.duration, { format: selectedFormat || undefined, limit: 60 })
+      .then(({ days, practitionerTimezone }) => {
+        setQuickDays(days)
+        if (practitionerTimezone) setPractitionerTz(practitionerTimezone)
+        if (days.length > 0) setQuickExpandedDate(days[0].date)
       })
       .catch(() => setQuickDays([]))
       .finally(() => setQuickLoading(false))
-  }, [dateViewMode, practitionerId, selectedService, selectedFormat])
+  }, [practitionerId, selectedService, selectedFormat])
 
-  // Pre-select the first bookable date so the calendar never opens blank.
-  // Runs whenever we have the practitioner's schedule and no date is picked —
-  // scans forward client-side using active days, max advance, and format fit.
+  // Set of dates that actually have an open slot (for the format chosen).
+  const availDates = useMemo(() => new Set(quickDays.map(d => d.date)), [quickDays])
+
+  // Pre-select the first date that has real availability, so the calendar
+  // never opens blank or on an empty day. Re-runs when availability loads.
   useEffect(() => {
-    if (selectedDate || !settings) return
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const maxAdvance = settings.max_advance_days || 60
-    for (let i = 0; i < maxAdvance; i++) {
-      const candidate = new Date(today)
-      candidate.setDate(today.getDate() + i)
-      const dow = candidate.getDay()
-      if (activeDays !== null && !activeDays.includes(dow)) continue
-      if (selectedFormat && dayFormats[String(dow)] && !dayFormats[String(dow)].includes(selectedFormat)) continue
-      const y = candidate.getFullYear()
-      const m = candidate.getMonth()
-      const d = candidate.getDate()
-      const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-      setSelectedDate(dateStr)
-      setCalendarMonth({ year: y, month: m })
-      return
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings, activeDays, dayFormats, selectedFormat, selectedDate])
+    if (selectedDate || quickDays.length === 0) return
+    const first = quickDays[0].date
+    const [y, m] = first.split('-').map(Number)
+    setSelectedDate(first)
+    setCalendarMonth({ year: y, month: m - 1 })
+  }, [quickDays, selectedDate])
 
   // ─── Calendar ──────────────────────────────────────
 
@@ -208,6 +196,10 @@ export default function BookingScreen() {
 
     const maxDate = new Date()
     maxDate.setDate(maxDate.getDate() + (settings?.max_advance_days || 60))
+    // End of the window we actually scanned for real availability. Beyond it we
+    // have no slot data, so fall back to weekday rules rather than greying all.
+    const scanLimit = new Date(today)
+    scanLimit.setDate(today.getDate() + 60)
 
     const days: { day: number; date: string; disabled: boolean }[] = []
     for (let d = 1; d <= daysInMonth; d++) {
@@ -218,14 +210,17 @@ export default function BookingScreen() {
       const formatDisabled = selectedFormat && dayFormats[String(date.getDay())]
         ? !dayFormats[String(date.getDay())].includes(selectedFormat)
         : false
+      // No real open slot (booked out, overrides, notice, Google-busy). Only
+      // applies inside the scanned window, once availability has loaded.
+      const noAvailability = availDates.size > 0 && date >= today && date <= scanLimit && !availDates.has(dateStr)
       days.push({
         day: d,
         date: dateStr,
-        disabled: date < today || date > maxDate || dayDisabled || formatDisabled,
+        disabled: date < today || date > maxDate || dayDisabled || formatDisabled || noAvailability,
       })
     }
     return { days, offset: firstDay }
-  }, [calendarMonth, settings, activeDays, selectedFormat, dayFormats])
+  }, [calendarMonth, settings, activeDays, selectedFormat, dayFormats, availDates])
 
   const monthLabel = new Date(calendarMonth.year, calendarMonth.month).toLocaleDateString(loc, { month: 'long', year: 'numeric' })
 
@@ -452,22 +447,22 @@ export default function BookingScreen() {
                 {t.booking.chooseDatetime}
               </Text>
 
-              {/* View toggle */}
+              {/* View toggle — Next available first (default) */}
               <View style={{ flexDirection: 'row', backgroundColor: '#F3F4F6', borderRadius: 10, padding: 3 }}>
-                <TouchableOpacity
-                  onPress={() => setDateViewMode('calendar')}
-                  style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: dateViewMode === 'calendar' ? '#fff' : 'transparent' }}
-                >
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: dateViewMode === 'calendar' ? colors.bloom : '#9CA3AF' }}>
-                    {locale === 'fr' ? 'Calendrier' : 'Calendar'}
-                  </Text>
-                </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setDateViewMode('quick')}
                   style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: dateViewMode === 'quick' ? '#fff' : 'transparent' }}
                 >
                   <Text style={{ fontSize: 13, fontWeight: '600', color: dateViewMode === 'quick' ? colors.bloom : '#9CA3AF' }}>
                     {locale === 'fr' ? 'Prochaines dispos' : 'Next available'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setDateViewMode('calendar')}
+                  style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: dateViewMode === 'calendar' ? '#fff' : 'transparent' }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: dateViewMode === 'calendar' ? colors.bloom : '#9CA3AF' }}>
+                    {locale === 'fr' ? 'Calendrier' : 'Calendar'}
                   </Text>
                 </TouchableOpacity>
               </View>

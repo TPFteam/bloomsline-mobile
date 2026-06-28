@@ -59,7 +59,7 @@ import {
   UpcomingSession,
   ResourceItem,
 } from '@/lib/services/practitioner'
-import { fetchModificationSettings, cancelBooking, rescheduleBooking, fetchAvailableSlots } from '@/lib/services/booking'
+import { fetchModificationSettings, cancelBooking, rescheduleBooking, fetchAvailableSlots, fetchNextAvailable } from '@/lib/services/booking'
 import { ContainedModal as Modal } from '@/components/ContainedModal'
 
 // ─── Helpers ────────────────────────────────────────
@@ -147,6 +147,13 @@ export default function PractitionerScreen() {
   const [rescheduleBookingDate, setRescheduleBookingDate] = useState<string | null>(null)
   const [rescheduleBookingTime, setRescheduleBookingTime] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)
+  // Reschedule date picker: Calendar vs Next-available, and the set of days
+  // that actually have open slots (so empty days are greyed / hidden).
+  const [rescheduleDateView, setRescheduleDateView] = useState<'calendar' | 'quick'>('quick')
+  const [rescheduleAvailDates, setRescheduleAvailDates] = useState<Set<string> | null>(null)
+  const [rescheduleQuickDays, setRescheduleQuickDays] = useState<Array<{ date: string; slots: { slot_start: string; slot_end: string }[] }>>([])
+  const [rescheduleAvailLoading, setRescheduleAvailLoading] = useState(false)
+  const [rescheduleQuickExpanded, setRescheduleQuickExpanded] = useState<string | null>(null)
   const [rescheduleCalMonth, setRescheduleCalMonth] = useState(() => {
     const now = new Date()
     return { year: now.getFullYear(), month: now.getMonth() }
@@ -408,6 +415,11 @@ export default function PractitionerScreen() {
     const daysInMonth = new Date(year, month + 1, 0).getDate()
     const today = new Date()
     today.setHours(0, 0, 0, 0)
+    // End of the window we actually scanned for real availability (next 60
+    // days). Beyond it we have no slot data, so we fall back to weekday rules
+    // rather than greying everything out.
+    const scanLimit = new Date(today)
+    scanLimit.setDate(today.getDate() + 60)
     const reschSession = upcomingSessions.find(s => (s.booking_id || s.id) === rescheduleBookingId)
     const days: { day: number; date: string; disabled: boolean }[] = []
     for (let d = 1; d <= daysInMonth; d++) {
@@ -427,10 +439,15 @@ export default function PractitionerScreen() {
           if (!practDayFormats[String(dayNum)].includes(availFmt)) disabled = true
         }
       }
+      // Disable days that have no real open slot (booked out, overrides, notice,
+      // Google-busy). Only applies inside the scanned window, once loaded.
+      if (!disabled && rescheduleAvailDates !== null && date <= scanLimit && !rescheduleAvailDates.has(dateStr)) {
+        disabled = true
+      }
       days.push({ day: d, date: dateStr, disabled })
     }
     return { days, offset: firstDay }
-  }, [rescheduleCalMonth, practActiveDays, practDayFormats, rescheduleBookingId, upcomingSessions])
+  }, [rescheduleCalMonth, practActiveDays, practDayFormats, rescheduleBookingId, upcomingSessions, rescheduleAvailDates])
 
   const rescheduleMonthLabel = new Date(rescheduleCalMonth.year, rescheduleCalMonth.month).toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { month: 'long', year: 'numeric' })
 
@@ -454,6 +471,39 @@ export default function PractitionerScreen() {
       .catch(() => setRescheduleBookingSlots([]))
       .finally(() => setLoadingSlots(false))
   }
+
+  // When the reschedule modal opens, load which upcoming days actually have
+  // open slots (same filtering as the picker). Drives both the greyed-out
+  // calendar days and the "Next available" tab. Reset when the modal closes.
+  useEffect(() => {
+    if (!rescheduleBookingId) {
+      setRescheduleAvailDates(null); setRescheduleQuickDays([])
+      setRescheduleDateView('quick'); setRescheduleQuickExpanded(null)
+      return
+    }
+    const session = upcomingSessions.find(s => (s.booking_id || s.id) === rescheduleBookingId)
+    const pid = session?.practitioner?.id
+    if (!pid) return
+    const fmt = session?.session_format
+    const availFmt = (fmt === 'telehealth' || fmt === 'virtual' || fmt === 'video') ? 'video' : (fmt === 'in_person' ? 'in_person' : '')
+    setRescheduleAvailLoading(true)
+    fetchNextAvailable(pid, session?.duration_minutes || 60, { format: availFmt || undefined, limit: 60 })
+      .then(({ days }) => {
+        setRescheduleQuickDays(days)
+        setRescheduleAvailDates(new Set(days.map(d => d.date)))
+        // Auto-select the first available date so the picker never opens blank.
+        if (days.length > 0) {
+          const first = days[0]
+          const [y, m] = first.date.split('-').map(Number)
+          setRescheduleBookingDate(first.date)
+          setRescheduleBookingSlots(first.slots)
+          setRescheduleCalMonth({ year: y, month: m - 1 })
+        }
+      })
+      .catch(() => { setRescheduleQuickDays([]); setRescheduleAvailDates(new Set()) })
+      .finally(() => setRescheduleAvailLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rescheduleBookingId])
 
   async function handleRescheduleSession() {
     if (!rescheduleBookingId || !rescheduleBookingTime || !rescheduleBookingReason.trim()) return
@@ -1292,6 +1342,80 @@ export default function PractitionerScreen() {
                 color: colors.primary, marginBottom: 16,
               }}
             />
+              {/* Next-available / Calendar toggle — Next available first (default) */}
+              <View style={{ flexDirection: 'row', backgroundColor: '#F3F4F6', borderRadius: 10, padding: 3, marginBottom: 16 }}>
+                <TouchableOpacity
+                  onPress={() => setRescheduleDateView('quick')}
+                  style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: rescheduleDateView === 'quick' ? '#fff' : 'transparent' }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: rescheduleDateView === 'quick' ? colors.bloom : '#9CA3AF' }}>
+                    {locale === 'fr' ? 'Prochaines dispos' : 'Next available'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setRescheduleDateView('calendar')}
+                  style={{ flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', backgroundColor: rescheduleDateView === 'calendar' ? '#fff' : 'transparent' }}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: rescheduleDateView === 'calendar' ? colors.bloom : '#9CA3AF' }}>
+                    {locale === 'fr' ? 'Calendrier' : 'Calendar'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Next-available list — only days that actually have open slots */}
+              {rescheduleDateView === 'quick' && (
+                <View style={{ gap: 8, marginBottom: 16 }}>
+                  {rescheduleAvailLoading ? (
+                    <View style={{ paddingVertical: 28, alignItems: 'center' }}>
+                      <ActivityIndicator size="small" color={colors.bloom} />
+                      <Text style={{ fontSize: 13, color: '#8A8A8A', marginTop: 8 }}>
+                        {locale === 'fr' ? 'Recherche des créneaux...' : 'Finding available times...'}
+                      </Text>
+                    </View>
+                  ) : rescheduleQuickDays.length === 0 ? (
+                    <View style={{ paddingVertical: 28, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 13, color: '#8A8A8A' }}>
+                        {locale === 'fr' ? 'Aucun créneau disponible' : 'No available times'}
+                      </Text>
+                    </View>
+                  ) : (
+                    rescheduleQuickDays.map((day) => {
+                      const isExpanded = rescheduleQuickExpanded === day.date
+                      const dayLabel = new Date(day.date + 'T12:00:00').toLocaleDateString(locale === 'fr' ? 'fr-FR' : 'en-US', { weekday: 'long', day: 'numeric', month: 'long' })
+                      return (
+                        <View key={day.date} style={{ borderWidth: 1, borderColor: '#EBEBEB', borderRadius: 14, overflow: 'hidden' }}>
+                          <TouchableOpacity
+                            onPress={() => setRescheduleQuickExpanded(isExpanded ? null : day.date)}
+                            style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 }}
+                          >
+                            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary, textTransform: 'capitalize' }}>{dayLabel}</Text>
+                            <Text style={{ fontSize: 16, color: '#9CA3AF' }}>{isExpanded ? '∧' : '∨'}</Text>
+                          </TouchableOpacity>
+                          {isExpanded && (
+                            <View style={{ paddingHorizontal: 14, paddingBottom: 14, flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                              {day.slots.map((slot) => {
+                                const isSelected = rescheduleBookingTime === slot.slot_start && rescheduleBookingDate === day.date
+                                const time = new Date(slot.slot_start).toLocaleTimeString(locale === 'fr' ? 'fr-FR' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: locale !== 'fr' })
+                                return (
+                                  <TouchableOpacity
+                                    key={slot.slot_start}
+                                    onPress={() => { setRescheduleBookingDate(day.date); setRescheduleBookingSlots(day.slots); setRescheduleBookingTime(slot.slot_start) }}
+                                    style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: isSelected ? colors.bloom : '#F3F4F6' }}
+                                  >
+                                    <Text style={{ fontSize: 13, fontWeight: '600', color: isSelected ? '#fff' : colors.primary }}>{time}</Text>
+                                  </TouchableOpacity>
+                                )
+                              })}
+                            </View>
+                          )}
+                        </View>
+                      )
+                    })
+                  )}
+                </View>
+              )}
+
+              {rescheduleDateView === 'calendar' && (
               <View style={{ backgroundColor: colors.surface2, borderRadius: 16, padding: 14, marginBottom: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                   <TouchableOpacity onPress={rescheduleCalPrev} style={{ padding: 8 }}>
@@ -1336,7 +1460,8 @@ export default function PractitionerScreen() {
                   })}
                 </View>
               </View>
-              {rescheduleBookingDate && (
+              )}
+              {rescheduleDateView === 'calendar' && rescheduleBookingDate && (
                 <View style={{ marginBottom: 16 }}>
                   <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, marginBottom: 10 }}>
                     {locale === 'fr' ? 'Créneaux disponibles' : 'Available times'}

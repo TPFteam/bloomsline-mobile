@@ -276,6 +276,90 @@ async function fetchAvailableSlotsFallback(
   return { slots: allSlots, practitionerTimezone: practitionerTz }
 }
 
+export interface NextAvailableDay {
+  date: string
+  dayLabel: string
+  slots: TimeSlot[]
+}
+
+/**
+ * Days with at least one open slot, soonest first. Tries the care API
+ * (which also checks Google Calendar) and falls back to a client-side scan
+ * when the API is unreachable — so the "Next available" view stays consistent
+ * with the Calendar view, which already has the same Supabase fallback.
+ */
+export async function fetchNextAvailable(
+  practitionerId: string,
+  duration: number,
+  opts?: { format?: string; limit?: number },
+): Promise<{ days: NextAvailableDay[]; practitionerTimezone: string | null }> {
+  const limit = opts?.limit ?? 60
+  const fmt = opts?.format
+  try {
+    const res = await fetch(
+      `${API_URL}/api/bookings/next-available?practitionerId=${practitionerId}&duration=${duration}&limit=${limit}${fmt ? `&format=${fmt}` : ''}`
+    )
+    if (res.ok) {
+      const data = await res.json()
+      return { days: data.days || [], practitionerTimezone: data.practitionerTimezone || null }
+    }
+  } catch (err) {
+    console.warn('next-available API failed, falling back to client scan:', err)
+  }
+  return fetchNextAvailableFallback(practitionerId, duration, fmt, limit)
+}
+
+// Fallback: scan forward client-side using fetchAvailableSlots (which itself
+// falls back to a direct Supabase query). Only the practitioner's active
+// weekdays are scanned, so it's bounded and cheap in the common case.
+async function fetchNextAvailableFallback(
+  practitionerId: string,
+  duration: number,
+  format: string | undefined,
+  limit: number,
+): Promise<{ days: NextAvailableDay[]; practitionerTimezone: string | null }> {
+  const { data: schedules } = await supabase
+    .from('availability_schedules')
+    .select('day_of_week, session_format, timezone')
+    .eq('user_id', practitionerId)
+    .eq('is_active', true)
+  if (!schedules || schedules.length === 0) return { days: [], practitionerTimezone: null }
+
+  const dayMap: Record<string, number> = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 }
+  const activeDays = new Set(
+    schedules
+      .filter((s: any) => !format || (s.session_format || 'both') === 'both' || s.session_format === format)
+      .map((s: any) => dayMap[s.day_of_week])
+  )
+  if (activeDays.size === 0) return { days: [], practitionerTimezone: schedules[0].timezone || null }
+
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const candidates: string[] = []
+  for (let i = 0; i < 60 && candidates.length < limit; i++) {
+    const dte = new Date(today)
+    dte.setDate(today.getDate() + i)
+    if (!activeDays.has(dte.getDay())) continue
+    candidates.push(`${dte.getFullYear()}-${pad(dte.getMonth() + 1)}-${pad(dte.getDate())}`)
+  }
+
+  const results = await Promise.all(
+    candidates.map(date =>
+      fetchAvailableSlots(practitionerId, date, duration, format).then(r => ({ date, slots: r.slots, tz: r.practitionerTimezone }))
+    )
+  )
+  const days: NextAvailableDay[] = results
+    .filter(r => r.slots.length > 0)
+    .map(r => ({
+      date: r.date,
+      dayLabel: new Date(r.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
+      slots: r.slots,
+    }))
+  const ptz = results.find(r => r.tz)?.tz || schedules[0].timezone || null
+  return { days, practitionerTimezone: ptz }
+}
+
 export async function createBooking(input: {
   practitioner_id: string
   session_type: string
