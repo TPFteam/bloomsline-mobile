@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { View, Text, TextInput, TouchableOpacity, Image, Platform, ActivityIndicator } from 'react-native'
 import { Video as VideoIcon, Mic, FileUp, ExternalLink, Play, Wind, Eye, Activity, BookOpen, PenLine, Lightbulb, Info, Target, BookMarked, Copy, Plus, X as XIcon, Maximize2, Minimize2 } from 'lucide-react-native'
-import { Video as ExpoVideo, ResizeMode } from 'expo-av'
+import { Video as ExpoVideo, ResizeMode, Audio } from 'expo-av'
 import { WebView } from 'react-native-webview'
 import Svg, { Rect, Circle as SvgCircle, Ellipse as SvgEllipse, Polygon as SvgPolygon, Text as SvgText, Image as SvgImage, G as SvgG } from 'react-native-svg'
 import { Modal } from 'react-native'
@@ -561,6 +561,214 @@ function TableExerciseRenderer({ block, content, blockValue, onBlockChange, onRe
         )}
       </View>
       </>
+      )}
+    </View>
+  )
+}
+
+/**
+ * Patient-fill audio response: record a voice note in-app (native via expo-av,
+ * web via MediaRecorder) OR choose an existing audio file. Both upload to the
+ * resource-responses bucket and store a long-lived signed URL via onChange.
+ */
+function AudioResponseInput({ value, onChange, resourceId, readOnly, locale, content, star }: {
+  value: string | null
+  onChange: (v: unknown) => void
+  resourceId?: string
+  readOnly?: boolean
+  locale?: string
+  content: string
+  star: React.ReactNode
+}) {
+  const fr = locale === 'fr'
+  const hasAudio = !!value
+  const [recording, setRecording] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [elapsed, setElapsed] = useState(0) // ms
+
+  const recRef = useRef<Audio.Recording | null>(null)        // native
+  const mediaRecRef = useRef<any>(null)                      // web MediaRecorder
+  const chunksRef = useRef<Blob[]>([])                       // web
+  const streamRef = useRef<MediaStream | null>(null)         // web
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopTimer = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null } }
+  const startTimer = () => {
+    setElapsed(0)
+    const start = Date.now()
+    timerRef.current = setInterval(() => setElapsed(Date.now() - start), 200)
+  }
+
+  // Clean up any in-flight recording on unmount.
+  useEffect(() => () => {
+    stopTimer()
+    recRef.current?.stopAndUnloadAsync().catch(() => {})
+    try { mediaRecRef.current?.stop() } catch { /* noop */ }
+    streamRef.current?.getTracks().forEach(t => t.stop())
+  }, [])
+
+  const fail = () => {
+    if (Platform.OS === 'web') window.alert(fr ? "Échec de l'envoi audio." : 'Audio upload failed.')
+    else require('react-native').Alert.alert(fr ? 'Échec' : 'Upload failed', fr ? 'Veuillez réessayer.' : 'Please try again.')
+  }
+
+  const uploadBlob = async (blob: Blob, mimeType: string, ext: string) => {
+    setUploading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { setUploading(false); return }
+      const folder = resourceId || 'unattached'
+      const fileName = `${user.id}/${folder}/audio-${Date.now()}.${ext}`
+      const { data, error } = await supabase.storage
+        .from('resource-responses')
+        .upload(fileName, blob, { contentType: mimeType, upsert: true })
+      if (error || !data) { onChange(''); fail() }
+      else {
+        const { data: signed } = await supabase.storage
+          .from('resource-responses')
+          .createSignedUrl(data.path, 60 * 60 * 24 * 365)
+        onChange(signed?.signedUrl || '')
+      }
+    } catch {
+      onChange('')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const pickAudio = async () => {
+    const DocumentPicker = require('expo-document-picker')
+    const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true })
+    if (result.canceled || !result.assets?.[0]?.uri) return
+    const asset = result.assets[0]
+    const mimeType = (asset.mimeType || 'audio/mpeg').split(';')[0]
+    const ext = (mimeType.split('/')[1] || 'mp3')
+    try {
+      const blob = await (await fetch(asset.uri)).blob()
+      await uploadBlob(blob, mimeType, ext)
+    } catch { onChange('') }
+  }
+
+  const startRecording = async () => {
+    if (Platform.OS === 'web') {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        streamRef.current = stream
+        const MR: typeof MediaRecorder = (window as any).MediaRecorder
+        const mr = new MR(stream)
+        chunksRef.current = []
+        mr.ondataavailable = (e: BlobEvent) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+        mr.onstop = async () => {
+          const mt = (mr.mimeType || 'audio/webm').split(';')[0]
+          const ext = mt.includes('mp4') ? 'm4a' : mt.includes('ogg') ? 'ogg' : 'webm'
+          const blob = new Blob(chunksRef.current, { type: mt })
+          streamRef.current?.getTracks().forEach(t => t.stop()); streamRef.current = null
+          await uploadBlob(blob, mt, ext)
+        }
+        mediaRecRef.current = mr
+        mr.start()
+        startTimer(); setRecording(true)
+      } catch {
+        window.alert(fr ? "Accès au micro refusé." : 'Microphone access denied.')
+      }
+      return
+    }
+    // native
+    try {
+      const perm = await Audio.requestPermissionsAsync()
+      if (!perm.granted) { require('react-native').Alert.alert(fr ? 'Micro requis' : 'Microphone needed', fr ? 'Autorisez le micro pour enregistrer.' : 'Allow microphone access to record.'); return }
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true })
+      const { recording: rec } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY)
+      recRef.current = rec
+      startTimer(); setRecording(true)
+    } catch { /* noop */ }
+  }
+
+  const stopRecording = async () => {
+    stopTimer(); setRecording(false)
+    if (Platform.OS === 'web') {
+      try { mediaRecRef.current?.stop() } catch { /* noop */ }
+      mediaRecRef.current = null
+      return
+    }
+    const rec = recRef.current; recRef.current = null
+    if (!rec) return
+    try {
+      await rec.stopAndUnloadAsync()
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false })
+      const uri = rec.getURI()
+      if (uri) {
+        const blob = await (await fetch(uri)).blob()
+        await uploadBlob(blob, 'audio/m4a', 'm4a')
+      }
+    } catch { /* noop */ }
+  }
+
+  const mmss = (ms: number) => {
+    const s = Math.floor(ms / 1000)
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+  }
+
+  const Player = () => (
+    <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface2, padding: 12 }}>
+      {Platform.OS === 'web' ? (
+        // @ts-ignore — DOM audio element on web
+        <audio controls src={value!} style={{ width: '100%', borderRadius: 8 }} />
+      ) : (
+        <ExpoVideo source={{ uri: value! }} style={{ width: '100%', height: 48 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
+      )}
+    </View>
+  )
+
+  return (
+    <View>
+      <Text style={LABEL}>{content}{star}</Text>
+
+      {readOnly ? (
+        hasAudio ? <Player /> : (
+          <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
+            <Text style={{ fontSize: 14, color: MUTED }}>{fr ? "Pas d'audio" : 'No audio'}</Text>
+          </View>
+        )
+      ) : uploading ? (
+        <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 80, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center', flexDirection: 'row', gap: 10 }}>
+          <ActivityIndicator size="small" color={colors.bloom} />
+          <Text style={{ fontSize: 14, color: MUTED }}>{fr ? 'Envoi…' : 'Uploading…'}</Text>
+        </View>
+      ) : recording ? (
+        <View style={{ backgroundColor: '#FEF2F2', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#FECACA', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#EF4444' }} />
+            <Text style={{ fontSize: 15, fontWeight: '600', color: '#B91C1C' }}>{fr ? 'Enregistrement' : 'Recording'} · {mmss(elapsed)}</Text>
+          </View>
+          <TouchableOpacity onPress={stopRecording} style={{ backgroundColor: '#EF4444', borderRadius: 10, paddingVertical: 9, paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <View style={{ width: 12, height: 12, borderRadius: 2, backgroundColor: '#fff' }} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{fr ? 'Arrêter' : 'Stop'}</Text>
+          </TouchableOpacity>
+        </View>
+      ) : hasAudio ? (
+        <View>
+          <View style={{ marginBottom: 10 }}><Player /></View>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity onPress={startRecording} style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER, flexDirection: 'row', justifyContent: 'center', gap: 6 }}>
+              <Mic size={16} color={colors.bloom} strokeWidth={1.8} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{fr ? 'Réenregistrer' : 'Record again'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={pickAudio} style={{ flex: 1, backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{fr ? "Changer l'audio" : 'Change audio'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <View style={{ gap: 10 }}>
+          <TouchableOpacity onPress={startRecording} style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 20, minHeight: 80, borderWidth: 1.5, borderColor: colors.bloom, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}>
+            <Mic size={28} color={colors.bloom} strokeWidth={1.8} style={{ marginBottom: 8 }} />
+            <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{fr ? 'Enregistrer un message vocal' : 'Record voice'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={pickAudio} style={{ borderRadius: 12, paddingVertical: 10, alignItems: 'center' }}>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: MUTED }}>{fr ? 'Ou choisir un fichier audio' : 'Or choose audio file'}</Text>
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   )
@@ -1375,83 +1583,16 @@ export function renderBlock(
     }
 
     case 'audio_response': {
-      const audioUri = blockValue as string | null
-      const hasAudio = !!audioUri
-
-      const pickAudio = async () => {
-        const DocumentPicker = require('expo-document-picker')
-        const Alert = require('react-native').Alert
-        const result = await DocumentPicker.getDocumentAsync({ type: 'audio/*', copyToCacheDirectory: true })
-        if (!result.canceled && result.assets?.[0]?.uri) {
-          const localUri = result.assets[0].uri
-          onChange(localUri)
-          try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) return
-            const mimeType = result.assets[0].mimeType || 'audio/mpeg'
-            const ext = mimeType.split('/')[1] || 'mp3'
-            const folder = resourceId || 'unattached'
-            const fileName = `${user.id}/${folder}/audio-${Date.now()}.${ext}`
-            const fetchResponse = await fetch(localUri)
-            const blob = await fetchResponse.blob()
-            const { data, error } = await supabase.storage
-              .from('resource-responses')
-              .upload(fileName, blob, { contentType: mimeType, upsert: true })
-            if (error) {
-              onChange('')
-              Platform.OS === 'web' ? window.alert('Audio upload failed.') : Alert.alert('Upload failed', 'Please try again.')
-            } else if (data) {
-              const { data: signed } = await supabase.storage
-                .from('resource-responses')
-                .createSignedUrl(data.path, 60 * 60 * 24 * 365)
-              if (signed?.signedUrl) onChange(signed.signedUrl)
-              else onChange('')
-            }
-          } catch {
-            onChange('')
-          }
-        }
-      }
-
       return (
-        <View>
-          <Text style={LABEL}>{content}{Star}</Text>
-          {readOnly ? (
-            hasAudio ? (
-              <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface2, padding: 12 }}>
-                {Platform.OS === 'web' ? (
-                  // @ts-ignore
-                  <audio controls src={audioUri!} style={{ width: '100%', borderRadius: 8 }} />
-                ) : (
-                  <ExpoVideo source={{ uri: audioUri! }} style={{ width: '100%', height: 48 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
-                )}
-              </View>
-            ) : (
-              <View style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: INPUT_BORDER, justifyContent: 'center', alignItems: 'center' }}>
-                <Text style={{ fontSize: 14, color: MUTED }}>{locale === 'fr' ? 'Pas d\'audio' : 'No audio'}</Text>
-              </View>
-            )
-          ) : hasAudio ? (
-            <View>
-              <View style={{ borderRadius: 16, overflow: 'hidden', backgroundColor: colors.surface2, padding: 12, marginBottom: 10 }}>
-                {Platform.OS === 'web' ? (
-                  // @ts-ignore
-                  <audio controls src={audioUri!} style={{ width: '100%', borderRadius: 8 }} />
-                ) : (
-                  <ExpoVideo source={{ uri: audioUri! }} style={{ width: '100%', height: 48 }} useNativeControls resizeMode={ResizeMode.CONTAIN} />
-                )}
-              </View>
-              <TouchableOpacity onPress={pickAudio} style={{ backgroundColor: INPUT_BG, borderRadius: 12, paddingVertical: 12, alignItems: 'center', borderWidth: 1, borderColor: INPUT_BORDER }}>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>{locale === 'fr' ? 'Changer l\'audio' : 'Change audio'}</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity onPress={pickAudio} style={{ backgroundColor: INPUT_BG, borderRadius: 16, padding: 24, minHeight: 80, borderWidth: 1.5, borderColor: INPUT_BORDER, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}>
-              <Mic size={28} color={colors.bloom} strokeWidth={1.8} style={{ marginBottom: 8 }} />
-              <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{locale === 'fr' ? 'Choisir un fichier audio' : 'Choose audio file'}</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        <AudioResponseInput
+          value={blockValue as string | null}
+          onChange={onChange}
+          resourceId={resourceId}
+          readOnly={readOnly}
+          locale={locale}
+          content={content}
+          star={Star}
+        />
       )
     }
 

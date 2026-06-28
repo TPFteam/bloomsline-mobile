@@ -20,7 +20,8 @@
         "webcredentials:app.bloomsline.com"
       ],
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "Allow Bloomsline to use your microphone to record voice notes and audio responses."
       }
     },
     "android": {
