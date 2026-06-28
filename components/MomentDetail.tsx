@@ -27,6 +27,9 @@ interface MomentDetailProps {
 function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compact?: boolean }) {
     const videoRef = useRef<Video>(null)
     const [isPlaying, setIsPlaying] = useState(false)
+    // Play intent — drives the Video's shouldPlay so playback survives the
+    // remount when entering/leaving fullscreen.
+    const [wantPlay, setWantPlay] = useState(false)
     const [isMuted, setIsMuted] = useState(false)
     const [position, setPosition] = useState(0)
     const [duration, setDuration] = useState(0)
@@ -41,17 +44,29 @@ function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compac
         setDuration(status.durationMillis || 0)
         if (status.didJustFinish) {
             videoRef.current?.setPositionAsync(0)
+            setWantPlay(false)
             setIsPlaying(false)
         }
     }, [])
 
-    const togglePlay = async () => {
+    const togglePlay = () => {
         if (!videoRef.current) return
+        // Drive the player imperatively (reliable pause/resume) and keep the
+        // shouldPlay flag in sync so fullscreen toggles still auto-resume.
         if (isPlaying) {
-            await videoRef.current.pauseAsync()
+            videoRef.current.pauseAsync()
+            setWantPlay(false)
         } else {
-            await videoRef.current.playAsync()
+            videoRef.current.playAsync()
+            setWantPlay(true)
         }
+        resetHideTimer()
+    }
+
+    // Center play button: open fullscreen and start playing in one tap.
+    const playFullscreen = () => {
+        setWantPlay(true)
+        setFullscreen(true)
         resetHideTimer()
     }
 
@@ -99,7 +114,7 @@ function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compac
                 // it's portrait or landscape. COVER cropped portrait
                 // videos to fit the preview's square frame.
                 resizeMode={ResizeMode.CONTAIN}
-                shouldPlay={false}
+                shouldPlay={wantPlay}
                 isMuted={isMuted}
                 onPlaybackStatusUpdate={onPlaybackStatusUpdate}
             />
@@ -121,7 +136,7 @@ function VideoPlayer({ uri, style, compact }: { uri: string; style?: any; compac
                         {/* Center play button */}
                         {!isPlaying && !compact && (
                             <TouchableOpacity
-                                onPress={togglePlay}
+                                onPress={playFullscreen}
                                 activeOpacity={0.8}
                                 style={{
                                     position: 'absolute', top: '50%', left: '50%',
