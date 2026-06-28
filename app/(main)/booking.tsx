@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { trackEvent } from '@/lib/analytics'
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Linking,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useLocalSearchParams, useRouter, useNavigation } from 'expo-router'
@@ -60,6 +60,10 @@ export default function BookingScreen() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [requiresApproval, setRequiresApproval] = useState(false)
+  const [confirmationDetails, setConfirmationDetails] = useState<{ consentText?: string | null; paymentText?: string | null; paymentUrl?: string | null; cancellationText?: string | null; practiceText?: string | null; practiceUrl?: string | null } | null>(null)
+  // Agreement to the practitioner's consent/payment/cancellation/practice policies
+  // shown on the review step. Only required when the practitioner configured them.
+  const [policiesAgreed, setPoliciesAgreed] = useState(false)
   const [activeDays, setActiveDays] = useState<number[] | null>(null)
   const [dayFormats, setDayFormats] = useState<Record<string, string[]>>({})
 
@@ -242,6 +246,21 @@ export default function BookingScreen() {
 
   // ─── Validation ────────────────────────────────────
 
+  // Practitioner-configured consent / payment / cancellation / practice details
+  // shown on the review step. Null when the feature is off or nothing is filled.
+  function bookingPolicies() {
+    const s = settings as any
+    if (!s?.booking_confirmation_enabled) return null
+    const consent = String(s.consent_text || '').trim()
+    const paymentText = String(s.payment_text || '').trim()
+    const paymentUrl = String(s.payment_url || '').trim()
+    const cancellation = String(s.cancellation_text || '').trim()
+    const practiceText = String(s.practice_text || '').trim()
+    const practiceUrl = String(s.practice_url || '').trim()
+    if (!consent && !paymentText && !paymentUrl && !cancellation && !practiceText && !practiceUrl) return null
+    return { consent, paymentText, paymentUrl, cancellation, practiceText, practiceUrl }
+  }
+
   function canContinue(): boolean {
     if (step === 'service') return !!selectedService
     if (step === 'format') return !!selectedFormat
@@ -250,6 +269,10 @@ export default function BookingScreen() {
       const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(clientEmail.trim())
       if (!clientName.trim() || !emailValid) return false
       if (selectedService?.notesRequired && !notes.trim()) return false
+      return true
+    }
+    if (step === 'confirm') {
+      if (bookingPolicies() && !policiesAgreed) return false
       return true
     }
     return true
@@ -279,6 +302,7 @@ export default function BookingScreen() {
     if (result.success) {
       trackEvent('booking_created', { session_type: selectedService.id, practitioner_id: practitionerId })
       setRequiresApproval(!!result.requiresApproval)
+      setConfirmationDetails(result.confirmationDetails || null)
       setSubmitted(true)
     } else {
       Alert.alert(t.booking.bookingFailed, result.error || t.booking.bookingFailedMessage)
@@ -314,7 +338,7 @@ export default function BookingScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: '#FAFAF8' }}>
         <Header insets={insets} onBack={() => goBack()} title={t.booking.bookingConfirmed} />
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 32 }}>
           <View style={{
             width: 64, height: 64, borderRadius: 32, backgroundColor: colors.bloom,
             justifyContent: 'center', alignItems: 'center', marginBottom: 20,
@@ -327,6 +351,46 @@ export default function BookingScreen() {
           <Text style={{ fontSize: 15, color: '#8A8A8A', textAlign: 'center', lineHeight: 22 }}>
             {requiresApproval ? t.booking.requestMessage : t.booking.confirmMessage}
           </Text>
+
+          {confirmationDetails && (confirmationDetails.consentText || confirmationDetails.paymentText || confirmationDetails.paymentUrl || confirmationDetails.cancellationText || confirmationDetails.practiceText || confirmationDetails.practiceUrl) && (
+            <View style={{ alignSelf: 'stretch', marginTop: 24, backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: '#EBEBEB', padding: 18, gap: 16 }}>
+              {!!confirmationDetails.consentText?.trim() && (
+                <View>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, marginBottom: 5 }}>{locale === 'fr' ? 'CONSENTEMENT' : 'CONSENT'}</Text>
+                  <Text style={{ fontSize: 14, color: '#374151', lineHeight: 20 }}>{confirmationDetails.consentText.trim()}</Text>
+                </View>
+              )}
+              {(!!confirmationDetails.paymentText?.trim() || !!confirmationDetails.paymentUrl?.trim()) && (
+                <View>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, marginBottom: 5 }}>{locale === 'fr' ? 'PAIEMENT' : 'PAYMENT'}</Text>
+                  {!!confirmationDetails.paymentText?.trim() && <Text style={{ fontSize: 14, color: '#374151', lineHeight: 20, marginBottom: 10 }}>{confirmationDetails.paymentText.trim()}</Text>}
+                  {!!confirmationDetails.paymentUrl?.trim() && (
+                    <TouchableOpacity onPress={() => Linking.openURL(confirmationDetails.paymentUrl!.trim())} activeOpacity={0.85} style={{ backgroundColor: colors.bloom, borderRadius: 12, paddingVertical: 12, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: '#fff' }}>{locale === 'fr' ? 'Payer la séance' : 'Pay for the session'}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+              {!!confirmationDetails.cancellationText?.trim() && (
+                <View>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, marginBottom: 5 }}>{locale === 'fr' ? "POLITIQUE D'ANNULATION" : 'CANCELLATION POLICY'}</Text>
+                  <Text style={{ fontSize: 14, color: '#374151', lineHeight: 20 }}>{confirmationDetails.cancellationText.trim()}</Text>
+                </View>
+              )}
+              {(!!confirmationDetails.practiceText?.trim() || !!confirmationDetails.practiceUrl?.trim()) && (
+                <View>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.5, marginBottom: 5 }}>{locale === 'fr' ? 'POLITIQUE DU CABINET' : 'PRACTICE POLICY'}</Text>
+                  {!!confirmationDetails.practiceText?.trim() && <Text style={{ fontSize: 14, color: '#374151', lineHeight: 20, marginBottom: confirmationDetails.practiceUrl?.trim() ? 8 : 0 }}>{confirmationDetails.practiceText.trim()}</Text>}
+                  {!!confirmationDetails.practiceUrl?.trim() && (
+                    <TouchableOpacity onPress={() => Linking.openURL(confirmationDetails.practiceUrl!.trim())} activeOpacity={0.7}>
+                      <Text style={{ fontSize: 14, fontWeight: '600', color: colors.bloom, textDecorationLine: 'underline' }}>{locale === 'fr' ? 'En savoir plus' : 'Learn more'}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => goBack()}
@@ -337,7 +401,7 @@ export default function BookingScreen() {
           >
             <Text style={{ fontSize: 15, fontWeight: '600', color: '#fff' }}>{t.common.done}</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
     )
   }
@@ -708,7 +772,7 @@ export default function BookingScreen() {
                 {notes.trim() ? <SummaryRow label={t.booking.notesLabel} value={notes} /> : null}
               </View>
 
-              {settings.cancellation_policy && (
+              {settings.cancellation_policy && !(settings as any).booking_confirmation_enabled && (
                 <View style={{ backgroundColor: colors.surface1, borderRadius: 14, padding: 16 }}>
                   <Text style={{ fontSize: 12, fontWeight: '600', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
                     {t.booking.cancellationPolicy}
@@ -718,6 +782,61 @@ export default function BookingScreen() {
                   </Text>
                 </View>
               )}
+
+              {/* Practitioner policies + a required agreement checkbox. */}
+              {(() => {
+                const p = bookingPolicies()
+                if (!p) return null
+                const LABEL = { fontSize: 11, fontWeight: '700' as const, color: '#9CA3AF', letterSpacing: 0.5, marginBottom: 4 }
+                const BODY = { fontSize: 13, color: '#374151', lineHeight: 19 }
+                return (
+                  <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 18, borderWidth: 1, borderColor: '#EBEBEB', gap: 14 }}>
+                    {!!p.consent && (
+                      <View>
+                        <Text style={LABEL}>{locale === 'fr' ? 'CONSENTEMENT' : 'CONSENT'}</Text>
+                        <Text style={BODY}>{p.consent}</Text>
+                      </View>
+                    )}
+                    {(!!p.paymentText || !!p.paymentUrl) && (
+                      <View>
+                        <Text style={LABEL}>{locale === 'fr' ? 'PAIEMENT' : 'PAYMENT'}</Text>
+                        {!!p.paymentText && <Text style={[BODY, { marginBottom: p.paymentUrl ? 6 : 0 }]}>{p.paymentText}</Text>}
+                        {!!p.paymentUrl && (
+                          <TouchableOpacity onPress={() => Linking.openURL(p.paymentUrl)} activeOpacity={0.7}>
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom, textDecorationLine: 'underline' }}>{locale === 'fr' ? 'Lien de paiement' : 'Payment link'}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                    {!!p.cancellation && (
+                      <View>
+                        <Text style={LABEL}>{locale === 'fr' ? "POLITIQUE D'ANNULATION" : 'CANCELLATION POLICY'}</Text>
+                        <Text style={BODY}>{p.cancellation}</Text>
+                      </View>
+                    )}
+                    {(!!p.practiceText || !!p.practiceUrl) && (
+                      <View>
+                        <Text style={LABEL}>{locale === 'fr' ? 'POLITIQUE DU CABINET' : 'PRACTICE POLICY'}</Text>
+                        {!!p.practiceText && <Text style={[BODY, { marginBottom: p.practiceUrl ? 6 : 0 }]}>{p.practiceText}</Text>}
+                        {!!p.practiceUrl && (
+                          <TouchableOpacity onPress={() => Linking.openURL(p.practiceUrl)} activeOpacity={0.7}>
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.bloom, textDecorationLine: 'underline' }}>{locale === 'fr' ? 'En savoir plus' : 'Learn more'}</Text>
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                    )}
+                    <View style={{ height: 1, backgroundColor: '#EBEBEB' }} />
+                    <TouchableOpacity onPress={() => setPoliciesAgreed(v => !v)} activeOpacity={0.7} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+                      <View style={{ width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: policiesAgreed ? colors.bloom : '#CBD5E1', backgroundColor: policiesAgreed ? colors.bloom : 'transparent', justifyContent: 'center', alignItems: 'center', marginTop: 1 }}>
+                        {policiesAgreed && <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>✓</Text>}
+                      </View>
+                      <Text style={{ flex: 1, fontSize: 13, color: colors.primary, lineHeight: 18 }}>
+                        {locale === 'fr' ? "J'ai lu et j'accepte les conditions ci-dessus." : 'I have read and agree to the above.'} <Text style={{ color: '#EF4444' }}>*</Text>
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )
+              })()}
             </View>
           )}
         </ScrollView>

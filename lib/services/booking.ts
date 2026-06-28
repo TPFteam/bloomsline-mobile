@@ -24,6 +24,13 @@ export interface BookingSettings {
   cancellation_policy: string | null
   booking_instructions: string | null
   external_booking_url: string | null
+  booking_confirmation_enabled?: boolean
+  consent_text?: string | null
+  payment_text?: string | null
+  payment_url?: string | null
+  cancellation_text?: string | null
+  practice_text?: string | null
+  practice_url?: string | null
 }
 
 export interface TimeSlot {
@@ -155,6 +162,13 @@ export async function fetchBookingSettings(practitionerId: string): Promise<Book
     cancellation_policy: data.cancellation_policy || null,
     booking_instructions: data.booking_instructions || null,
     external_booking_url: data.external_booking_url || null,
+    booking_confirmation_enabled: !!data.booking_confirmation_enabled,
+    consent_text: data.consent_text || null,
+    payment_text: data.payment_text || null,
+    payment_url: data.payment_url || null,
+    cancellation_text: data.cancellation_text || null,
+    practice_text: data.practice_text || null,
+    practice_url: data.practice_url || null,
   }
 }
 
@@ -372,7 +386,7 @@ export async function createBooking(input: {
   client_phone?: string
   notes?: string
   member_id?: string
-}): Promise<{ success: boolean; requiresApproval?: boolean; error?: string }> {
+}): Promise<{ success: boolean; requiresApproval?: boolean; error?: string; confirmationDetails?: { consentText?: string | null; paymentText?: string | null; paymentUrl?: string | null; cancellationText?: string | null; practiceText?: string | null; practiceUrl?: string | null } | null }> {
   const { data: { session } } = await supabase.auth.getSession()
 
   if (!session?.access_token) {
@@ -399,6 +413,7 @@ export async function createBooking(input: {
     return {
       success: true,
       requiresApproval: data.booking?.status === 'pending',
+      confirmationDetails: data.confirmationDetails || null,
     }
   } catch (fetchError) {
     // Fallback: insert directly if API is unreachable (no emails/notifications)
