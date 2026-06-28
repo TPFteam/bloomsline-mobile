@@ -766,7 +766,7 @@ function AudioResponseInput({ value, onChange, resourceId, readOnly, locale, con
             <Text style={{ fontSize: 14, fontWeight: '600', color: colors.primary }}>{fr ? 'Enregistrer un message vocal' : 'Record voice'}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={pickAudio} style={{ borderRadius: 12, paddingVertical: 10, alignItems: 'center' }}>
-            <Text style={{ fontSize: 13, fontWeight: '600', color: MUTED }}>{fr ? 'Ou choisir un fichier audio' : 'Or choose audio file'}</Text>
+            <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary, textDecorationLine: 'underline' }}>{fr ? 'Ou choisir un fichier audio' : 'Or choose audio file'}</Text>
           </TouchableOpacity>
         </View>
       )}
