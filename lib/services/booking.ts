@@ -237,15 +237,24 @@ async function fetchAvailableSlotsFallback(
     .lte('start_time', `${date}T23:59:59`)
     .neq('status', 'cancelled')
 
+  // Time off / holidays. Full-day time-off (start_time null) blocks the whole
+  // day; half-day time-off carries a start_time/end_time window that only
+  // blocks the slots inside it. Mirrors the care /api/bookings/available-slots
+  // engine so this fallback stays consistent when the API is unreachable.
   const { data: overrides } = await supabase
     .from('availability_overrides')
-    .select('is_available')
+    .select('is_available, start_time, end_time')
     .eq('user_id', practitionerId)
     .eq('override_date', date)
 
-  if (overrides && overrides.length > 0 && !overrides[0].is_available) {
+  const timeOff = (overrides || []).filter((o) => o.is_available === false)
+  if (timeOff.some((o) => !o.start_time)) {
     return { slots: [], practitionerTimezone: practitionerTz }
   }
+  const timeOffWindows = timeOff.map((o) => ({
+    start: new Date(`${date}T${o.start_time}`).getTime(),
+    end: new Date(`${date}T${o.end_time || '23:59:59'}`).getTime(),
+  }))
 
   const allSlots: TimeSlot[] = []
   const durationMs = duration * 60000
@@ -268,8 +277,10 @@ async function fetchAvailableSlotsFallback(
         continue
       }
 
-      let hasConflict = false
-      if (existingBookings) {
+      let hasConflict = timeOffWindows.some(
+        (w) => slotStart.getTime() < w.end && slotEnd.getTime() > w.start
+      )
+      if (!hasConflict && existingBookings) {
         for (const booking of existingBookings) {
           const bStart = new Date(booking.start_time).getTime() - bufferBefore
           const bEnd = new Date(booking.end_time).getTime() + bufferAfter
